@@ -1,0 +1,36 @@
+{
+  "folder": "nganjuk",
+  "lokasi": "Nganjuk",
+  "pusat": [
+    111.94573,
+    -7.62052
+  ],
+  "kotak_km": [
+    3.6,
+    2.1
+  ],
+  "bbox": [
+    111.929416,
+    -7.630016,
+    111.962044,
+    -7.611024
+  ],
+  "tanggal_sebelum": "2026-09-30",
+  "tanggal_sesudah": "2026-10-30",
+  "jendela_hari": 12,
+  "mode_label": "aturan",
+  "jumlah_citra": {
+    "s1_sebelum": 4,
+    "s1_sesudah": 4,
+    "s2_sebelum": 12,
+    "s2_sesudah": 12
+  },
+  "stat": {
+    "genang_sebelum_pct": 0,
+    "jumlah_petak": 1675,
+    "luas_sawah_ha": 578.2946998830834,
+    "tertanam_sesudah_pct": 1.9701492537313434,
+    "tertinggal_pct": 0
+  },
+  "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
+}

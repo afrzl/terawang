@@ -25,14 +25,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
-    try {
-      localStorage.setItem(KEY, theme)
-    } catch {
-      /* abaikan */
-    }
   }, [theme])
 
-  const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"))
+  // Simpan hanya pilihan eksplisit pengguna, supaya tanpa pilihan tetap mengikuti tema sistem.
+  const toggleTheme = () =>
+    setTheme((t) => {
+      const next = t === "dark" ? "light" : "dark"
+      try {
+        localStorage.setItem(KEY, next)
+      } catch {
+        /* abaikan */
+      }
+      return next
+    })
 
   return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>
 }

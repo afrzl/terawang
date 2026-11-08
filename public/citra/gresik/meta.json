@@ -1,0 +1,36 @@
+{
+  "folder": "gresik",
+  "lokasi": "Gresik",
+  "pusat": [
+    112.4955,
+    -7.33576
+  ],
+  "kotak_km": [
+    3.6,
+    2.1
+  ],
+  "bbox": [
+    112.479197,
+    -7.345256,
+    112.511803,
+    -7.326264
+  ],
+  "tanggal_sebelum": "2026-09-30",
+  "tanggal_sesudah": "2026-10-30",
+  "jendela_hari": 12,
+  "mode_label": "aturan",
+  "jumlah_citra": {
+    "s1_sebelum": 3,
+    "s1_sesudah": 4,
+    "s2_sebelum": 6,
+    "s2_sesudah": 6
+  },
+  "stat": {
+    "genang_sebelum_pct": 0.04930966469428008,
+    "jumlah_petak": 2028,
+    "luas_sawah_ha": 697.8246810697781,
+    "tertanam_sesudah_pct": 0,
+    "tertinggal_pct": 0.04930966469428008
+  },
+  "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
+}

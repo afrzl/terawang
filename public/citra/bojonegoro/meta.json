@@ -1,0 +1,36 @@
+{
+  "folder": "bojonegoro",
+  "lokasi": "Bojonegoro",
+  "pusat": [
+    111.83614,
+    -7.16418
+  ],
+  "kotak_km": [
+    3.6,
+    2.1
+  ],
+  "bbox": [
+    111.819843,
+    -7.173676,
+    111.852437,
+    -7.154684
+  ],
+  "tanggal_sebelum": "2026-09-30",
+  "tanggal_sesudah": "2026-10-30",
+  "jendela_hari": 12,
+  "mode_label": "aturan",
+  "jumlah_citra": {
+    "s1_sebelum": 4,
+    "s1_sesudah": 4,
+    "s2_sebelum": 6,
+    "s2_sesudah": 6
+  },
+  "stat": {
+    "genang_sebelum_pct": 6.530612244897959,
+    "jumlah_petak": 1960,
+    "luas_sawah_ha": 676.5409857333381,
+    "tertanam_sesudah_pct": 72.34693877551021,
+    "tertinggal_pct": 0.10204081632653061
+  },
+  "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
+}

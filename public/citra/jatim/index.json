@@ -1,0 +1,75 @@
+[
+  {
+    "id": "s2_okt",
+    "label": "Citra Sentinel-2 Oktober 2026",
+    "file": "s2_okt.png",
+    "bounds": [
+      110.85,
+      -8.85,
+      114.65,
+      -6.75
+    ],
+    "legenda": [],
+    "sumber": "Copernicus Sentinel-2 SR median 1–30 Okt 2026, Cloud Score+ ≥ 0,6 · Google Earth Engine · FAO GAUL 2015 · ESA WorldCover v200 (proksi sawah)"
+  },
+  {
+    "id": "fase",
+    "label": "Fase tumbuh padi 2026-10-30",
+    "file": "fase.png",
+    "bounds": [
+      110.85,
+      -8.85,
+      114.65,
+      -6.75
+    ],
+    "legenda": [
+      [
+        "#C9B28A",
+        "Bera"
+      ],
+      [
+        "#2F7FB8",
+        "Olah tanah/genangan"
+      ],
+      [
+        "#8BC34A",
+        "Vegetatif"
+      ],
+      [
+        "#2E7D32",
+        "Generatif"
+      ],
+      [
+        "#E3B505",
+        "Siap panen"
+      ]
+    ],
+    "sumber": "Sentinel-2 NDVI/LSWI (kini vs 30 hari sebelumnya) + Sentinel-1 VV, aturan ambang · Google Earth Engine · FAO GAUL 2015 · ESA WorldCover v200 (proksi sawah)"
+  },
+  {
+    "id": "vh_selisih",
+    "label": "Selisih radar VH vs rata-rata 2023–25",
+    "file": "vh_selisih.png",
+    "bounds": [
+      110.85,
+      -8.85,
+      114.65,
+      -6.75
+    ],
+    "legenda": [
+      [
+        "#8C510A",
+        "≤ −4 dB (lebih rendah: genangan/bera)"
+      ],
+      [
+        "#F5F5F5",
+        "0 dB"
+      ],
+      [
+        "#01665E",
+        "≥ +4 dB (lebih tinggi: tanaman lebih rapat)"
+      ]
+    ],
+    "sumber": "Sentinel-1 GRD VH, rata-rata 12 hari s.d. 2026-10-30 dikurangi periode sama 2023–25 · Google Earth Engine · FAO GAUL 2015 · ESA WorldCover v200 (proksi sawah)"
+  }
+]

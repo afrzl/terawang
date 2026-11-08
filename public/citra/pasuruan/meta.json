@@ -1,0 +1,36 @@
+{
+  "folder": "pasuruan",
+  "lokasi": "Pasuruan",
+  "pusat": [
+    113.03539,
+    -7.77863
+  ],
+  "kotak_km": [
+    3.6,
+    2.1
+  ],
+  "bbox": [
+    113.01907,
+    -7.788126,
+    113.05171,
+    -7.769134
+  ],
+  "tanggal_sebelum": "2026-09-30",
+  "tanggal_sesudah": "2026-10-30",
+  "jendela_hari": 12,
+  "mode_label": "aturan",
+  "jumlah_citra": {
+    "s1_sebelum": 3,
+    "s1_sesudah": 4,
+    "s2_sebelum": 7,
+    "s2_sesudah": 6
+  },
+  "stat": {
+    "genang_sebelum_pct": 0,
+    "jumlah_petak": 1674,
+    "luas_sawah_ha": 575.0441416498134,
+    "tertanam_sesudah_pct": 1.5531660692951015,
+    "tertinggal_pct": 0
+  },
+  "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
+}

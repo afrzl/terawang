@@ -1,0 +1,36 @@
+{
+  "folder": "blitar",
+  "lokasi": "Blitar",
+  "pusat": [
+    112.00951,
+    -8.07238
+  ],
+  "kotak_km": [
+    3.6,
+    2.1
+  ],
+  "bbox": [
+    111.993179,
+    -8.081876,
+    112.025841,
+    -8.062884
+  ],
+  "tanggal_sebelum": "2026-09-30",
+  "tanggal_sesudah": "2026-10-30",
+  "jendela_hari": 12,
+  "mode_label": "aturan",
+  "jumlah_citra": {
+    "s1_sebelum": 6,
+    "s1_sesudah": 6,
+    "s2_sebelum": 12,
+    "s2_sesudah": 12
+  },
+  "stat": {
+    "genang_sebelum_pct": 0.11841326228537595,
+    "jumlah_petak": 1689,
+    "luas_sawah_ha": 590.3133351833412,
+    "tertanam_sesudah_pct": 42.924807578448785,
+    "tertinggal_pct": 0.059206631142687975
+  },
+  "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
+}

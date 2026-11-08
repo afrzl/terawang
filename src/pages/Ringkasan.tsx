@@ -1,13 +1,17 @@
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { Link } from "react-router-dom"
-import { MapLegend, PetaJatim } from "@/components/charts/PetaJatim"
+import { PetaInteraktif } from "@/components/charts/PetaInteraktif"
+import { MapLegend } from "@/components/charts/PetaJatim"
 import { Sparkline } from "@/components/charts/Sparkline"
+import { CountUp } from "@/components/ui/CountUp"
 import { DataTable, type Column } from "@/components/ui/DataTable"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
 import { HargaPill, StokPill } from "@/components/ui/Pill"
-import { FLOWS, LAYERS, LAYER_KEYS, WILAYAH, byName, fcDates, risk, type LayerKey, type Wilayah } from "@/lib/data"
+import { WeekSlider } from "@/components/ui/WeekSlider"
+import { FLOWS, HET, HIST, LAYERS, LAYER_KEYS, SIAGA, WILAYAH, byName, fcDates, risk, type LayerKey, type Wilayah } from "@/lib/data"
 import { dfmt, nf, rp, short, sum } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
+import { weekLabel } from "@/lib/weeks"
 
 const LAYER_KEY = "terawang.layer"
 
@@ -30,6 +34,14 @@ function suggestedAction(k: Wilayah) {
   return k.hs !== "aman" ? "Pantau pasar, siapkan operasi pasar" : "Pantau"
 }
 
+const WK_MIN = -12
+
+/** Nilai lapisan pada pekan relatif `w` (stok: cakupan bulan; harga: Rp/kg). */
+function valueAt(layer: LayerKey, k: Wilayah, w: number) {
+  if (layer === "stok") return w <= 0 ? (w === 0 ? k.cov : k.covH[HIST - 1 + w]) : k.covP[w - 1]
+  return w <= 0 ? k.price[HIST - 1 + w] : k.fc[w - 1].m
+}
+
 const watchColumns: Column<Wilayah>[] = [
   { head: "Wilayah", cell: (k) => <b>{k.n}</b> },
   { head: "Harga kini", right: true, num: true, cell: (k) => rp(k.pNow) },
@@ -42,6 +54,16 @@ const watchColumns: Column<Wilayah>[] = [
 
 export default function Ringkasan() {
   const [layer, setLayer] = useState<LayerKey>(initialLayer)
+  const [wk, setWk] = useState(4)
+  const onWeek = useCallback((w: number) => setWk(w), [])
+  const timed = layer === "stok" || layer === "harga"
+  const wkMax = layer === "stok" ? 8 : 4
+  const wkNow = Math.min(wk, wkMax)
+  const counts = timed
+    ? Array.from({ length: wkMax - WK_MIN + 1 }, (_, i) =>
+        WILAYAH.filter((k) => (layer === "stok" ? valueAt("stok", k, WK_MIN + i) < 0.75 : valueAt("harga", k, WK_MIN + i) > SIAGA)).length,
+      )
+    : []
   const chooseLayer = (l: LayerKey) => {
     setLayer(l)
     try {
@@ -72,9 +94,8 @@ export default function Ringkasan() {
   return (
     <section className="view">
       <ViewHeader eyebrow="Laporan pekanan untuk DKP, TPID, Bulog Kanwil Jatim" title="Ringkasan kondisi beras Jawa Timur">
-        Tanam MT I mundur karena awal musim hujan terlambat, sehingga panen Nov–Jan diproyeksikan {nf(Math.abs(yoy * 100), 1)}% lebih rendah dari
-        periode yang sama 2025. Stok di {nDef} wilayah diproyeksikan jatuh di bawah batas aman dalam 4 pekan, dan {nS} wilayah diprakirakan
-        melewati HET lebih dari 3%.
+        Awal hujan terlambat memundurkan tanam MT I. Panen Nov–Jan diproyeksikan turun {nf(Math.abs(yoy * 100), 1)}% dari 2025, stok {nDef} wilayah
+        terancam di bawah batas aman dalam 4 pekan, dan harga di {nS} wilayah diprakirakan melewati HET lebih dari 3%.
       </ViewHeader>
 
       <div className="chain">
@@ -83,7 +104,7 @@ export default function Ringkasan() {
             <span className="eyebrow">K1 · Sawah</span>
           </div>
           <div className="big">
-            {nf(estT / 1000, 2)} <small>juta ton GKG</small>
+            <CountUp value={estT / 1000} format={(v) => nf(v, 2)} /> <small>juta ton GKG</small>
           </div>
           <div className="line">
             Proyeksi panen Nov 2026 – Jan 2027 · <span className="delta-dn">{nf(yoy * 100, 1)}%</span> vs 2025 · selang 90% ±{nf(ciPct, 1)}%
@@ -94,7 +115,7 @@ export default function Ringkasan() {
             <span className="eyebrow">K2 · Stok</span>
           </div>
           <div className="big">
-            {nf(stT, 0)} <small>ribu ton beras</small>
+            <CountUp value={stT} format={(v) => nf(v, 0)} delay={120} /> <small>ribu ton beras</small>
           </div>
           <div className="line">
             Setara {nf(stT / cT, 2)} bulan konsumsi provinsi · <b>{nDef}</b> wilayah proyeksi defisit, {nTip} tipis
@@ -105,7 +126,7 @@ export default function Ringkasan() {
             <span className="eyebrow">K3 · Pasar</span>
           </div>
           <div className="big">
-            {rp(pAvg)} <small>/kg medium</small>
+            <CountUp value={pAvg} from={11500} format={rp} delay={240} /> <small>/kg medium</small>
           </div>
           <div className="line">
             Prakiraan 4 pekan {rp(fAvg)} · <b>{nS}</b> Siaga, {nW} Waspada · SPHP {nf(tonS)} ton ke {new Set(FLOWS.map((f) => f.to.n)).size} wilayah
@@ -127,10 +148,32 @@ export default function Ringkasan() {
             </div>
           }
         >
-          <div className="map">
-            <PetaJatim layer={layer} />
-          </div>
-          <MapLegend layer={layer} />
+          <PetaInteraktif
+            layer={layer}
+            getValue={timed ? (k) => valueAt(layer, k, wkNow) : undefined}
+            valueLabel={timed ? (layer === "stok" ? "Cakupan stok" : "Harga medium") + ", " + weekLabel(wkNow) : undefined}
+          />
+          {timed && (
+            <WeekSlider
+              min={WK_MIN}
+              max={wkMax}
+              value={wkNow}
+              onChange={onWeek}
+              counts={counts}
+              countLabel={layer === "stok" ? "wilayah defisit" : "wilayah Siaga"}
+              color={layer === "stok" ? "var(--d1)" : "var(--crit)"}
+            />
+          )}
+          <MapLegend
+            layer={layer}
+            title={
+              layer === "stok"
+                ? `Cakupan stok, ${weekLabel(wkNow)}, bulan konsumsi`
+                : layer === "harga"
+                  ? `Harga medium ${weekLabel(wkNow)} terhadap HET ${rp(HET)}/kg`
+                  : undefined
+            }
+          />
         </Panel>
         <KabCard />
       </div>

@@ -1,0 +1,36 @@
+{
+  "folder": "malang",
+  "lokasi": "Malang",
+  "pusat": [
+    112.55928,
+    -8.15951
+  ],
+  "kotak_km": [
+    3.6,
+    2.1
+  ],
+  "bbox": [
+    112.542945,
+    -8.169006,
+    112.575615,
+    -8.150014
+  ],
+  "tanggal_sebelum": "2026-09-30",
+  "tanggal_sesudah": "2026-10-30",
+  "jendela_hari": 12,
+  "mode_label": "aturan",
+  "jumlah_citra": {
+    "s1_sebelum": 7,
+    "s1_sesudah": 8,
+    "s2_sebelum": 26,
+    "s2_sesudah": 24
+  },
+  "stat": {
+    "genang_sebelum_pct": 0.1662510390689942,
+    "jumlah_petak": 1203,
+    "luas_sawah_ha": 421.77018280067807,
+    "tertanam_sesudah_pct": 26.433915211970078,
+    "tertinggal_pct": 0.0831255195344971
+  },
+  "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
+}

@@ -1,0 +1,36 @@
+{
+  "folder": "bondowoso",
+  "lokasi": "Bondowoso",
+  "pusat": [
+    113.94268,
+    -7.89451
+  ],
+  "kotak_km": [
+    3.6,
+    2.1
+  ],
+  "bbox": [
+    113.926356,
+    -7.904006,
+    113.959004,
+    -7.885014
+  ],
+  "tanggal_sebelum": "2026-09-30",
+  "tanggal_sesudah": "2026-10-30",
+  "jendela_hari": 12,
+  "mode_label": "aturan",
+  "jumlah_citra": {
+    "s1_sebelum": 3,
+    "s1_sesudah": 2,
+    "s2_sebelum": 7,
+    "s2_sesudah": 5
+  },
+  "stat": {
+    "genang_sebelum_pct": 0,
+    "jumlah_petak": 1702,
+    "luas_sawah_ha": 587.0711549635836,
+    "tertanam_sesudah_pct": 2.1739130434782608,
+    "tertinggal_pct": 0
+  },
+  "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
+}

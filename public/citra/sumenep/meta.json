@@ -1,0 +1,36 @@
+{
+  "folder": "sumenep",
+  "lokasi": "Sumenep",
+  "pusat": [
+    113.83489,
+    -7.02853
+  ],
+  "kotak_km": [
+    3.6,
+    2.1
+  ],
+  "bbox": [
+    113.818598,
+    -7.038026,
+    113.851182,
+    -7.019034
+  ],
+  "tanggal_sebelum": "2026-09-30",
+  "tanggal_sesudah": "2026-10-30",
+  "jendela_hari": 12,
+  "mode_label": "aturan",
+  "jumlah_citra": {
+    "s1_sebelum": 3,
+    "s1_sesudah": 2,
+    "s2_sebelum": 7,
+    "s2_sesudah": 5
+  },
+  "stat": {
+    "genang_sebelum_pct": 0,
+    "jumlah_petak": 1909,
+    "luas_sawah_ha": 656.3581840980133,
+    "tertanam_sesudah_pct": 0.9952854897852279,
+    "tertinggal_pct": 0
+  },
+  "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
+}

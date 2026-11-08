@@ -1,3 +1,4 @@
+import { DeficitCountdown } from "@/components/charts/DeficitCountdown"
 import { LineChart } from "@/components/charts/LineChart"
 import { DataTable, type Column } from "@/components/ui/DataTable"
 import { KpiStrip } from "@/components/ui/Kpi"
@@ -60,6 +61,11 @@ export default function Stok() {
           { k: "Uji balik deteksi defisit 2025", v: "7 dari 8", t: "terdeteksi ≥ 1 bulan sebelumnya" },
         ]}
       />
+      <Panel title="Hitung mundur ke defisit" note="Perkiraan hari sampai stok di bawah 0,75 bulan konsumsi, dari proyeksi filter Kalman. Klik kartu untuk memilih wilayah.">
+        <div className="pb">
+          <DeficitCountdown />
+        </div>
+      </Panel>
       <div className="grid-21">
         <KalmanPanel />
         <NeracaPanel />
@@ -71,16 +77,43 @@ export default function Stok() {
   )
 }
 
+/** Varians taksiran Kalman: bertambah Q tiap pekan, menyusut tiap kali observasi masuk, lalu melebar di masa proyeksi. */
+function kalmanSd(k: Wilayah) {
+  const Q = (k.cov * 0.03) ** 2
+  const Rv = (k.cov * 0.035) ** 2
+  let P = (k.cov * 0.05) ** 2
+  const sd: number[] = []
+  for (let i = 0; i < HIST; i++) {
+    P += Q
+    if (k.obs[i] != null) P = (P * Rv) / (P + Rv)
+    sd.push(Math.sqrt(P))
+  }
+  for (let h = 0; h < 8; h++) {
+    P += Q * (1.6 + h * 0.5)
+    sd.push(Math.sqrt(P))
+  }
+  return sd
+}
+
 function KalmanPanel() {
   const { sel } = useSelection()
   const k = byName[sel]
   const dates = histDates.concat([...Array(8)].map((_, h) => new Date(+NOW + (h + 1) * 7 * DAY)))
-  const sd = k.cov * 0.06
-  const hi = Math.max(...k.covH.concat(k.covP)) * 1.18 + 0.1
+  const center = k.covH.slice(0, HIST - 1).concat([k.cov], k.covP)
+  const sd = kalmanSd(k)
+  const band = (z: number, op: number) => ({
+    lo: center.map((v, i) => Math.max(0, v - z * sd[i])),
+    hi: center.map((v, i) => v + z * sd[i]),
+    off: 0,
+    color: "var(--accent)",
+    op,
+  })
+  const hi = Math.max(...center.map((v, i) => v + 1.96 * sd[i])) * 1.06 + 0.05
   const proj = [k.cov].concat(k.covP)
+  const w95 = 1.96 * sd[sd.length - 1]
 
   return (
-    <Panel title={`Taksiran stok · ${k.n}`} note="Bulan konsumsi; pita = selang 95%">
+    <Panel title={`Taksiran stok · ${k.n}`} note="Bulan konsumsi; pita gelap = selang 50%, terang = 95%">
       <div className="pb chart">
         <LineChart
           xDates={dates}
@@ -89,33 +122,19 @@ function KalmanPanel() {
           W={720}
           H={290}
           splitAt={HIST - 1}
-          bands={[
-            {
-              lo: k.covH.map((v, i) => v - sd * (1.2 + 0.6 * Math.cos(i))),
-              hi: k.covH.map((v, i) => v + sd * (1.2 + 0.6 * Math.cos(i))),
-              off: 0,
-              color: "var(--accent)",
-            },
-            {
-              lo: proj.map((v, h) => v - sd * (1.4 + h * 0.55)),
-              hi: proj.map((v, h) => v + sd * (1.4 + h * 0.55)),
-              off: HIST - 1,
-              color: "var(--accent)",
-              op: 0.1,
-            },
-          ]}
+          bands={[band(1.96, 0.12), band(0.674, 0.22)]}
           refs={[
             { v: 1, label: "batas aman", color: "var(--warn)", dy: -3 },
             { v: 0.75, label: "defisit", color: "var(--crit)", dy: 9 },
           ]}
           series={[
-            { vals: k.covH, color: "var(--accent)", w: 2.2 },
+            { vals: k.covH.slice(0, HIST - 1).concat([k.cov]), color: "var(--accent)", w: 2.2 },
             { vals: proj, off: HIST - 1, color: "var(--accent)", dash: "5 4", w: 2, label: nf(k.covP[7], 2) + " bln" },
           ]}
           points={[{ vals: k.obs, color: "var(--ink)" }]}
           tip={(i) => {
             const isP = i >= HIST
-            const v = isP ? k.covP[i - HIST] : k.covH[i]
+            const v = center[i]
             const ob = isP ? null : k.obs[i]
             return (
               <>
@@ -123,10 +142,15 @@ function KalmanPanel() {
                 {isP && " · proyeksi"}
                 <br />
                 Taksiran <span className="m">{nf(v, 2)} bln</span> ≈ <span className="m">{nf(v * k.C * 1000)} ton</span>
+                <br />
+                Selang 95%{" "}
+                <span className="m">
+                  {nf(Math.max(0, v - 1.96 * sd[i]), 2)}–{nf(v + 1.96 * sd[i], 2)}
+                </span>
                 {ob != null && (
                   <>
                     <br />
-                    Observasi stok <span className="m">{nf(ob, 2)} bln</span>
+                    Observasi stok <span className="m">{nf(ob, 2)} bln</span> · pita menyempit
                   </>
                 )}
               </>
@@ -146,6 +170,12 @@ function KalmanPanel() {
           </span>
           <span>garis putus = proyeksi 8 pekan</span>
         </div>
+      </div>
+      <div className="pb method" style={{ paddingTop: 0 }}>
+        <span>
+          Ketidakpastian menyusut setiap kali data stok Bulog atau survei masuk, lalu melebar lagi selama tidak ada pengamatan. Delapan pekan ke depan
+          selang 95% selebar ±{nf(w95, 2)} bulan konsumsi.
+        </span>
       </div>
     </Panel>
   )

@@ -1,4 +1,6 @@
 import { LineChart } from "@/components/charts/LineChart"
+import { ProdTreemap } from "@/components/charts/ProdTreemap"
+import { SatCompare } from "@/components/charts/SatCompare"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
 import { PHASES, WILAYAH, byName } from "@/lib/data"
@@ -38,6 +40,14 @@ export default function Produksi() {
           { k: "Uji balik MT I 2025", v: "MAPE 8,7%", t: "terhadap angka BPS · target ≤ 10%" },
         ]}
       />
+      <div className="grid-2">
+        <SatPanel />
+        <Panel title="Sumbangan tiap wilayah pada panen Nov–Jan" note="Luas kotak = proyeksi ribu ton GKG; dikelompokkan per kawasan; klik untuk memilih">
+          <div className="pb chart">
+            <ProdTreemap />
+          </div>
+        </Panel>
+      </div>
       <div className="grid-21">
         <Panel title="Kalender panen 12 pekan ke depan" note="Perkiraan luas panen per pekan, ribu ha">
           <div className="pb chart">
@@ -59,6 +69,17 @@ export default function Produksi() {
         </Panel>
       </div>
     </section>
+  )
+}
+
+function SatPanel() {
+  const { sel } = useSelection()
+  return (
+    <Panel title={`Sebelum dan sesudah tanam · ${sel}`} note="Geser garis putih untuk membandingkan">
+      <div className="pb">
+        <SatCompare />
+      </div>
+    </Panel>
   )
 }
 
@@ -149,45 +170,54 @@ function RadarProfile() {
   const k = byName[sel]
   const N = 15
   const dates = [...Array(N)].map((_, i) => new Date(2026, 5, 1 + i * 12))
-  const R = rng(hash(k.n + "s1"))
-  const prof = (sh: number, noise: boolean) =>
-    dates.map((_, i) => {
-      const t = i - sh
-      const v = t < 0 ? -16.2 - t * 0.35 : t < 1.5 ? -21.5 : -21.5 + Math.min(t - 1.5, 5) * 1.45 - Math.max(0, t - 7) * 0.5
-      return v + (noise ? (R() - 0.5) * 0.7 : 0)
-    })
-  const avg = prof(4, false)
-  const cur = prof(4 + k.shift, true)
-  const avgAbove = avg[N - 1] > cur[N - 1]
+  // Buang null di ujung agar label garis menempel pada akuisisi terakhir yang ada.
+  const trim = (xs: (number | null)[]) => {
+    const out = xs.slice(0, N)
+    while (out.length && out[out.length - 1] == null) out.pop()
+    return out
+  }
+  const cur = trim(k.vh)
+  const avg = trim(k.vhAvg)
+  const vals = [...cur, ...avg].filter((v): v is number => v != null)
+  const lo = vals.length ? Math.floor(Math.min(...vals) - 0.5) : -24
+  const hi = vals.length ? Math.ceil(Math.max(...vals) + 0.5) : -12
+  const lastCur = cur[cur.length - 1] ?? 0
+  const lastAvg = avg[avg.length - 1] ?? 0
+  const avgAbove = lastAvg > lastCur
+  const fmt = (v: number | null | undefined) => (v == null ? "belum ada citra" : `${nf(v, 1)} dB`)
 
   return (
-    <Panel title={`Profil radar VH · ${k.n}`} note="Rata-rata piksel sawah, dB">
+    <Panel title={`Profil radar VH · ${k.n}`} note="Rata-rata piksel sawah, dB · Sentinel-1 via Google Earth Engine">
       <div className="pb chart">
-        <LineChart
-          xDates={dates}
-          yDom={[-24, -12]}
-          yFmt={(v) => nf(v)}
-          W={480}
-          H={250}
-          series={[
-            { vals: avg, color: "var(--ink-3)", dash: "4 3", label: "rata-rata 2023–25", ly: avgAbove ? -4 : 12 },
-            { vals: cur, color: "var(--s4)", w: 2.4, label: "musim ini", ly: avgAbove ? 12 : -4 },
-          ]}
-          tip={(i) => (
-            <>
-              <b>{dfmt(dates[i])} 2026</b>
-              <br />
-              Musim ini <span className="m">{nf(cur[i], 1)} dB</span>
-              <br />
-              Rata-rata <span className="m">{nf(avg[i], 1)} dB</span>
-            </>
-          )}
-        />
+        {vals.length ? (
+          <LineChart
+            xDates={dates}
+            yDom={[lo, hi]}
+            yFmt={(v) => nf(v)}
+            W={480}
+            H={250}
+            series={[
+              { vals: avg, color: "var(--ink-3)", dash: "4 3", label: "rata-rata 2023–25", ly: avgAbove ? -4 : 12 },
+              { vals: cur, color: "var(--s4)", w: 2.4, label: "musim ini", ly: avgAbove ? 12 : -4 },
+            ]}
+            tip={(i) => (
+              <>
+                <b>{dfmt(dates[i])} 2026</b>
+                <br />
+                Musim ini <span className="m">{fmt(cur[i])}</span>
+                <br />
+                Rata-rata 2023–25 <span className="m">{fmt(avg[i])}</span>
+              </>
+            )}
+          />
+        ) : (
+          <div className="method">Belum ada profil Sentinel-1 untuk wilayah ini.</div>
+        )}
       </div>
       <div className="pb method" style={{ paddingTop: 0 }}>
         <span>
-          Pantulan turun saat sawah digenangi (tanam), lalu naik seiring tanaman tumbuh. Pergeseran kurva musim ini terhadap rata-rata 3 musim
-          menunjukkan tanam yang mundur.
+          Pantulan turun saat sawah digenangi (tanam), lalu naik seiring tanaman tumbuh. Pergeseran titik terendah musim ini terhadap rata-rata 3 musim
+          menunjukkan tanam yang mundur. Akuisisi tiap 12 hari sejak 1 Jun 2026.
         </span>
       </div>
     </Panel>

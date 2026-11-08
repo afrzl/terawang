@@ -15,3 +15,7 @@ dist-ssr
 .idea
 .DS_Store
 deploy/server.log
+
+# citra GEE mentah, tidak dipakai dasbor
+public/citra/**/*.tif
+public/citra/*/petak.geojson

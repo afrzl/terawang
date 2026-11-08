@@ -1,0 +1,36 @@
+{
+  "folder": "lumajang",
+  "lokasi": "Lumajang",
+  "pusat": [
+    113.25368,
+    -8.17029
+  ],
+  "kotak_km": [
+    3.6,
+    2.1
+  ],
+  "bbox": [
+    113.237345,
+    -8.179786,
+    113.270015,
+    -8.160794
+  ],
+  "tanggal_sebelum": "2026-09-30",
+  "tanggal_sesudah": "2026-10-30",
+  "jendela_hari": 12,
+  "mode_label": "aturan",
+  "jumlah_citra": {
+    "s1_sebelum": 5,
+    "s1_sesudah": 4,
+    "s2_sebelum": 14,
+    "s2_sesudah": 10
+  },
+  "stat": {
+    "genang_sebelum_pct": 0.30175015087507545,
+    "jumlah_petak": 1657,
+    "luas_sawah_ha": 573.1723077156453,
+    "tertanam_sesudah_pct": 23.415811707905853,
+    "tertinggal_pct": 0
+  },
+  "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
+}

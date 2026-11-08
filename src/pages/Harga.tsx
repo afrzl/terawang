@@ -1,5 +1,7 @@
 import { LineChart } from "@/components/charts/LineChart"
 import { MapLegend, PetaJatim } from "@/components/charts/PetaJatim"
+import { PriceHeatmap } from "@/components/charts/PriceHeatmap"
+import { PriceRidgeline } from "@/components/charts/PriceRidgeline"
 import { DataTable, type Column } from "@/components/ui/DataTable"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
@@ -72,6 +74,24 @@ export default function Harga() {
         </Panel>
       </div>
       <Panel
+        title="Sebaran harga 38 wilayah per pekan"
+        note="Tiap punggung = sebaran harga medium semua wilayah pada satu pekan; garis putus = prakiraan; titik = wilayah terpilih"
+      >
+        <div className="pb chart ridge-wrap">
+          <PriceRidgeline />
+        </div>
+        <div className="pb method" style={{ paddingTop: 0 }}>
+          <span>
+            Sebaran bergeser ke kanan dan melebar: makin banyak wilayah mendekati HET, terutama kota dan Madura yang bergantung pada pasokan luar.
+          </span>
+        </div>
+      </Panel>
+      <Panel title="Peta panas harga 38 wilayah" note="Rp/kg per pekan, diurutkan dari prakiraan harga tertinggi. Klik baris untuk memilih wilayah.">
+        <div className="pb chart">
+          <PriceHeatmap />
+        </div>
+      </Panel>
+      <Panel
         title="Rekomendasi penyaluran pekan 45–48"
         note="Hasil optimasi: kebutuhan wilayah defisit dipenuhi dari gudang surplus dengan jarak tempuh terpendek"
       >
@@ -81,18 +101,28 @@ export default function Harga() {
   )
 }
 
+/** Peluang harga melewati HET bila prakiraan menyebar normal (pendekatan erf Abramowitz–Stegun). */
+function pAbove(m: number, sd: number) {
+  const z = (HET - m) / sd / Math.SQRT2
+  const t = 1 / (1 + 0.3275911 * Math.abs(z))
+  const e = 1 - (((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t) * Math.exp(-z * z)
+  const erf = z >= 0 ? e : -e
+  return 0.5 * (1 - erf)
+}
+
 function PricePanel() {
   const { sel } = useSelection()
   const k = byName[sel]
   const dates = histDates.concat(fcDates)
-  const lo = Math.min(...k.price, ...k.fc.map((f) => f.lo), HET) - 150
-  const hi = Math.max(...k.fc.map((f) => f.hi), SIAGA) + 120
+  const z95 = 1.96 / 1.2816
+  const lo = Math.min(...k.price, ...k.fc.map((f) => f.m - (f.m - f.lo) * z95), HET) - 150
+  const hi = Math.max(...k.fc.map((f) => f.m + (f.hi - f.m) * z95), SIAGA) + 120
   const popT = sum(WILAYAH, (q) => q.pop)
   const prov = histDates.map((_, i) => sum(WILAYAH, (q) => q.price[i] * q.pop) / popT)
   const fcLine = [k.pNow].concat(k.fc.map((f) => f.m))
 
   return (
-    <Panel title={`Harga beras medium · ${k.n}`} note="Rp/kg, eceran pekanan; pita = selang prakiraan 80%">
+    <Panel title={`Harga beras medium · ${k.n}`} note="Rp/kg, eceran pekanan; kipas = selang prakiraan 50%, 80%, 95%">
       <div className="pb chart">
         <LineChart
           xDates={dates}
@@ -102,14 +132,16 @@ function PricePanel() {
           H={300}
           splitAt={HIST - 1}
           bands={[
-            {
-              lo: [k.pNow].concat(k.fc.map((f) => f.lo)),
-              hi: [k.pNow].concat(k.fc.map((f) => f.hi)),
-              off: HIST - 1,
-              color: STATUS[k.hs].c,
-              op: 0.18,
-            },
-          ]}
+            [1.96, 0.1],
+            [1.2816, 0.14],
+            [0.674, 0.2],
+          ].map(([z, op]) => ({
+            lo: [k.pNow].concat(k.fc.map((f) => f.m - (z * (f.hi - f.m)) / 1.2816)),
+            hi: [k.pNow].concat(k.fc.map((f) => f.m + (z * (f.hi - f.m)) / 1.2816)),
+            off: HIST - 1,
+            color: STATUS[k.hs].c,
+            op,
+          }))}
           refs={[
             { v: HET, label: "HET 13.500", color: "var(--ink-2)" },
             { v: SIAGA, label: "Siaga +3%", color: "var(--crit)" },
@@ -128,10 +160,22 @@ function PricePanel() {
                   <br />
                   {k.n} <span className="m">{rp(f.m)}</span>
                   <br />
+                  Selang 50%{" "}
+                  <span className="m">
+                    {rp(f.m - ((f.hi - f.m) * 0.674) / 1.2816)}–{rp(f.m + ((f.hi - f.m) * 0.674) / 1.2816)}
+                  </span>
+                  <br />
                   Selang 80%{" "}
                   <span className="m">
                     {rp(f.lo)}–{rp(f.hi)}
                   </span>
+                  <br />
+                  Selang 95%{" "}
+                  <span className="m">
+                    {rp(f.m - (f.m - f.lo) * z95)}–{rp(f.m + (f.hi - f.m) * z95)}
+                  </span>
+                  <br />
+                  Peluang di atas HET <span className="m">{nf(pAbove(f.m, (f.hi - f.m) / 1.2816) * 100, 0)}%</span>
                 </>
               )
             }

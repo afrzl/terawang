@@ -1,7 +1,29 @@
 import geoJson from "./jatim.json"
+import geeJson from "./gee_wilayah.json"
 import { DAY, NOW, clamp, hash, nf, rng, rp } from "./format"
 
-/* Semua angka di modul ini adalah data simulasi untuk peragaan prototipe, bukan data resmi. */
+/* Angka satelit (penduduk, luas sawah, produksi, fase tumbuh, petak tertinggal, proyeksi panen, profil VH)
+   berasal dari Google Earth Engine — lihat scripts/gee/terawang_wilayah.py → ./gee_wilayah.json.
+   Harga dan stok tidak teramati satelit: modelnya didorong produksi & penduduk GEE, harga dasar masih simulasi. */
+
+export interface GeeWilayah {
+  n: string
+  pop: number
+  ha: number
+  ip: number
+  prod: number
+  ph: number[]
+  lag: number
+  est: number
+  prev: number
+  ci: number
+  cakupan_s2: number
+  vh: (number | null)[]
+  vhAvg: (number | null)[]
+  pusat: [number, number] | null
+}
+export const GEE = geeJson as unknown as { dibuat: string; acuan: string; sumber: string; wilayah: GeeWilayah[] }
+const geeBy: Record<string, GeeWilayah> = Object.fromEntries(GEE.wilayah.map((w) => [w.n, w]))
 
 export interface GeoShape {
   /** Path SVG batas wilayah (kosong untuk wilayah yang hanya ditandai titik). */
@@ -65,10 +87,19 @@ export interface Wilayah {
   hs: HargaStatus
   ss: StokStatus
   shift: number
+  /** Profil Sentinel-1 VH sawah (dB), 15 akuisisi tiap 12 hari mulai 1 Jun 2026; null = belum ada citra. */
+  vh: (number | null)[]
+  /** Rata-rata profil VH pada tanggal yang sama, 2023–2025. */
+  vhAvg: (number | null)[]
+  /** Indeks pertanaman (kali tanam per tahun) dari NDVI Sentinel-2. */
+  ip: number
+  /** Titik pusat hamparan sawah [lon, lat] untuk kotak citra. */
+  pusat: [number, number] | null
   R: () => number
 }
 
 // nama, penduduk (ribu), produksi GKG tahunan (ribu ton), harga dasar medium (Rp/kg)
+// Penduduk & produksi di bawah hanya cadangan; nilai GEE dipakai bila tersedia (lihat simulate).
 const BASE: [string, number, number, number][] = [
   ["Pacitan", 600, 92, 13250], ["Ponorogo", 975, 340, 12950], ["Trenggalek", 750, 118, 13150], ["Tulungagung", 1110, 215, 13050], ["Blitar", 1240, 232, 13000],
   ["Kediri", 1660, 295, 13000], ["Malang", 2700, 330, 13150], ["Lumajang", 1140, 300, 12950], ["Jember", 2580, 770, 12850], ["Banyuwangi", 1740, 525, 12900],
@@ -85,27 +116,36 @@ export const histDates = [...Array(HIST)].map((_, i) => new Date(+NOW - (HIST - 
 export const fcDates = [1, 2, 3, 4].map((h) => new Date(+NOW + h * 7 * DAY))
 export const PHASES = ["Bera", "Olah tanah/genangan", "Vegetatif", "Generatif", "Siap panen"]
 
-function simulate([n, pop, prod, pb]: [string, number, number, number]): Wilayah {
+function simulate([n, pop0, prod0, pb]: [string, number, number, number]): Wilayah {
   const R = rng(hash(n))
+  const g = geeBy[n]
+  const pop = g ? g.pop : pop0
+  const prod = g ? g.prod : prod0
   const isKota = n.startsWith("Kota ") || n === "Batu"
   const C = (pop * 6.39) / 1000 // ribu ton beras / bulan
   const r = (prod * 0.6402) / 12 / C // rasio produksi : konsumsi
   const df = clamp(1 - r / 2, 0, 1)
   // K1 produksi
-  const yoy = -(0.03 + R() * 0.12) * (r > 1.5 ? 1 : 0.7)
-  const est = prod * 0.17 * (1 + yoy * 0.2) // ribu ton GKG Nov–Jan
-  const ci = est * (0.06 + R() * 0.06)
-  const prev = est / (1 + yoy)
-  const ha = (prod * 1000) / 11.2
-  let ph = [22 + R() * 24, 14 + R() * 16, 14 + R() * 22, 5 + R() * 12, 2 + R() * 7]
-  if (r > 2) {
-    ph[2] += 8
-    ph[3] += 5
-    ph[0] -= 8
+  let yoy: number, est: number, ci: number, prev: number, ha: number, ph: number[], lag: number
+  if (g) {
+    est = g.est // ribu ton GKG Nov–Jan, dari fase tumbuh Sentinel-2
+    prev = g.prev // periode sama tahun lalu
+    yoy = prev > 0 ? est / prev - 1 : 0
+    ci = g.ci
+    ha = g.ha
+    ph = g.ph
+    lag = g.lag
+  } else {
+    yoy = -(0.03 + R() * 0.12) * (r > 1.5 ? 1 : 0.7)
+    est = prod * 0.17 * (1 + yoy * 0.2)
+    ci = est * (0.06 + R() * 0.06)
+    prev = est / (1 + yoy)
+    ha = (prod * 1000) / 11.2
+    ph = [22 + R() * 24, 14 + R() * 16, 14 + R() * 22, 5 + R() * 12, 2 + R() * 7]
+    const sp = ph.reduce((a, b) => a + b)
+    ph = ph.map((v) => (v / sp) * 100)
+    lag = 2 + R() * 11
   }
-  const sp = ph.reduce((a, b) => a + b)
-  ph = ph.map((v) => (v / sp) * 100)
-  const lag = 2 + R() * 11
   // K2 stok (bulan konsumsi)
   const cov = (isKota ? 0.78 + R() * 0.2 : 0.88 + 0.68 * Math.min(r, 3.6)) * (0.92 + R() * 0.14)
   const decl = cov * (0.018 + R() * 0.012) + df * 0.02
@@ -132,9 +172,16 @@ function simulate([n, pop, prod, pb]: [string, number, number, number]): Wilayah
   const p4 = fc[3].m
   const hs: HargaStatus = p4 > SIAGA ? "siaga" : p4 >= HET ? "waspada" : "aman"
   const ss: StokStatus = covP[3] < 0.75 ? "defisit" : covP[3] < 1 ? "tipis" : "cukup"
-  // Profil Sentinel-1 VH: 15 akuisisi tiap 12 hari mulai 1 Jun
-  const shift = (r > 1.5 ? 2 : 3) + Math.round(R() * 1.5)
-  return { n, pop, prod, pb, isKota, C, r, df, yoy, est, ci, prev, ha, ph, lag, cov, covH, covP, obs, decl, price, fc, prem, pNow, p4, hs, ss, shift, R }
+  // Profil Sentinel-1 VH: 15 akuisisi tiap 12 hari mulai 1 Jun. shift = geser (akuisisi) titik VH terendah
+  // musim ini terhadap rata-rata 2023–25 → positif berarti tanam lebih lambat.
+  const vh = g?.vh ?? []
+  const vhAvg = g?.vhAvg ?? []
+  const argmin = (xs: (number | null)[]) =>
+    xs.reduce<number>((b, v, i) => (v != null && (xs[b] == null || v < (xs[b] as number)) ? i : b), 0)
+  const shift = vh.length ? Math.max(0, Math.min(6, argmin(vh) - argmin(vhAvg) + 2)) : (r > 1.5 ? 2 : 3) + Math.round(R() * 1.5)
+  const ip = g?.ip ?? 2
+  const pusat = g?.pusat ?? null
+  return { n, pop, prod, pb, isKota, C, r, df, yoy, est, ci, prev, ha, ph, lag, cov, covH, covP, obs, decl, price, fc, prem, pNow, p4, hs, ss, shift, vh, vhAvg, ip, pusat, R }
 }
 
 export const WILAYAH: Wilayah[] = BASE.map(simulate)

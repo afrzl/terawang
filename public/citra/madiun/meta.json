@@ -1,0 +1,36 @@
+{
+  "folder": "madiun",
+  "lokasi": "Madiun",
+  "pusat": [
+    111.52262,
+    -7.68161
+  ],
+  "kotak_km": [
+    3.6,
+    2.1
+  ],
+  "bbox": [
+    111.506304,
+    -7.691106,
+    111.538936,
+    -7.672114
+  ],
+  "tanggal_sebelum": "2026-09-30",
+  "tanggal_sesudah": "2026-10-30",
+  "jendela_hari": 12,
+  "mode_label": "aturan",
+  "jumlah_citra": {
+    "s1_sebelum": 4,
+    "s1_sesudah": 4,
+    "s2_sebelum": 6,
+    "s2_sesudah": 6
+  },
+  "stat": {
+    "genang_sebelum_pct": 5.121145374449339,
+    "jumlah_petak": 1816,
+    "luas_sawah_ha": 629.6749552688327,
+    "tertanam_sesudah_pct": 95.42951541850219,
+    "tertinggal_pct": 0
+  },
+  "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
+}
