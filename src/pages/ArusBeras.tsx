@@ -31,6 +31,22 @@ export default function ArusBeras() {
           { k: "Jarak tempuh rata-rata", v: `${nf(kmAvg)} km`, t: "tertimbang volume" },
         ]}
       />
+      <div className="grid-21">
+        <Panel title="Peta arus utama" note="25 jalur terbesar; garis bergerak dari asal ke tujuan, warna = kawasan asal">
+          <div className="map">
+            <PetaJatim
+              layer="stok"
+              muted
+              labels={false}
+              arcs={TRADE.slice(0, 25).map((t) => ({ from: t.from.n, to: t.to.n, ton: t.ton, color: regionOf[t.from.n].color }))}
+            />
+          </div>
+          <MapLegend layer="stok" />
+          <RegionLegend />
+          <Bacaan>{bacaPetaArus()}</Bacaan>
+        </Panel>
+        <Corridors />
+      </div>
       <Panel title="Dari lumbung ke meja makan" note="Kabupaten asal → kawasan tujuan → kabupaten/kota tujuan, ton beras per bulan. Arahkan kursor untuk menyorot jalur.">
         <div className="pb chart">
           <SankeyArus />
@@ -51,21 +67,6 @@ export default function ArusBeras() {
           </div>
           <Bacaan>{bacaNeracaKawasan()}</Bacaan>
         </Panel>
-      </div>
-      <div className="grid-21">
-        <Panel title="Peta arus utama" note="25 jalur terbesar; garis bergerak dari asal ke tujuan, warna = kawasan asal">
-          <div className="map">
-            <PetaJatim
-              layer="stok"
-              muted
-              labels={false}
-              arcs={TRADE.slice(0, 25).map((t) => ({ from: t.from.n, to: t.to.n, ton: t.ton, color: regionOf[t.from.n].color }))}
-            />
-          </div>
-          <MapLegend layer="stok" />
-          <Bacaan>{bacaPetaArus()}</Bacaan>
-        </Panel>
-        <Corridors />
       </div>
     </section>
   )
