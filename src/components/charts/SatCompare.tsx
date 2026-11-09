@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react"
 import { MoveHorizontal } from "lucide-react"
 import { byName, type Wilayah } from "@/lib/data"
 import { hash, nf, rng } from "@/lib/format"
+import { Bacaan } from "@/components/ui/Bacaan"
+import { bacaCitra } from "@/lib/bacaan"
 import { useSelection } from "@/lib/selection"
 
 const W = 720
@@ -314,6 +316,7 @@ export function SatCompare() {
                 </>
               )}
       </div>
+      <Bacaan inset>{bacaCitra(k, { ...stat, petak: asli?.stat.jumlah_petak, asli: !!asli })}</Bacaan>
     </div>
   )
 }

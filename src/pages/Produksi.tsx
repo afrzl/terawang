@@ -1,10 +1,12 @@
 import { LineChart } from "@/components/charts/LineChart"
 import { ProdTreemap } from "@/components/charts/ProdTreemap"
 import { SatCompare } from "@/components/charts/SatCompare"
+import { Bacaan } from "@/components/ui/Bacaan"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
+import { bacaFase, bacaKalender, bacaProyeksi, bacaRadar, bacaTreemap, kalenderPanen } from "@/lib/bacaan"
 import { PHASES, WILAYAH, byName } from "@/lib/data"
-import { DAY, NOW, dfmt, hash, nf, rng, scale, short, sum, ticks } from "@/lib/format"
+import { dfmt, nf, scale, short, sum, ticks } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
 
@@ -46,6 +48,7 @@ export default function Produksi() {
           <div className="pb chart">
             <ProdTreemap />
           </div>
+          <Bacaan>{bacaTreemap()}</Bacaan>
         </Panel>
       </div>
       <div className="grid-21">
@@ -53,6 +56,7 @@ export default function Produksi() {
           <div className="pb chart">
             <HarvestCalendar />
           </div>
+          <Bacaan>{bacaKalender()}</Bacaan>
         </Panel>
         <RadarProfile />
       </div>
@@ -61,11 +65,13 @@ export default function Produksi() {
           <div className="pb chart">
             <EstimateBars />
           </div>
+          <Bacaan>{bacaProyeksi()}</Bacaan>
         </Panel>
         <Panel title="Fase tumbuh per wilayah" note="% luas sawah, citra 30 Okt 2026">
           <div className="pb chart">
             <PhaseBars />
           </div>
+          <Bacaan>{bacaFase()}</Bacaan>
         </Panel>
       </div>
     </section>
@@ -86,23 +92,12 @@ function SatPanel() {
 function HarvestCalendar() {
   const { sel, select } = useSelection()
   const { show, hide } = useTooltip()
-  const top = WILAYAH.filter((k) => !k.isKota)
-    .sort((a, b) => b.est - a.est)
-    .slice(0, 14)
-  const weeks = [...Array(12)].map((_, i) => new Date(+NOW + (i + 1) * 7 * DAY))
+  const { top, weeks, cal } = kalenderPanen()
   const W = 720
   const rowH = 21
   const m = { l: 96, t: 22, r: 8 }
   const H = m.t + top.length * rowH + 8
   const cw = (W - m.l - m.r) / 12
-  const cal = top.map((k) => {
-    const R = rng(hash(k.n + "cal"))
-    const peak = 5 + k.shift + R() * 3
-    const tot = (k.ha * 0.17 * (1 + k.yoy * 0.2)) / 1000
-    const w = weeks.map((_, i) => Math.exp(-Math.pow((i - peak) / 2.4, 2)) + 0.15 * Math.exp(-Math.pow((i - 1) / 1.5, 2)))
-    const sw = w.reduce((a, b) => a + b)
-    return w.map((v) => (v / sw) * tot)
-  })
   const mx = Math.max(...cal.flat())
 
   return (
@@ -193,7 +188,7 @@ function RadarProfile() {
           <LineChart
             xDates={dates}
             yDom={[lo, hi]}
-            yFmt={(v) => nf(v)}
+            yFmt={(v) => nf(v, Number.isInteger(v) ? 0 : 1)}
             W={480}
             H={250}
             series={[
@@ -214,12 +209,7 @@ function RadarProfile() {
           <div className="method">Belum ada profil Sentinel-1 untuk wilayah ini.</div>
         )}
       </div>
-      <div className="pb method" style={{ paddingTop: 0 }}>
-        <span>
-          Pantulan turun saat sawah digenangi (tanam), lalu naik seiring tanaman tumbuh. Pergeseran titik terendah musim ini terhadap rata-rata 3 musim
-          menunjukkan tanam yang mundur. Akuisisi tiap 12 hari sejak 1 Jun 2026.
-        </span>
-      </div>
+      <Bacaan>{bacaRadar(k)}</Bacaan>
     </Panel>
   )
 }

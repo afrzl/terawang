@@ -1,5 +1,5 @@
 import { CountUp } from "@/components/ui/CountUp"
-import { WILAYAH, byName, type Wilayah } from "@/lib/data"
+import { WILAYAH, type Wilayah } from "@/lib/data"
 import { DAY, NOW, dfmt, nf } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 
@@ -46,7 +46,6 @@ export function DeficitCountdown() {
     .filter((x): x is { k: Wilayah; d: number } => x.d != null)
     .sort((a, b) => a.d - b.d || a.k.cov - b.k.cov)
   const shown = list.slice(0, 8)
-  const selD = daysToDeficit(byName[sel])
 
   return (
     <>
@@ -81,10 +80,6 @@ export function DeficitCountdown() {
             </button>
           )
         })}
-      </div>
-      <div className="cd-foot">
-        {list.length} wilayah diproyeksikan turun di bawah 0,75 bulan konsumsi dalam 8 pekan. {sel}:{" "}
-        {selD == null ? "tidak defisit dalam 8 pekan." : selD === 0 ? "sudah di bawah ambang defisit." : `sekitar ${selD} hari lagi.`}
       </div>
     </>
   )

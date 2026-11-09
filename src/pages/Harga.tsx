@@ -2,29 +2,35 @@ import { LineChart } from "@/components/charts/LineChart"
 import { MapLegend, PetaJatim } from "@/components/charts/PetaJatim"
 import { PriceHeatmap } from "@/components/charts/PriceHeatmap"
 import { PriceRidgeline } from "@/components/charts/PriceRidgeline"
+import { Bacaan } from "@/components/ui/Bacaan"
 import { DataTable, type Column } from "@/components/ui/DataTable"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
 import { HargaPill, StokPill } from "@/components/ui/Pill"
+import { bacaHarga, bacaHeatmap, bacaRidgeline, bacaSphp } from "@/lib/bacaan"
 import { FLOWS, HET, HIST, SIAGA, STATUS, WILAYAH, byName, fcDates, histDates, type Flow } from "@/lib/data"
 import { dfmt, nf, rp, sum } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 
+const HS: Record<string, number> = { aman: 0, waspada: 1, siaga: 2 }
+const SS: Record<string, number> = { cukup: 0, tipis: 1, defisit: 2 }
+
 const flowColumns: Column<Flow>[] = [
-  { head: "Prioritas", cell: (f) => <span className="mono">P{f.pri}</span> },
-  { head: "Tujuan", cell: (f) => <b>{f.to.n}</b> },
+  { head: "Prioritas", cell: (f) => <span className="mono">P{f.pri}</span>, sort: (f) => -f.pri },
+  { head: "Tujuan", cell: (f) => <b>{f.to.n}</b>, sort: (f) => f.to.n },
   {
     head: "Status tujuan",
+    sort: (f) => HS[f.to.hs] * 10 + SS[f.to.ss],
     cell: (f) => (
       <>
         <HargaPill s={f.to.hs} /> <StokPill s={f.to.ss} />
       </>
     ),
   },
-  { head: "Asal (gudang wilayah)", cell: (f) => f.from.n },
-  { head: "Volume", right: true, num: true, cell: (f) => `${nf(f.ton)} ton` },
-  { head: "Jarak tempuh", right: true, num: true, cell: (f) => `${nf(f.km)} km` },
-  { head: "Kirim paling lambat", cell: (f) => `${dfmt(fcDates[f.pri - 1])} 2026` },
+  { head: "Asal (gudang wilayah)", cell: (f) => f.from.n, sort: (f) => f.from.n },
+  { head: "Volume", right: true, num: true, cell: (f) => `${nf(f.ton)} ton`, sort: (f) => f.ton },
+  { head: "Jarak tempuh", right: true, num: true, cell: (f) => `${nf(f.km)} km`, sort: (f) => f.km },
+  { head: "Kirim paling lambat", cell: (f) => `${dfmt(fcDates[f.pri - 1])} 2026`, sort: (f) => -f.pri },
 ]
 
 export default function Harga() {
@@ -71,6 +77,7 @@ export default function Harga() {
               </>
             }
           />
+          <Bacaan>{bacaSphp()}</Bacaan>
         </Panel>
       </div>
       <Panel
@@ -80,16 +87,13 @@ export default function Harga() {
         <div className="pb chart ridge-wrap">
           <PriceRidgeline />
         </div>
-        <div className="pb method" style={{ paddingTop: 0 }}>
-          <span>
-            Sebaran bergeser ke kanan dan melebar: makin banyak wilayah mendekati HET, terutama kota dan Madura yang bergantung pada pasokan luar.
-          </span>
-        </div>
+        <Bacaan>{bacaRidgeline()}</Bacaan>
       </Panel>
       <Panel title="Peta panas harga 38 wilayah" note="Rp/kg per pekan, diurutkan dari prakiraan harga tertinggi. Klik baris untuk memilih wilayah.">
         <div className="pb chart">
           <PriceHeatmap />
         </div>
+        <Bacaan>{bacaHeatmap()}</Bacaan>
       </Panel>
       <Panel
         title="Rekomendasi penyaluran pekan 45–48"
@@ -191,6 +195,7 @@ function PricePanel() {
           }}
         />
       </div>
+      <Bacaan>{bacaHarga(k, pAbove(k.fc[3].m, (k.fc[3].hi - k.fc[3].m) / 1.2816), prov[HIST - 1])}</Bacaan>
     </Panel>
   )
 }

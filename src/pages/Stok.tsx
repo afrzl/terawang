@@ -1,12 +1,21 @@
 import { DeficitCountdown } from "@/components/charts/DeficitCountdown"
 import { LineChart } from "@/components/charts/LineChart"
+import { Bacaan } from "@/components/ui/Bacaan"
 import { DataTable, type Column } from "@/components/ui/DataTable"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
 import { StokPill } from "@/components/ui/Pill"
+import { bacaHitungMundur, bacaKalman, bacaNeraca } from "@/lib/bacaan"
 import { HIST, WILAYAH, binColor, byName, histDates, type Wilayah } from "@/lib/data"
 import { DAY, NOW, dfmt, nf, scale, sum, ticks } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
+
+function CountdownBacaan() {
+  const { sel } = useSelection()
+  return <Bacaan>{bacaHitungMundur(sel)}</Bacaan>
+}
+
+const SS: Record<string, number> = { cukup: 0, tipis: 1, defisit: 2 }
 
 export default function Stok() {
   const stT = sum(WILAYAH, (k) => k.cov * k.C)
@@ -15,12 +24,13 @@ export default function Stok() {
   const mxc = Math.max(...WILAYAH.map((k) => k.cov))
 
   const columns: Column<Wilayah>[] = [
-    { head: "Wilayah", cell: (k) => <b>{k.n}</b> },
-    { head: "Konsumsi/bln", right: true, num: true, cell: (k) => `${nf(k.C * 1000)} t` },
-    { head: "Stok kini", right: true, num: true, cell: (k) => `${nf(k.cov * k.C * 1000)} t` },
+    { head: "Wilayah", cell: (k) => <b>{k.n}</b>, sort: (k) => k.n },
+    { head: "Konsumsi/bln", right: true, num: true, cell: (k) => `${nf(k.C * 1000)} t`, sort: (k) => k.C },
+    { head: "Stok kini", right: true, num: true, cell: (k) => `${nf(k.cov * k.C * 1000)} t`, sort: (k) => k.cov * k.C },
     {
       head: "Cakupan kini",
       right: true,
+      sort: (k) => k.cov,
       cell: (k) => (
         <div className="bar-cell">
           <span className="num">{nf(k.cov, 2)}</span>
@@ -30,12 +40,16 @@ export default function Stok() {
         </div>
       ),
     },
-    { head: "Proyeksi +4 pkn", right: true, num: true, cell: (k) => nf(k.covP[3], 2) },
-    { head: "Status", cell: (k) => <StokPill s={k.ss} /> },
+    { head: "Proyeksi +4 pkn", right: true, num: true, cell: (k) => nf(k.covP[3], 2), sort: (k) => k.covP[3] },
+    { head: "Status", cell: (k) => <StokPill s={k.ss} />, sort: (k) => SS[k.ss] * 100 - k.covP[3] },
     {
       head: "Pekan sampai batas aman",
       right: true,
       num: true,
+      sort: (k) => {
+        const wk = [k.cov].concat(k.covP).findIndex((v) => v < 1)
+        return wk === -1 ? 99 : wk
+      },
       cell: (k) => {
         const wk = [k.cov].concat(k.covP).findIndex((v) => v < 1)
         return wk === -1 ? "> 8" : wk === 0 ? "sudah di bawah" : wk
@@ -65,6 +79,7 @@ export default function Stok() {
         <div className="pb">
           <DeficitCountdown />
         </div>
+        <CountdownBacaan />
       </Panel>
       <div className="grid-21">
         <KalmanPanel />
@@ -171,12 +186,7 @@ function KalmanPanel() {
           <span>garis putus = proyeksi 8 pekan</span>
         </div>
       </div>
-      <div className="pb method" style={{ paddingTop: 0 }}>
-        <span>
-          Ketidakpastian menyusut setiap kali data stok Bulog atau survei masuk, lalu melebar lagi selama tidak ada pengamatan. Delapan pekan ke depan
-          selang 95% selebar ±{nf(w95, 2)} bulan konsumsi.
-        </span>
-      </div>
+      <Bacaan>{bacaKalman(k, w95)}</Bacaan>
     </Panel>
   )
 }
@@ -264,6 +274,7 @@ function NeracaPanel() {
           </span>
         </div>
       </div>
+      <Bacaan>{bacaNeraca(k, S0, P, Kn, A, S1)}</Bacaan>
     </Panel>
   )
 }

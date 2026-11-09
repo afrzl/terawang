@@ -1,9 +1,11 @@
 import { ChordArus } from "@/components/charts/ChordArus"
 import { MapLegend, PetaJatim } from "@/components/charts/PetaJatim"
 import { SankeyArus } from "@/components/charts/SankeyArus"
+import { Bacaan } from "@/components/ui/Bacaan"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
 import { REGIONS, TRADE, TRADE_TOTAL, inflow, neraca, outflow, regionOf, regionStats } from "@/lib/arus"
+import { bacaChord, bacaNeracaKawasan, bacaPetaArus, bacaSankey } from "@/lib/bacaan"
 import { WILAYAH, byName } from "@/lib/data"
 import { nf, scale, short } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
@@ -34,23 +36,20 @@ export default function ArusBeras() {
           <SankeyArus />
         </div>
         <RegionLegend />
+        <Bacaan>{bacaSankey()}</Bacaan>
       </Panel>
       <div className="grid-2">
         <Panel title="Saling pasok antarkawasan" note="Lebar pita = volume; pita yang kembali ke kawasan sendiri = arus di dalam kawasan">
           <div className="pb chart" style={{ maxWidth: 560, margin: "0 auto" }}>
             <ChordArus />
           </div>
+          <Bacaan>{bacaChord()}</Bacaan>
         </Panel>
         <Panel title="Neraca kawasan" note="Produksi beras Oktober dikurangi konsumsi, ribu ton">
           <div className="pb chart">
             <RegionBalance />
           </div>
-          <div className="pb method" style={{ paddingTop: 0 }}>
-            <span>
-              Kawasan defisit (kiri) bergantung pada arus masuk. Bila panen di kawasan surplus mundur, wilayah di kawasan defisit paling cepat
-              merasakan kenaikan harga, seperti yang terlihat di Kasus 3.
-            </span>
-          </div>
+          <Bacaan>{bacaNeracaKawasan()}</Bacaan>
         </Panel>
       </div>
       <div className="grid-21">
@@ -64,6 +63,7 @@ export default function ArusBeras() {
             />
           </div>
           <MapLegend layer="stok" />
+          <Bacaan>{bacaPetaArus()}</Bacaan>
         </Panel>
         <Corridors />
       </div>

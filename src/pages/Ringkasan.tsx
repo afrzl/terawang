@@ -3,12 +3,14 @@ import { Link } from "react-router-dom"
 import { PetaInteraktif } from "@/components/charts/PetaInteraktif"
 import { MapLegend } from "@/components/charts/PetaJatim"
 import { Sparkline } from "@/components/charts/Sparkline"
+import { Bacaan } from "@/components/ui/Bacaan"
 import { CountUp } from "@/components/ui/CountUp"
 import { DataTable, type Column } from "@/components/ui/DataTable"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
 import { HargaPill, StokPill } from "@/components/ui/Pill"
 import { WeekSlider } from "@/components/ui/WeekSlider"
 import { FLOWS, HET, HIST, LAYERS, LAYER_KEYS, SIAGA, WILAYAH, byName, fcDates, risk, type LayerKey, type Wilayah } from "@/lib/data"
+import { bacaPeta } from "@/lib/bacaan"
 import { dfmt, nf, rp, short, sum } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { weekLabel } from "@/lib/weeks"
@@ -42,14 +44,17 @@ function valueAt(layer: LayerKey, k: Wilayah, w: number) {
   return w <= 0 ? k.price[HIST - 1 + w] : k.fc[w - 1].m
 }
 
+const HS: Record<string, number> = { aman: 0, waspada: 1, siaga: 2 }
+const SS: Record<string, number> = { cukup: 0, tipis: 1, defisit: 2 }
+
 const watchColumns: Column<Wilayah>[] = [
-  { head: "Wilayah", cell: (k) => <b>{k.n}</b> },
-  { head: "Harga kini", right: true, num: true, cell: (k) => rp(k.pNow) },
-  { head: "Prakiraan +4 pkn", right: true, num: true, cell: (k) => rp(k.p4) },
-  { head: "Status harga", cell: (k) => <HargaPill s={k.hs} /> },
-  { head: "Stok +4 pkn", right: true, num: true, cell: (k) => `${nf(k.covP[3], 2)} bln` },
-  { head: "Status stok", cell: (k) => <StokPill s={k.ss} /> },
-  { head: "Tindakan yang disarankan", cell: suggestedAction },
+  { head: "Wilayah", cell: (k) => <b>{k.n}</b>, sort: (k) => k.n },
+  { head: "Harga kini", right: true, num: true, cell: (k) => rp(k.pNow), sort: (k) => k.pNow },
+  { head: "Prakiraan +4 pkn", right: true, num: true, cell: (k) => rp(k.p4), sort: (k) => k.p4 },
+  { head: "Status harga", cell: (k) => <HargaPill s={k.hs} />, sort: (k) => HS[k.hs] * 1e5 + k.p4 },
+  { head: "Stok +4 pkn", right: true, num: true, cell: (k) => `${nf(k.covP[3], 2)} bln`, sort: (k) => k.covP[3] },
+  { head: "Status stok", cell: (k) => <StokPill s={k.ss} />, sort: (k) => SS[k.ss] * 100 - k.covP[3] },
+  { head: "Tindakan yang disarankan", cell: suggestedAction, sort: (k) => sum(FLOWS.filter((f) => f.to === k), (f) => f.ton) },
 ]
 
 export default function Ringkasan() {
@@ -174,6 +179,7 @@ export default function Ringkasan() {
                   : undefined
             }
           />
+          <Bacaan>{bacaPeta(layer, wkNow, valueAt)}</Bacaan>
         </Panel>
         <KabCard />
       </div>

@@ -375,7 +375,6 @@ body{margin:0;min-height:100vh}
 .cd-num>span{font-size:11.5px;color:var(--ink-2);margin-top:3px}
 .cd-name{font-weight:650;font-size:14px;margin-top:4px}
 .cd-sub{font-size:11.5px;color:var(--ink-3)}
-.cd-foot{margin-top:10px;font-size:12.5px;color:var(--ink-2)}
 .ridge{display:block;width:100%;height:auto}
 .ridge path{transition:fill-opacity .15s}
 .ridge g:hover>path:first-child{fill-opacity:1}
@@ -526,3 +525,17 @@ body{margin:0;min-height:100vh}
 .ph-input.kb-open{padding-bottom:7px}
 .ph-anim .ph-home{z-index:4}
 @media (prefers-reduced-motion:reduce){.ph-kb{transition:none}}
+
+/* interpretasi grafik */
+.bacaan{margin:0 16px 14px;padding:9px 12px 10px;border-left:3px solid var(--accent);background:var(--panel-2);font-size:13px;line-height:1.55;color:var(--ink-2);text-wrap:pretty}
+.bacaan.inset{margin:12px 0 0}
+.bacaan p{margin:0}
+.bacaan b{color:var(--ink);font-weight:600}
+
+/* urutkan tabel */
+.th-sort{all:unset;display:inline-flex;align-items:center;gap:4px;cursor:pointer;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit}
+.th-sort:hover,.th-sort.on{color:var(--ink)}
+.th-sort:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+.th-sort .idle{opacity:.35}
+.th-sort:hover .idle{opacity:.8}
+th.r .th-sort{flex-direction:row-reverse}
