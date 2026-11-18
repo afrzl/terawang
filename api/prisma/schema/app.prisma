@@ -1,0 +1,477 @@
+// Sistem TERAWANG: keluaran model, ambang, dan data operasional (schema "app").
+
+enum SkenarioStok {
+  RENDAH
+  TENGAH
+  TINGGI
+
+  @@schema("app")
+}
+
+enum StatusStok {
+  CUKUP
+  TIPIS
+  DEFISIT
+
+  @@schema("app")
+}
+
+enum TingkatStatus {
+  AMAN
+  WASPADA
+  SIAGA
+
+  @@schema("app")
+}
+
+enum JenisModel {
+  K1_PRODUKSI
+  K2_STOK
+  K3_HARGA
+  K3_SPHP
+
+  @@schema("app")
+}
+
+// HET/HAP resmi beserta masa berlakunya. Kosong sampai diverifikasi terhadap peraturan Bapanas.
+// Bapanas mengklasifikasikan: aman (<= HET), waspada (> 0% s.d. 5% di atas HET), perlu intervensi (> 5%).
+model AmbangHarga {
+  id                 Int       @id @default(autoincrement())
+  komoditas_id       Int
+  wilayah_id         Int? // zona atau wilayah berlaku; NULL = umum
+  berlaku_dari       DateTime  @db.Date
+  berlaku_sampai     DateTime? @db.Date
+  het_rp_kg          Int
+  ambang_waspada_pct Float     @default(0)
+  ambang_siaga_pct   Float     @default(5)
+  jenis_data         JenisData @default(ASLI)
+  sumber_id          Int?
+  catatan            String?
+
+  komoditas Komoditas @relation(fields: [komoditas_id], references: [id])
+  wilayah   Wilayah?  @relation(fields: [wilayah_id], references: [id])
+  sumber    Sumber?   @relation(fields: [sumber_id], references: [id])
+
+  @@index([komoditas_id, berlaku_dari])
+  @@map("ambang_harga")
+  @@schema("app")
+}
+
+model ModelRun {
+  id            Int        @id @default(autoincrement())
+  jenis         JenisModel
+  nama_versi    String
+  mlflow_run_id String?    @unique
+  parameter     Json?
+  metrik        Json? // contoh: { "wape": 0.18, "mape_kabupaten": 0.22 }
+  status        StatusRun  @default(SELESAI)
+  dibuat_pada   DateTime   @default(now())
+  selesai_pada  DateTime?
+
+  prediksi_produksi PrediksiProduksi[]
+  estimasi_stok     EstimasiStok[]
+  prediksi_harga    PrediksiHarga[]
+  rekomendasi_sphp  RekomendasiSphp[]
+  peringatan        Peringatan[]
+  status_produksi   StatusWilayah[]    @relation("RunProduksi")
+  status_stok       StatusWilayah[]    @relation("RunStok")
+  status_harga      StatusWilayah[]    @relation("RunHarga")
+
+  @@index([jenis, dibuat_pada])
+  @@map("model_run")
+  @@schema("app")
+}
+
+model PrediksiProduksi {
+  id                 Int       @id @default(autoincrement())
+  model_run_id       Int
+  wilayah_id         Int
+  tahun              Int
+  bulan              Int
+  produksi_beras_ton Float
+  batas_bawah_ton    Float?
+  batas_atas_ton     Float?
+  jenis_data         JenisData @default(MODEL)
+
+  model_run ModelRun @relation(fields: [model_run_id], references: [id])
+  wilayah   Wilayah  @relation(fields: [wilayah_id], references: [id])
+
+  @@unique([model_run_id, wilayah_id, tahun, bulan])
+  @@map("prediksi_produksi")
+  @@schema("app")
+}
+
+// Stok awal tiap kabupaten adalah asumsi: tampilkan sebagai tiga skenario (RENDAH, TENGAH, TINGGI) dengan jenis_data DUMMY.
+model EstimasiStok {
+  id            Int          @id @default(autoincrement())
+  model_run_id  Int
+  wilayah_id    Int
+  tahun         Int
+  bulan         Int
+  skenario      SkenarioStok
+  stok_ton      Float
+  cakupan_bulan Float? // stok dibagi konsumsi bulanan
+  status        StatusStok?
+  jenis_data    JenisData    @default(MODEL)
+
+  model_run ModelRun @relation(fields: [model_run_id], references: [id])
+  wilayah   Wilayah  @relation(fields: [wilayah_id], references: [id])
+
+  @@unique([model_run_id, wilayah_id, tahun, bulan, skenario])
+  @@map("estimasi_stok")
+  @@schema("app")
+}
+
+model PrediksiHarga {
+  id             Int            @id @default(autoincrement())
+  model_run_id   Int
+  wilayah_id     Int
+  komoditas_id   Int
+  tanggal_acuan  DateTime       @db.Date
+  horizon_hari   Int
+  harga_prediksi Float
+  batas_bawah    Float?
+  batas_atas     Float?
+  status         TingkatStatus?
+  jenis_data     JenisData      @default(MODEL)
+
+  model_run ModelRun  @relation(fields: [model_run_id], references: [id])
+  wilayah   Wilayah   @relation(fields: [wilayah_id], references: [id])
+  komoditas Komoditas @relation(fields: [komoditas_id], references: [id])
+
+  @@unique([model_run_id, wilayah_id, komoditas_id, tanggal_acuan, horizon_hari])
+  @@map("prediksi_harga")
+  @@schema("app")
+}
+
+// Rekomendasi penyaluran: hasil optimasi surplus-defisit dan matriks jarak.
+model RekomendasiSphp {
+  id             Int       @id @default(autoincrement())
+  model_run_id   Int
+  tahun          Int
+  bulan          Int
+  dari_id        Int
+  ke_id          Int
+  volume_ton     Float
+  jarak_jalan_km Float?
+  jenis_data     JenisData @default(MODEL)
+
+  model_run ModelRun @relation(fields: [model_run_id], references: [id])
+  dari      Wilayah  @relation("SphpDari", fields: [dari_id], references: [id])
+  ke        Wilayah  @relation("SphpKe", fields: [ke_id], references: [id])
+
+  @@unique([model_run_id, tahun, bulan, dari_id, ke_id])
+  @@map("rekomendasi_sphp")
+  @@schema("app")
+}
+
+// ============================================================ SISTEM TERAWANG (schema "app")
+// Database operasional: yang dibaca dashboard dan bot, dan yang ditulis model dan proses sistem.
+// Data sumber (BPS, Bulog, SISKAPERBAPO, satelit) tinggal di schema "silver" sebagai masukan.
+
+enum TipeOrganisasi {
+  DINAS_KETAHANAN_PANGAN
+  DINAS_PERTANIAN
+  TPID
+  BULOG
+  PENGGILINGAN
+  PEDAGANG_BESAR
+  LAINNYA
+
+  @@schema("app")
+}
+
+enum PeranPengguna {
+  ADMIN
+  ANALIS
+  PEMANTAU
+
+  @@schema("app")
+}
+
+enum JenisPeringatan {
+  HARGA
+  STOK
+  PRODUKSI
+  PERTANAMAN // petak tertinggal: indikasi hama atau kekeringan
+
+  @@schema("app")
+}
+
+enum TingkatPeringatan {
+  WASPADA
+  SIAGA
+
+  @@schema("app")
+}
+
+enum StatusPeringatan {
+  AKTIF
+  DITANGANI
+  SELESAI
+  DIABAIKAN
+
+  @@schema("app")
+}
+
+enum KanalNotifikasi {
+  WHATSAPP
+  EMAIL
+  DASHBOARD
+
+  @@schema("app")
+}
+
+enum StatusKirim {
+  ANTRE
+  TERKIRIM
+  DIBACA
+  GAGAL
+
+  @@schema("app")
+}
+
+enum ArahPesan {
+  MASUK
+  KELUAR
+
+  @@schema("app")
+}
+
+enum StatusLangganan {
+  AKTIF
+  BERHENTI
+  KEDALUWARSA
+
+  @@schema("app")
+}
+
+// ---------- pengguna dan organisasi
+
+model Organisasi {
+  id          Int            @id @default(autoincrement())
+  nama        String
+  tipe        TipeOrganisasi
+  wilayah_id  Int? // cakupan utama (provinsi atau kab/kota)
+  aktif       Boolean        @default(true)
+  dibuat_pada DateTime       @default(now())
+
+  wilayah   Wilayah?    @relation(fields: [wilayah_id], references: [id])
+  pengguna  Pengguna[]
+  langganan Langganan[]
+
+  @@map("organisasi")
+  @@schema("app")
+}
+
+model Pengguna {
+  id              Int           @id @default(autoincrement())
+  organisasi_id   Int
+  nama            String
+  email           String        @unique
+  kata_sandi_hash String
+  peran           PeranPengguna @default(PEMANTAU)
+  aktif           Boolean       @default(true)
+  terakhir_masuk  DateTime?
+  dibuat_pada     DateTime      @default(now())
+
+  organisasi           Organisasi        @relation(fields: [organisasi_id], references: [id])
+  wilayah_pantauan     WilayahPantauan[]
+  peringatan_ditangani Peringatan[]
+  notifikasi           Notifikasi[]
+
+  @@index([organisasi_id])
+  @@map("pengguna")
+  @@schema("app")
+}
+
+// Wilayah yang dipantau seorang pengguna (dasar tampilan dan notifikasi).
+model WilayahPantauan {
+  pengguna_id Int
+  wilayah_id  Int
+
+  pengguna Pengguna @relation(fields: [pengguna_id], references: [id])
+  wilayah  Wilayah  @relation(fields: [wilayah_id], references: [id])
+
+  @@id([pengguna_id, wilayah_id])
+  @@map("wilayah_pantauan")
+  @@schema("app")
+}
+
+// ---------- langganan berbayar (penggilingan, pedagang besar, pemda)
+
+model PaketLangganan {
+  id               Int     @id @default(autoincrement())
+  kode             String  @unique
+  nama             String
+  harga_bulanan_rp Int
+  fitur            Json
+  aktif            Boolean @default(true)
+
+  langganan Langganan[]
+
+  @@map("paket_langganan")
+  @@schema("app")
+}
+
+model Langganan {
+  id            Int             @id @default(autoincrement())
+  organisasi_id Int
+  paket_id      Int
+  status        StatusLangganan @default(AKTIF)
+  mulai         DateTime        @db.Date
+  selesai       DateTime?       @db.Date
+
+  organisasi Organisasi     @relation(fields: [organisasi_id], references: [id])
+  paket      PaketLangganan @relation(fields: [paket_id], references: [id])
+
+  @@index([organisasi_id, status])
+  @@map("langganan")
+  @@schema("app")
+}
+
+// ---------- status dan peringatan (dibaca dashboard dan bot)
+
+// Ringkasan per kab/kota per tanggal (peta status dashboard). Dihitung dari keluaran model K1, K2, K3.
+model StatusWilayah {
+  wilayah_id            Int
+  tanggal               DateTime       @db.Date
+  status_produksi       TingkatStatus?
+  status_stok           StatusStok?
+  status_harga          TingkatStatus?
+  status_gabungan       TingkatStatus
+  produksi_estimasi_ton Float?
+  cakupan_stok_bulan    Float?
+  harga_terkini_rp_kg   Float?
+  harga_prediksi_rp_kg  Float?
+  run_produksi_id       Int?
+  run_stok_id           Int?
+  run_harga_id          Int?
+  jenis_data            JenisData      @default(MODEL)
+
+  wilayah      Wilayah   @relation(fields: [wilayah_id], references: [id])
+  run_produksi ModelRun? @relation("RunProduksi", fields: [run_produksi_id], references: [id])
+  run_stok     ModelRun? @relation("RunStok", fields: [run_stok_id], references: [id])
+  run_harga    ModelRun? @relation("RunHarga", fields: [run_harga_id], references: [id])
+
+  @@id([wilayah_id, tanggal])
+  @@index([tanggal])
+  @@map("status_wilayah")
+  @@schema("app")
+}
+
+model Peringatan {
+  id                Int               @id @default(autoincrement())
+  wilayah_id        Int
+  jenis             JenisPeringatan
+  tingkat           TingkatPeringatan
+  judul             String
+  pesan             String
+  dasar             Json? // nilai dan ambang yang memicu, contoh { "harga": 13900, "het": 13500 }
+  model_run_id      Int?
+  status            StatusPeringatan  @default(AKTIF)
+  jenis_data        JenisData         @default(MODEL)
+  dibuat_pada       DateTime          @default(now())
+  berlaku_sampai    DateTime?
+  ditangani_oleh_id Int?
+  ditangani_pada    DateTime?
+
+  wilayah        Wilayah      @relation(fields: [wilayah_id], references: [id])
+  model_run      ModelRun?    @relation(fields: [model_run_id], references: [id])
+  ditangani_oleh Pengguna?    @relation(fields: [ditangani_oleh_id], references: [id])
+  notifikasi     Notifikasi[]
+
+  @@index([wilayah_id, status])
+  @@index([dibuat_pada])
+  @@map("peringatan")
+  @@schema("app")
+}
+
+// ---------- kanal warga (WhatsApp)
+
+// PII: nomor WhatsApp. Batasi akses dan jangan tampilkan penuh di UI.
+model KontakWarga {
+  id            Int       @id @default(autoincrement())
+  nomor_wa      String    @unique
+  nama          String?
+  wilayah_id    Int? // kabupaten yang diminati
+  bahasa        String    @default("id")
+  opt_in        Boolean   @default(false)
+  dibuat_pada   DateTime  @default(now())
+  berhenti_pada DateTime?
+
+  wilayah    Wilayah?              @relation(fields: [wilayah_id], references: [id])
+  langganan  LanggananPeringatan[]
+  percakapan PercakapanBot[]
+  notifikasi Notifikasi[]
+
+  @@map("kontak_warga")
+  @@schema("app")
+}
+
+model LanggananPeringatan {
+  id              Int               @id @default(autoincrement())
+  kontak_id       Int
+  wilayah_id      Int
+  tingkat_minimum TingkatPeringatan @default(WASPADA)
+  aktif           Boolean           @default(true)
+
+  kontak  KontakWarga @relation(fields: [kontak_id], references: [id])
+  wilayah Wilayah     @relation(fields: [wilayah_id], references: [id])
+
+  @@unique([kontak_id, wilayah_id])
+  @@map("langganan_peringatan")
+  @@schema("app")
+}
+
+model Notifikasi {
+  id                 Int             @id @default(autoincrement())
+  peringatan_id      Int
+  kanal              KanalNotifikasi
+  kontak_id          Int?
+  pengguna_id        Int?
+  status             StatusKirim     @default(ANTRE)
+  pesan_id_eksternal String?
+  galat              String?
+  dibuat_pada        DateTime        @default(now())
+  dikirim_pada       DateTime?
+
+  peringatan Peringatan   @relation(fields: [peringatan_id], references: [id])
+  kontak     KontakWarga? @relation(fields: [kontak_id], references: [id])
+  pengguna   Pengguna?    @relation(fields: [pengguna_id], references: [id])
+
+  @@index([peringatan_id])
+  @@index([status, dibuat_pada])
+  @@map("notifikasi")
+  @@schema("app")
+}
+
+model PercakapanBot {
+  id          Int       @id @default(autoincrement())
+  kontak_id   Int
+  arah        ArahPesan
+  isi         String
+  intent      String? // contoh: harga, stok, beras_murah, peringatan
+  wilayah_id  Int?
+  dibuat_pada DateTime  @default(now())
+
+  kontak  KontakWarga @relation(fields: [kontak_id], references: [id])
+  wilayah Wilayah?    @relation(fields: [wilayah_id], references: [id])
+
+  @@index([kontak_id, dibuat_pada])
+  @@map("percakapan_bot")
+  @@schema("app")
+}
+
+// ---------- pengaturan
+
+// Parameter yang bisa diubah tanpa deploy: skenario stok awal, ambang tambahan, jadwal notifikasi, dan sebagainya.
+model ParameterSistem {
+  kunci           String   @id
+  nilai           Json
+  deskripsi       String?
+  diperbarui_pada DateTime @updatedAt
+
+  @@map("parameter_sistem")
+  @@schema("app")
+}

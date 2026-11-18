@@ -1,0 +1,39 @@
+wilayah,jenis,nama_repo,luas_panen_janmar_2025_ha,luas_panen_janmar_2026p_ha,produksi_gkg_janmar_2025_ton,produksi_gkg_janmar_2026p_ton,produksi_beras_janmar_2025_ton,produksi_beras_janmar_2026p_ton
+Pacitan,kabupaten,Pacitan,12655,12604,63290,61327,36545,35411
+Ponorogo,kabupaten,Ponorogo,18621,19386,108366,112841,62573,65157
+Trenggalek,kabupaten,Trenggalek,3752,7178,24027,44468,13874,25677
+Tulungagung,kabupaten,Tulungagung,5860,12523,37313,78651,21545,45415
+Blitar,kabupaten,Blitar,5811,13669,37915,84542,21893,48816
+Kediri,kabupaten,Kediri,11045,12901,68108,77375,39327,44678
+Malang,kabupaten,Malang,7166,12778,46357,81752,26767,47206
+Lumajang,kabupaten,Lumajang,12051,16419,69853,91593,40335,52888
+Jember,kabupaten,Jember,28763,38115,145028,198511,83742,114624
+Banyuwangi,kabupaten,Banyuwangi,16022,19514,98077,116236,56632,67117
+Bondowoso,kabupaten,Bondowoso,15468,19472,76445,98960,44141,57141
+Situbondo,kabupaten,Situbondo,11658,14025,65080,79449,37579,45875
+Probolinggo,kabupaten,Probolinggo,8241,14731,43365,76664,25040,44267
+Pasuruan,kabupaten,Pasuruan,7920,14818,39981,78287,23086,45204
+Sidoarjo,kabupaten,Sidoarjo,2436,5699,14955,34720,8635,20048
+Mojokerto,kabupaten,Mojokerto,11867,15030,73593,94004,42494,54280
+Jombang,kabupaten,Jombang,11144,23704,71454,152801,41259,88230
+Nganjuk,kabupaten,Nganjuk,22333,27319,129892,163676,75002,94510
+Madiun,kabupaten,Madiun,15411,16313,91493,97491,52830,56293
+Magetan,kabupaten,Magetan,14882,14654,92100,91279,53180,52706
+Ngawi,kabupaten,Ngawi,31263,32369,188583,195620,108891,112955
+Bojonegoro,kabupaten,Bojonegoro,57431,67746,324437,386495,187337,223170
+Tuban,kabupaten,Tuban,30910,39663,185788,244930,107278,141428
+Lamongan,kabupaten,Lamongan,52464,56765,317902,346354,183563,199992
+Gresik,kabupaten,Gresik,25792,24174,161308,150614,93143,86967
+Bangkalan,kabupaten,Bangkalan,21957,25526,108572,124968,62692,72159
+Sampang,kabupaten,Sampang,28382,29238,129954,133846,75038,77285
+Pamekasan,kabupaten,Pamekasan,15932,18451,86902,97546,50179,56325
+Sumenep,kabupaten,Sumenep,16662,21911,89776,116527,51838,67285
+Kota Kediri,kota,Kota Kediri,129,181,794,1145,459,661
+Kota Blitar,kota,Kota Blitar,62,267,503,2024,290,1169
+Kota Malang,kota,Kota Malang,223,384,1407,2633,813,1520
+Kota Probolinggo,kota,Kota Probolinggo,190,353,1238,2237,715,1291
+Kota Pasuruan,kota,Kota Pasuruan,59,442,333,2422,192,1398
+Kota Mojokerto,kota,Kota Mojokerto,0,141,0,745,0,430
+Kota Madiun,kota,Kota Madiun,300,295,1677,1659,968,958
+Kota Surabaya,kota,Kota Surabaya,454,493,2707,2852,1563,1647
+Kota Batu,kota,Batu,165,119,1031,814,595,470

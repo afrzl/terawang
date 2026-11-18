@@ -1,0 +1,132 @@
+// Dimensi bersama: wilayah, komoditas, dan asal-usul data (schema "ref").
+
+// TERAWANG: skema basis data (PostgreSQL).
+// Aturan: setiap baris fakta punya `jenis_data` (ASLI | MODEL | DUMMY) dan `sumber_id` (asal-usul, lihat tabel `sumber`).
+// Satuan dasar: hektare (ha), ton, kilogram (kg), rupiah per kg. Wilayah memakai kode BPS.
+enum JenisData {
+  ASLI
+  MODEL
+  DUMMY
+
+  @@schema("ref")
+}
+
+enum LevelWilayah {
+  NASIONAL
+  PROVINSI
+  KABKOTA
+
+  @@schema("ref")
+}
+
+enum JenisWilayah {
+  KABUPATEN
+  KOTA
+
+  @@schema("ref")
+}
+
+enum StatusRun {
+  BERJALAN
+  SELESAI
+  GAGAL
+
+  @@schema("ref")
+}
+
+// Asal-usul data: publikasi, tabel, atau layanan. Satu baris per sumber.
+model Sumber {
+  id             Int       @id @default(autoincrement())
+  kode           String    @unique // contoh: bps_brs_71_11_35_2026
+  nama           String // judul publikasi atau tabel
+  penerbit       String
+  nomor_rilis    String?
+  url            String?
+  tanggal_terbit DateTime? @db.Date
+  tanggal_ambil  DateTime? @db.Date
+  catatan        String?
+
+  ingest_run                 IngestRun[]
+  penduduk                   Penduduk[]
+  produksi_padi              ProduksiPadi[]
+  konsumsi_beras             KonsumsiBeras[]
+  stok_bulog_bulanan         StokBulogBulanan[]
+  stok_bulog_kanwil          StokBulogKanwil[]
+  pengadaan_bulog            PengadaanBulog[]
+  harga_penggilingan_bulog   HargaPenggilinganBulog[]
+  harga_pembelian_pemerintah HargaPembelianPemerintah[]
+  harga_pasar_harian         HargaPasarHarian[]
+  harga_kabkota_harian       HargaKabkotaHarian[]
+  harga_provinsi_harian      HargaProvinsiHarian[]
+  ambang_harga               AmbangHarga[]
+  jarak_antar_wilayah        JarakAntarWilayah[]
+  satelit_wilayah            SatelitWilayah[]
+  cakupan_cabang_bulog       CakupanCabangBulog[]
+
+  @@map("sumber")
+  @@schema("ref")
+}
+
+// Hierarki: Indonesia (NASIONAL) > provinsi > kab/kota. Kode BPS: "00" Indonesia, "35" Jawa Timur, "3501" Pacitan.
+model Wilayah {
+  id            Int           @id @default(autoincrement())
+  kode          String        @unique
+  nama          String // penamaan BPS, contoh "Kota Batu"
+  nama_repo     String? // nama di gee_wilayah.json dan peta dashboard, contoh "Batu"
+  level         LevelWilayah
+  jenis         JenisWilayah? // hanya untuk KABKOTA
+  induk_id      Int?
+  lon           Float? // titik pusat (daratan utama)
+  lat           Float?
+  batas_geojson Json? // batas wilayah (FAO GAUL 2015, disederhanakan)
+
+  induk Wilayah?  @relation("HierarkiWilayah", fields: [induk_id], references: [id])
+  anak  Wilayah[] @relation("HierarkiWilayah")
+
+  penduduk              Penduduk[]
+  produksi_padi         ProduksiPadi[]
+  konsumsi_beras        KonsumsiBeras[]
+  pasar                 Pasar[]
+  harga_kabkota_harian  HargaKabkotaHarian[]
+  harga_provinsi_harian HargaProvinsiHarian[]
+  ambang_harga          AmbangHarga[]
+  jarak_dari            JarakAntarWilayah[]   @relation("JarakDari")
+  jarak_ke              JarakAntarWilayah[]   @relation("JarakKe")
+  satelit_wilayah       SatelitWilayah[]
+  cakupan_cabang_bulog  CakupanCabangBulog[]
+  kanwil_bulog          KantorWilayahBulog[]
+  prediksi_produksi     PrediksiProduksi[]
+  estimasi_stok         EstimasiStok[]
+  prediksi_harga        PrediksiHarga[]
+  rekomendasi_dari      RekomendasiSphp[]     @relation("SphpDari")
+  rekomendasi_ke        RekomendasiSphp[]     @relation("SphpKe")
+  organisasi            Organisasi[]
+  wilayah_pantauan      WilayahPantauan[]
+  status_wilayah        StatusWilayah[]
+  peringatan            Peringatan[]
+  kontak_warga          KontakWarga[]
+  langganan_peringatan  LanggananPeringatan[]
+  percakapan_bot        PercakapanBot[]
+
+  @@index([level])
+  @@index([induk_id])
+  @@map("wilayah")
+  @@schema("ref")
+}
+
+model Komoditas {
+  id                Int    @id @default(autoincrement())
+  kode              String @unique // contoh: beras_medium
+  nama              String
+  satuan            String // contoh: kg
+  kode_siskaperbapo Int?   @unique // kode komoditas di SISKAPERBAPO (4 = Beras Medium, 2 = Beras Premium)
+
+  harga_pasar_harian    HargaPasarHarian[]
+  harga_kabkota_harian  HargaKabkotaHarian[]
+  harga_provinsi_harian HargaProvinsiHarian[]
+  ambang_harga          AmbangHarga[]
+  prediksi_harga        PrediksiHarga[]
+
+  @@map("komoditas")
+  @@schema("ref")
+}
