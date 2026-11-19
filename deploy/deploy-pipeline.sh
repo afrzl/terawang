@@ -68,7 +68,7 @@ bash "$APP_DIR/deploy/pipeline-ensure.sh"
 CRON_LINE="* * * * * bash $APP_DIR/deploy/pipeline-ensure.sh"
 ( crontab -l 2>/dev/null | grep -v "deploy/pipeline-ensure.sh" || true; echo "$CRON_LINE"; echo "@reboot bash $APP_DIR/deploy/pipeline-ensure.sh" ) | crontab -
 
-for i in $(seq 1 30); do
+for i in $(seq 1 90); do
   curl -fsS -o /dev/null "http://$DAGSTER_HOST:$DAGSTER_PORT/server_info" && { echo "Selesai: Dagster di http://$DAGSTER_HOST:$DAGSTER_PORT"; exit 0; }
   sleep 2
 done
