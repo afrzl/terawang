@@ -24,7 +24,8 @@ RO_FLAG=""; [ "$DAGSTER_READ_ONLY" = "1" ] && RO_FLAG="--read-only"
 # 1. Lingkungan Python dan dependensi (models milik Danang + pipeline)
 [ -d "$VENV" ] || python3 -m venv "$VENV"
 "$VENV/bin/pip" install -q --upgrade pip
-"$VENV/bin/pip" install -q -e models -e "pipeline[postgres]"
+EXTRA="postgres"; grep -q "^TERAWANG_SUMBER_CITRA=gee" pipeline/.env && EXTRA="postgres,gee"
+"$VENV/bin/pip" install -q -e models -e "pipeline[$EXTRA]"
 
 # 2. Dependensi ingest (api/, Prisma) dan migrasi schema
 ( cd api && npm ci --silent && set -a && . ../pipeline/.env && set +a && npx prisma migrate deploy && npx prisma generate )

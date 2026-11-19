@@ -13,6 +13,7 @@ dependencies = [
 
 [project.optional-dependencies]
 postgres = ["dagster-postgres"]
+gee = ["earthengine-api>=1.0"]
 
 [build-system]
 requires = ["setuptools>=68"]

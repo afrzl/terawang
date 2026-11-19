@@ -33,7 +33,7 @@ Setiap sumber adalah konektor (resource) di `pipeline/terawang_pipeline/resource
 | `TERAWANG_SUMBER_HARGA` | `berkas` (default) | pakai CSV di `data/siskaperbapo/` apa adanya |
 | | `siskaperbapo` | unduh harga terbaru dari SISKAPERBAPO setiap run |
 | `TERAWANG_SUMBER_CITRA` | `berkas` (default) | pakai `src/lib/gee_wilayah.json` |
-| | `gee` | jalankan `scripts/gee/terawang_wilayah.py` (butuh `GEE_PROJECT` dan kredensial Earth Engine) |
+| | `gee` | jalankan `scripts/gee/terawang_wilayah.py` dengan `--acuan` = tanggal Sentinel-1 terbaru. Butuh `pip install -e "pipeline[gee]"`, `GEE_PROJECT`, dan kredensial (`earthengine authenticate --auth_mode=notebook` sekali di server, atau `GOOGLE_APPLICATION_CREDENTIALS` ke kunci service account) |
 
 Sumber baru (mis. Panel Harga Bapanas) cukup menulis berkas dengan kolom yang sama; silver, model, dan dasbor tidak berubah.
 
@@ -41,8 +41,9 @@ Sumber baru (mis. Panel Harga Bapanas) cukup menulis berkas dengan kolom yang sa
 
 | Nama | Waktu (WIB) | Isi |
 |---|---|---|
-| `harga_harian_0600_wib` | setiap hari 06.00 | harga → silver harga → K3 → status → peringatan |
+| `harga_0600_1400_wib` | setiap hari 06.00 dan 14.00 | harga → silver harga → K3 → status → peringatan |
 | `penuh_senin_0500_wib` | Senin 05.00 | seluruh alur |
+| `sensor_citra_baru` | cek GEE tiap 6 jam | `pipeline_citra` kalau ada akuisisi Sentinel-1 baru di Jawa Timur (mode `gee`) |
 | `sensor_berkas_data` | cek tiap 5 menit | seluruh alur kalau berkas BPS/Bulog/jarak/citra berubah (mis. setelah `git pull`) |
 
 ## Menjalankan di laptop

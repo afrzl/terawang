@@ -18,7 +18,15 @@ job_harga = define_asset_job(
     description="Ambil harga terbaru -> silver harga -> K3 -> status dan peringatan.",
 )
 
-jadwal_harian = ScheduleDefinition(name="harga_harian_0600_wib", job=job_harga, cron_schedule="0 6 * * *",
+# Citra baru: bronze_citra dan turunannya (K1 -> K2 -> SPHP, status, peringatan). K3 ikut agar status lengkap.
+job_citra = define_asset_job(
+    "pipeline_citra",
+    selection=AssetSelection.assets("bronze_citra").downstream() | AssetSelection.assets("k3_prediksi_harga"),
+    description="Citra Sentinel terbaru dari GEE -> silver satelit -> K1, K2, SPHP -> status dan peringatan.",
+)
+
+# SISKAPERBAPO memperbarui harga sepanjang hari, jadi diambil pagi dan siang.
+jadwal_harian = ScheduleDefinition(name="harga_0600_1400_wib", job=job_harga, cron_schedule="0 6,14 * * *",
                                    execution_timezone="Asia/Jakarta", default_status=DefaultScheduleStatus.RUNNING)
 jadwal_mingguan = ScheduleDefinition(name="penuh_senin_0500_wib", job=job_penuh, cron_schedule="0 5 * * 1",
                                      execution_timezone="Asia/Jakarta", default_status=DefaultScheduleStatus.RUNNING)
@@ -40,5 +48,18 @@ def sensor_berkas_data(context: SensorEvaluationContext):
     return RunRequest(run_key=cs)
 
 
-defs = Definitions(assets=ASET, jobs=[job_penuh, job_harga], schedules=[jadwal_harian, jadwal_mingguan],
-                   sensors=[sensor_berkas_data], resources=semua_resource())
+@sensor(job=job_citra, minimum_interval_seconds=6 * 3600, default_status=DefaultSensorStatus.RUNNING,
+        description="Cek GEE tiap 6 jam; kalau ada akuisisi Sentinel-1 baru di Jawa Timur, jalankan pipeline_citra. Aktif bila TERAWANG_SUMBER_CITRA=gee.")
+def sensor_citra_baru(context: SensorEvaluationContext):
+    citra = semua_resource()["sumber_citra"]
+    if citra.mode != "gee":
+        return SkipReason("TERAWANG_SUMBER_CITRA bukan gee; citra dibaca dari berkas")
+    terbaru = citra.citra_terbaru()
+    if context.cursor == terbaru:
+        return SkipReason(f"belum ada citra baru (terakhir {terbaru})")
+    context.update_cursor(terbaru)
+    return RunRequest(run_key=f"citra-{terbaru}", tags={"citra_acuan": terbaru})
+
+
+defs = Definitions(assets=ASET, jobs=[job_penuh, job_harga, job_citra], schedules=[jadwal_harian, jadwal_mingguan],
+                   sensors=[sensor_berkas_data, sensor_citra_baru], resources=semua_resource())

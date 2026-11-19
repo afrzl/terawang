@@ -97,17 +97,42 @@ class SumberHarga(ConfigurableResource):
 
 
 class SumberCitra(ConfigurableResource):
-    """Konektor citra satelit. Kontrak keluaran: src/lib/gee_wilayah.json (dibaca ingest silver satelit)."""
+    """Konektor citra satelit. Kontrak keluaran: src/lib/gee_wilayah.json (dibaca ingest silver satelit).
+
+    Mode `gee` butuh paket earthengine-api dan kredensial: `earthengine authenticate` sekali di server, atau
+    GOOGLE_APPLICATION_CREDENTIALS = kunci JSON service account yang terdaftar di Earth Engine.
+    """
 
     mode: str = "berkas"  # "berkas" | "gee"
     gee_project: str = ""
+
+    def _ee(self):
+        import ee  # hanya dibutuhkan di mode gee
+
+        ee.Initialize(project=self.gee_project)
+        return ee
+
+    def citra_terbaru(self) -> str:
+        """Tanggal akuisisi Sentinel-1 terbaru yang menutupi Jawa Timur (YYYY-MM-DD). Dipakai sensor dan sebagai --acuan."""
+        ee = self._ee()
+        jatim = ee.FeatureCollection("FAO/GAUL/2015/level1").filter(ee.Filter.eq("ADM1_NAME", "Jawa Timur")).geometry()
+        kini = ee.Date(pd.Timestamp.now(tz="UTC").isoformat())
+        kol = ee.ImageCollection("COPERNICUS/S1_GRD").filterBounds(jatim).filterDate(kini.advance(-30, "day"), kini)
+        ms = kol.aggregate_max("system:time_start").getInfo()
+        if not ms:
+            raise RuntimeError("tidak ada citra Sentinel-1 Jawa Timur 30 hari terakhir")
+        return pd.Timestamp(ms, unit="ms", tz="UTC").tz_convert("Asia/Jakarta").strftime("%Y-%m-%d")
 
     def perbarui(self, repo: Repo, log=None) -> Path:
         out = repo.path / "src/lib/gee_wilayah.json"
         if self.mode == "gee":
             if not self.gee_project:
                 raise ValueError("TERAWANG_SUMBER_CITRA=gee butuh GEE_PROJECT")
-            repo.jalankan([sys.executable, "scripts/gee/terawang_wilayah.py", "--project", self.gee_project, "--out", str(out)], log=log)
+            acuan = self.citra_terbaru()
+            if log:
+                log.info(f"citra Sentinel-1 terbaru: {acuan}")
+            repo.jalankan([sys.executable, "scripts/gee/terawang_wilayah.py", "--project", self.gee_project,
+                           "--acuan", acuan, "--out", str(out)], log=log)
         elif self.mode != "berkas":
             raise ValueError(f"TERAWANG_SUMBER_CITRA tidak dikenal: {self.mode}")
         return out
