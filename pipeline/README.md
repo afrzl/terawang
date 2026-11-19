@@ -31,7 +31,7 @@ Setiap sumber adalah konektor (resource) di `pipeline/terawang_pipeline/resource
 | Variabel | Nilai | Arti |
 |---|---|---|
 | `TERAWANG_SUMBER_HARGA` | `berkas` (default) | pakai CSV di `data/siskaperbapo/` apa adanya |
-| | `siskaperbapo` | unduh harga terbaru dari SISKAPERBAPO setiap run |
+| | `siskaperbapo` | unduh harga terbaru dari SISKAPERBAPO setiap run, ke `TERAWANG_HARGA_DIR` (default `~/.local/share/terawang/harga_beras`, di luar repo); data yang belum terbit hari itu otomatis memakai tanggal terakhir |
 | `TERAWANG_SUMBER_CITRA` | `berkas` (default) | pakai `src/lib/gee_wilayah.json` |
 | | `gee` | jalankan `scripts/gee/terawang_wilayah.py` dengan `--acuan` = tanggal Sentinel-1 terbaru. Butuh `pip install -e "pipeline[gee]"`, `GEE_PROJECT`, dan kredensial (`earthengine authenticate --auth_mode=notebook` sekali di server, atau `GOOGLE_APPLICATION_CREDENTIALS` ke kunci service account) |
 

@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url"
 import { parse } from "csv-parse/sync"
 import { prisma } from "../db.js"
 
-/** Akar repo (folder terawang/). */
+/** Akar repo (folder terawang/). Path relatif dibaca dari sini; path absolut dipakai apa adanya. */
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..")
 
 export type Baris = Record<string, string>
@@ -15,15 +15,15 @@ function parseCsv(teks: string): Baris[] {
 }
 
 export function bacaCsv(relPath: string): Baris[] {
-  return parseCsv(fs.readFileSync(path.join(ROOT, relPath), "utf-8"))
+  return parseCsv(fs.readFileSync(path.resolve(ROOT, relPath), "utf-8"))
 }
 
 export function bacaCsvGz(relPath: string): Baris[] {
-  return parseCsv(zlib.gunzipSync(fs.readFileSync(path.join(ROOT, relPath))).toString("utf-8"))
+  return parseCsv(zlib.gunzipSync(fs.readFileSync(path.resolve(ROOT, relPath))).toString("utf-8"))
 }
 
 export function bacaJson<T>(relPath: string): T {
-  return JSON.parse(fs.readFileSync(path.join(ROOT, relPath), "utf-8")) as T
+  return JSON.parse(fs.readFileSync(path.resolve(ROOT, relPath), "utf-8")) as T
 }
 
 /** Angka dari teks CSV; kosong menjadi null. */

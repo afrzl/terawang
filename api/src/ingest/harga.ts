@@ -1,7 +1,8 @@
 import { prisma } from "../db.js"
 import { angka, angkaWajib, bacaCsv, bacaCsvGz, catat, periksa, petaKabkotaNama, petaWilayah, sisipkanBanyak, sumberId, tanggal } from "./util.js"
 
-const DIR = "data/siskaperbapo/harga_beras"
+// Pipeline mode siskaperbapo menulis unduhan baru di luar repo dan mengarahkan ke sana lewat TERAWANG_HARGA_DIR.
+const DIR = process.env.TERAWANG_HARGA_DIR ?? "data/siskaperbapo/harga_beras"
 const KOM = [
   { kode: "beras_medium", berkas: "beras_medium" },
   { kode: "beras_premium", berkas: "beras_premium" },
@@ -34,7 +35,7 @@ export async function ingestHarga(): Promise<void> {
   await prisma.hargaKabkotaHarian.deleteMany({ where: { sumber_id: sid } })
   await prisma.hargaProvinsiHarian.deleteMany({ where: { sumber_id: sid } })
 
-  const ringkas: Record<string, { pasarBaris: number; pasarKosong: number; pasarJumlah: number; kabBaris: number; kabJumlah: number; provBaris: number; provJumlah: number }> = {}
+  const ringkas: Record<string, { pasarBaris: number; pasarKosong: number; pasarJumlah: number; kabBaris: number; kabJumlah: number; provBaris: number; provJumlah: number; awal: string; akhir: string }> = {}
 
   for (const k of KOM) {
     const kid = idKom.get(k.kode)!
@@ -65,29 +66,37 @@ export async function ingestHarga(): Promise<void> {
       pasarJumlah: pasar.reduce((a, x) => a + (x.harga_rp_kg ?? 0), 0),
       kabBaris: kabRows.length, kabJumlah: kabRows.reduce((a, x) => a + (x.harga_rata2_rp_kg ?? 0), 0),
       provBaris: prov.length, provJumlah: prov.reduce((a, x) => a + (x.harga_rp_kg ?? 0), 0),
+      awal: prov.reduce((m, x) => (x.tanggal < m ? x.tanggal : m), prov[0].tanggal).toISOString().slice(0, 10),
+      akhir: prov.reduce((m, x) => (x.tanggal > m ? x.tanggal : m), prov[0].tanggal).toISOString().slice(0, 10),
     }
   }
 
   // ---------- pemeriksaan: setiap angka di database dibandingkan dengan yang dihitung dari CSV
   catat("-- pemeriksaan harga")
-  periksa((await prisma.pasar.count()) === 121, "121 pasar di 38 kab/kota")
+  periksa((await prisma.pasar.count()) >= 121, "minimal 121 pasar di 38 kab/kota")
   periksa((await prisma.pasar.groupBy({ by: ["wilayah_id"] })).length === 38, "setiap kab/kota punya pasar")
   for (const k of KOM) {
     const kid = idKom.get(k.kode)!
     const e = ringkas[k.kode]
     const ps = await prisma.hargaPasarHarian.aggregate({ where: { komoditas_id: kid }, _count: true, _sum: { harga_rp_kg: true } })
-    periksa(ps._count === 215_985 && e.pasarBaris === 215_985, `${k.kode}: 215.985 baris pasar-hari`)
+    periksa(ps._count === e.pasarBaris && e.pasarBaris >= 215_985, `${k.kode}: ${e.pasarBaris.toLocaleString("id-ID")} baris pasar-hari, sama dengan CSV`)
     periksa(ps._sum.harga_rp_kg === e.pasarJumlah, `${k.kode}: jumlah harga pasar sama dengan CSV (${e.pasarJumlah.toLocaleString("id-ID")})`)
     const kosong = await prisma.hargaPasarHarian.count({ where: { komoditas_id: kid, harga_rp_kg: null } })
     periksa(kosong === e.pasarKosong, `${k.kode}: ${kosong.toLocaleString("id-ID")} sel pasar kosong, sama dengan CSV`)
     const ka = await prisma.hargaKabkotaHarian.aggregate({ where: { komoditas_id: kid }, _count: true, _sum: { harga_rata2_rp_kg: true } })
-    periksa(ka._count === 67_830 && Math.abs((ka._sum.harga_rata2_rp_kg ?? 0) - e.kabJumlah) < 1, `${k.kode}: 67.830 baris kab/kota (38 x 1.785 hari), jumlah rata-rata sama dengan CSV`)
+    periksa(ka._count === e.kabBaris && ka._count === 38 * e.provBaris && Math.abs((ka._sum.harga_rata2_rp_kg ?? 0) - e.kabJumlah) < 1, `${k.kode}: ${e.kabBaris.toLocaleString("id-ID")} baris kab/kota (38 x ${e.provBaris} hari), jumlah rata-rata sama dengan CSV`)
     const pv = await prisma.hargaProvinsiHarian.aggregate({ where: { komoditas_id: kid }, _count: true, _sum: { harga_rp_kg: true } })
-    periksa(pv._count === 1_785 && pv._sum.harga_rp_kg === e.provJumlah, `${k.kode}: 1.785 hari angka provinsi, jumlah sama dengan CSV`)
+    periksa(pv._count === e.provBaris && pv._sum.harga_rp_kg === e.provJumlah, `${k.kode}: ${e.provBaris} hari angka provinsi, jumlah sama dengan CSV`)
     const rentang = await prisma.hargaProvinsiHarian.aggregate({ where: { komoditas_id: kid }, _min: { tanggal: true }, _max: { tanggal: true } })
-    periksa(rentang._min.tanggal?.toISOString().slice(0, 10) === "2021-12-29" && rentang._max.tanggal?.toISOString().slice(0, 10) === "2026-11-17", `${k.kode}: 29 Des 2021 sampai 17 Nov 2026`)
+    periksa(rentang._min.tanggal?.toISOString().slice(0, 10) === e.awal && rentang._max.tanggal?.toISOString().slice(0, 10) === e.akhir, `${k.kode}: ${e.awal} sampai ${e.akhir}, sama dengan CSV`)
   }
   // contoh nilai: Beras Medium Jawa Timur 17 Nov 2026 = 13.024 (angka provinsi sumber)
+  // (hanya kalau tanggal itu ada di data; sumber bisa merevisi angka lama)
   const contoh = await prisma.hargaProvinsiHarian.findFirst({ where: { komoditas_id: idKom.get("beras_medium")!, tanggal: tanggal("2026-11-17") } })
-  periksa(contoh?.harga_rp_kg === 13024, "contoh: Beras Medium Jawa Timur 17 Nov 2026 = Rp13.024 (sesuai halaman SISKAPERBAPO)")
+  if (contoh) periksa(contoh.harga_rp_kg === 13024, "contoh: Beras Medium Jawa Timur 17 Nov 2026 = Rp13.024 (sesuai halaman SISKAPERBAPO)")
+  // angka provinsi terakhir harus ada dan wajar
+  for (const k of KOM) {
+    const akhir = await prisma.hargaProvinsiHarian.findFirst({ where: { komoditas_id: idKom.get(k.kode)! }, orderBy: { tanggal: "desc" } })
+    periksa(akhir?.harga_rp_kg != null && akhir.harga_rp_kg >= 8000 && akhir.harga_rp_kg <= 25000, `${k.kode}: harga provinsi terakhir Rp${akhir?.harga_rp_kg} (wajar 8.000-25.000)`)
+  }
 }

@@ -72,25 +72,34 @@ class Database(ConfigurableResource):
 
 
 class SumberHarga(ConfigurableResource):
-    """Konektor harga konsumen beras. Kontrak keluaran: data/siskaperbapo/harga_beras/*.csv (dibaca ingest silver).
+    """Konektor harga konsumen beras. Kontrak keluaran: folder berisi kabkota/provinsi_harian_*.csv dan pasar_harian_*.csv.gz
+    (kolom sama dengan data/siskaperbapo/harga_beras/), dibaca ingest silver lewat TERAWANG_HARGA_DIR.
 
+    - berkas: pakai CSV yang ada di repo.
+    - siskaperbapo: unduh ke `folder_unduhan` (di luar repo, supaya worktree git tetap bersih).
     Menambah sumber baru (mis. Panel Harga Bapanas): tambah cabang `mode` yang menulis berkas dengan kolom sama.
     """
 
     mode: str = "berkas"  # "berkas" | "siskaperbapo"
+    folder_unduhan: str = str(Path.home() / ".local/share/terawang/harga_beras")
 
     KOMODITAS: ClassVar[dict[str, int]] = {"beras_medium": 4, "beras_premium": 2}
 
+    def folder(self, repo: Repo) -> Path:
+        return Path(self.folder_unduhan) if self.mode == "siskaperbapo" else repo.path / "data/siskaperbapo/harga_beras"
+
     def berkas(self, repo: Repo) -> list[Path]:
-        d = repo.path / "data/siskaperbapo/harga_beras"
+        d = self.folder(repo)
         return [d / f"{jenis}_harian_{nama}.csv" for nama in self.KOMODITAS for jenis in ("kabkota", "provinsi")] + [
             d / f"pasar_harian_{nama}.csv.gz" for nama in self.KOMODITAS
         ]
 
     def perbarui(self, repo: Repo, log=None) -> list[Path]:
         if self.mode == "siskaperbapo":
+            self.folder(repo).mkdir(parents=True, exist_ok=True)
             for nama, kode in self.KOMODITAS.items():
-                repo.jalankan([sys.executable, "scripts/siskaperbapo/ambil_harga.py", "--komoditas", str(kode), "--nama", nama], log=log)
+                repo.jalankan([sys.executable, "scripts/siskaperbapo/ambil_harga.py", "--komoditas", str(kode), "--nama", nama,
+                               "--keluar", str(self.folder(repo))], log=log)
         elif self.mode != "berkas":
             raise ValueError(f"TERAWANG_SUMBER_HARGA tidak dikenal: {self.mode}")
         return self.berkas(repo)
@@ -142,6 +151,7 @@ def semua_resource() -> dict:
     return {
         "repo": Repo(akar=os.environ.get("TERAWANG_REPO", _repo_default())),
         "db": Database(url=EnvVar("DATABASE_URL")),
-        "sumber_harga": SumberHarga(mode=os.environ.get("TERAWANG_SUMBER_HARGA", "berkas")),
+        "sumber_harga": SumberHarga(mode=os.environ.get("TERAWANG_SUMBER_HARGA", "berkas"),
+                                    **({"folder_unduhan": os.environ["TERAWANG_HARGA_DIR"]} if os.environ.get("TERAWANG_HARGA_DIR") else {})),
         "sumber_citra": SumberCitra(mode=os.environ.get("TERAWANG_SUMBER_CITRA", "berkas"), gee_project=os.environ.get("GEE_PROJECT", "")),
     }

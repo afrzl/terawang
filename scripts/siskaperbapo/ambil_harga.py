@@ -205,7 +205,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--komoditas", required=True, help="kode komoditas SISKAPERBAPO (4 = Beras Medium, 2 = Beras Premium)")
     ap.add_argument("--nama", required=True, help="nama untuk berkas keluaran, contoh beras_medium")
-    ap.add_argument("--mulai", default="2022-01-01")
+    ap.add_argument("--mulai", default="2021-12-29", help="awal riwayat (tetap, agar riwayat bertambah, bukan bergeser)")
     ap.add_argument("--akhir", default=dt.date.today().isoformat())
     ap.add_argument("--keluar", default="data/siskaperbapo/harga_beras")
     ap.add_argument("--cache", default=str(pathlib.Path.home() / ".cache" / "terawang-siskaperbapo"))
