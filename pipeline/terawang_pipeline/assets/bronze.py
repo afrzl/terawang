@@ -34,6 +34,11 @@ def checksum_gabungan(paths: list[Path]) -> str:
     return h.hexdigest()
 
 
+def _tampil(repo: Repo, p: Path) -> Path:
+    """Path relatif terhadap repo kalau berkasnya di dalam repo; selain itu path absolut (mis. unduhan SISKAPERBAPO)."""
+    return p.relative_to(repo.path) if p.is_relative_to(repo.path) else p
+
+
 def _hasil(repo: Repo, paths: list[Path], sumber: str) -> MaterializeResult:
     hilang = [str(p) for p in paths if not p.exists()]
     if hilang:
@@ -46,7 +51,7 @@ def _hasil(repo: Repo, paths: list[Path], sumber: str) -> MaterializeResult:
             "jumlah_berkas": len(paths),
             "ukuran_mb": round(sum(p.stat().st_size for p in paths) / 1e6, 2),
             "checksum": cs[:16],
-            "berkas": MetadataValue.md("\n".join(f"- `{p.relative_to(repo.path)}`" for p in paths)),
+            "berkas": MetadataValue.md("\n".join(f"- `{_tampil(repo, p)}`" for p in paths)),
         },
     )
 
