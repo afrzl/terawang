@@ -106,7 +106,11 @@ class SumberHarga(ConfigurableResource):
 
 
 class SumberCitra(ConfigurableResource):
-    """Konektor citra satelit. Kontrak keluaran: src/lib/gee_wilayah.json (dibaca ingest silver satelit).
+    """Konektor citra satelit. Kontrak keluaran: JSON berformat src/lib/gee_wilayah.json (dibaca ingest silver satelit
+    lewat TERAWANG_GEE_JSON).
+
+    - berkas: pakai src/lib/gee_wilayah.json di repo.
+    - gee: hitung ulang di Earth Engine ke `berkas_keluaran` (di luar repo, supaya worktree git tetap bersih).
 
     Mode `gee` butuh paket earthengine-api dan kredensial: `earthengine authenticate` sekali di server, atau
     GOOGLE_APPLICATION_CREDENTIALS = kunci JSON service account yang terdaftar di Earth Engine.
@@ -114,6 +118,10 @@ class SumberCitra(ConfigurableResource):
 
     mode: str = "berkas"  # "berkas" | "gee"
     gee_project: str = ""
+    berkas_keluaran: str = str(Path.home() / ".local/share/terawang/gee_wilayah.json")
+
+    def berkas(self, repo: Repo) -> Path:
+        return Path(self.berkas_keluaran) if self.mode == "gee" else repo.path / "src/lib/gee_wilayah.json"
 
     def _ee(self):
         import ee  # hanya dibutuhkan di mode gee
@@ -133,8 +141,9 @@ class SumberCitra(ConfigurableResource):
         return pd.Timestamp(ms, unit="ms", tz="UTC").tz_convert("Asia/Jakarta").strftime("%Y-%m-%d")
 
     def perbarui(self, repo: Repo, log=None) -> Path:
-        out = repo.path / "src/lib/gee_wilayah.json"
+        out = self.berkas(repo)
         if self.mode == "gee":
+            out.parent.mkdir(parents=True, exist_ok=True)
             if not self.gee_project:
                 raise ValueError("TERAWANG_SUMBER_CITRA=gee butuh GEE_PROJECT")
             acuan = self.citra_terbaru()
@@ -153,5 +162,6 @@ def semua_resource() -> dict:
         "db": Database(url=EnvVar("DATABASE_URL")),
         "sumber_harga": SumberHarga(mode=os.environ.get("TERAWANG_SUMBER_HARGA", "berkas"),
                                     **({"folder_unduhan": os.environ["TERAWANG_HARGA_DIR"]} if os.environ.get("TERAWANG_HARGA_DIR") else {})),
-        "sumber_citra": SumberCitra(mode=os.environ.get("TERAWANG_SUMBER_CITRA", "berkas"), gee_project=os.environ.get("GEE_PROJECT", "")),
+        "sumber_citra": SumberCitra(mode=os.environ.get("TERAWANG_SUMBER_CITRA", "berkas"), gee_project=os.environ.get("GEE_PROJECT", ""),
+                                    **({"berkas_keluaran": os.environ["TERAWANG_GEE_JSON"]} if os.environ.get("TERAWANG_GEE_JSON") else {})),
     }

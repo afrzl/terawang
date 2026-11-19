@@ -33,7 +33,7 @@ Setiap sumber adalah konektor (resource) di `pipeline/terawang_pipeline/resource
 | `TERAWANG_SUMBER_HARGA` | `berkas` (default) | pakai CSV di `data/siskaperbapo/` apa adanya |
 | | `siskaperbapo` | unduh harga terbaru dari SISKAPERBAPO setiap run, ke `TERAWANG_HARGA_DIR` (default `~/.local/share/terawang/harga_beras`, di luar repo); data yang belum terbit hari itu otomatis memakai tanggal terakhir |
 | `TERAWANG_SUMBER_CITRA` | `berkas` (default) | pakai `src/lib/gee_wilayah.json` |
-| | `gee` | jalankan `scripts/gee/terawang_wilayah.py` dengan `--acuan` = tanggal Sentinel-1 terbaru. Butuh `pip install -e "pipeline[gee]"`, `GEE_PROJECT`, dan kredensial (`earthengine authenticate --auth_mode=notebook` sekali di server, atau `GOOGLE_APPLICATION_CREDENTIALS` ke kunci service account) |
+| | `gee` | jalankan `scripts/gee/terawang_wilayah.py` dengan `--acuan` = tanggal Sentinel-1 terbaru, keluaran ke `TERAWANG_GEE_JSON` (default `~/.local/share/terawang/gee_wilayah.json`, di luar repo). Butuh `pip install -e "pipeline[gee]"`, `GEE_PROJECT`, dan kredensial (`earthengine authenticate --auth_mode=notebook` sekali di server, atau `GOOGLE_APPLICATION_CREDENTIALS` ke kunci service account) |
 
 Sumber baru (mis. Panel Harga Bapanas) cukup menulis berkas dengan kolom yang sama; silver, model, dan dasbor tidak berubah.
 

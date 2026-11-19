@@ -35,9 +35,11 @@ jadwal_mingguan = ScheduleDefinition(name="penuh_senin_0500_wib", job=job_penuh,
 @sensor(job=job_penuh, minimum_interval_seconds=300, default_status=DefaultSensorStatus.RUNNING,
         description="Jalankan ulang alur penuh kalau berkas BPS, Bulog, jarak, atau citra di repo berubah (mis. setelah git pull).")
 def sensor_berkas_data(context: SensorEvaluationContext):
-    repo = semua_resource()["repo"]
+    res = semua_resource()
+    repo = res["repo"]
     paths = [p for rel in bronze.BERKAS_STATIS.values() for p in bronze.berkas_di(repo, rel)]
-    paths.append(repo.path / "src/lib/gee_wilayah.json")
+    if res["sumber_citra"].mode == "berkas":  # mode gee dipantau sensor_citra_baru
+        paths.append(repo.path / "src/lib/gee_wilayah.json")
     cs = bronze.checksum_gabungan([p for p in paths if p.exists()])[:16]
     if context.cursor == cs:
         return SkipReason("berkas data tidak berubah")

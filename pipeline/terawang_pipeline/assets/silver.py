@@ -6,13 +6,14 @@ Setiap modul ingest idempoten dan memeriksa hasilnya terhadap total di sumber (g
 
 from dagster import AssetExecutionContext, AssetKey, MaterializeResult, asset
 
-from ..resources import Database, Repo, SumberHarga
+from ..resources import Database, Repo, SumberCitra, SumberHarga
 
 GRUP = "silver"
 
 
-def _ingest(context: AssetExecutionContext, repo: Repo, db: Database, sumber_harga: SumberHarga, modul: str, tabel: list[str]) -> MaterializeResult:
-    env = {"DATABASE_URL": db.url, "TERAWANG_HARGA_DIR": str(sumber_harga.folder(repo))}
+def _ingest(context: AssetExecutionContext, repo: Repo, db: Database, sumber_harga: SumberHarga, sumber_citra: SumberCitra,
+            modul: str, tabel: list[str]) -> MaterializeResult:
+    env = {"DATABASE_URL": db.url, "TERAWANG_HARGA_DIR": str(sumber_harga.folder(repo)), "TERAWANG_GEE_JSON": str(sumber_citra.berkas(repo))}
     keluaran = repo.jalankan(["npm", "run", "--silent", "ingest", modul], cwd="api", env=env, log=context.log)
     jumlah = {t: int(db.baca(f"select count(*) as n from {t}")["n"].iloc[0]) for t in tabel}
     cek = sum(1 for b in keluaran.splitlines() if b.strip().startswith("OK"))
@@ -23,8 +24,8 @@ def _aset_silver(nama: str, modul: str, bronze: list[str], tabel: list[str], ket
     deps = [AssetKey(b) for b in bronze] + ([AssetKey("silver_ref")] if ref else [])
 
     @asset(name=nama, group_name=GRUP, kinds={"postgres"}, deps=deps, description=ket)
-    def _f(context: AssetExecutionContext, repo: Repo, db: Database, sumber_harga: SumberHarga) -> MaterializeResult:
-        return _ingest(context, repo, db, sumber_harga, modul, tabel)
+    def _f(context: AssetExecutionContext, repo: Repo, db: Database, sumber_harga: SumberHarga, sumber_citra: SumberCitra) -> MaterializeResult:
+        return _ingest(context, repo, db, sumber_harga, sumber_citra, modul, tabel)
 
     return _f
 
