@@ -19,3 +19,12 @@ deploy/server.log
 # citra GEE mentah, tidak dipakai dasbor
 public/citra/**/*.tif
 public/citra/*/petak.geojson
+
+# pipeline Dagster
+pipeline/.env
+pipeline/.tmp_dagster_home*
+.venv-pipeline/
+__pycache__/
+*.egg-info/
+deploy/pipeline-ensure.sh
+deploy/dagster-*.log

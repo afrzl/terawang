@@ -1,0 +1,122 @@
+"""Konektor (resource) yang dipakai aset. Mengganti sumber data = mengganti atau mengatur konektor di sini.
+
+Pengaturan lewat environment (lihat pipeline/.env.example):
+  DATABASE_URL           Postgres `terawang` (format sama dengan api/.env)
+  TERAWANG_REPO          akar repo (default: folder induk pipeline/)
+  TERAWANG_SUMBER_HARGA  "berkas" (pakai CSV di data/, default) atau "siskaperbapo" (unduh baru)
+  TERAWANG_SUMBER_CITRA  "berkas" (pakai src/lib/gee_wilayah.json, default) atau "gee" (jalankan GEE, butuh GEE_PROJECT)
+"""
+from __future__ import annotations
+
+import hashlib
+import os
+import subprocess
+import sys
+from pathlib import Path
+from typing import ClassVar
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+import pandas as pd
+import sqlalchemy as sa
+from dagster import ConfigurableResource, EnvVar
+
+
+def _repo_default() -> str:
+    return str(Path(__file__).resolve().parents[2])
+
+
+def sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for blok in iter(lambda: f.read(1 << 20), b""):
+            h.update(blok)
+    return h.hexdigest()
+
+
+class Repo(ConfigurableResource):
+    """Akar repo terawang: tempat data/, scripts/, api/."""
+
+    akar: str = _repo_default()
+
+    @property
+    def path(self) -> Path:
+        return Path(self.akar)
+
+    def jalankan(self, args: list[str], cwd: str | None = None, env: dict | None = None, log=None) -> str:
+        """Jalankan perintah di repo; gagal = exception (aset jadi merah di Dagster)."""
+        hasil = subprocess.run(args, cwd=self.path / (cwd or ""), env={**os.environ, **(env or {})}, capture_output=True, text=True)
+        keluaran = (hasil.stdout + hasil.stderr)[-6000:]
+        if log:
+            log.info(keluaran)
+        if hasil.returncode != 0:
+            raise RuntimeError(f"{' '.join(args)} gagal (kode {hasil.returncode}):\n{keluaran}")
+        return keluaran
+
+
+class Database(ConfigurableResource):
+    """Postgres `terawang` (schema ref, silver, app). URL sama dengan yang dipakai Prisma di api/.env."""
+
+    url: str
+
+    def _url_sqlalchemy(self) -> str:
+        bagian = urlsplit(self.url)
+        q = [(k, v) for k, v in parse_qsl(bagian.query) if k != "schema"]  # parameter khusus Prisma
+        return urlunsplit(("postgresql+psycopg2", bagian.netloc, bagian.path, urlencode(q), ""))
+
+    def engine(self) -> sa.Engine:
+        return sa.create_engine(self._url_sqlalchemy(), future=True)
+
+    def baca(self, sql: str, **params) -> pd.DataFrame:
+        with self.engine().connect() as c:
+            return pd.read_sql(sa.text(sql), c, params=params)
+
+
+class SumberHarga(ConfigurableResource):
+    """Konektor harga konsumen beras. Kontrak keluaran: data/siskaperbapo/harga_beras/*.csv (dibaca ingest silver).
+
+    Menambah sumber baru (mis. Panel Harga Bapanas): tambah cabang `mode` yang menulis berkas dengan kolom sama.
+    """
+
+    mode: str = "berkas"  # "berkas" | "siskaperbapo"
+
+    KOMODITAS: ClassVar[dict[str, int]] = {"beras_medium": 4, "beras_premium": 2}
+
+    def berkas(self, repo: Repo) -> list[Path]:
+        d = repo.path / "data/siskaperbapo/harga_beras"
+        return [d / f"{jenis}_harian_{nama}.csv" for nama in self.KOMODITAS for jenis in ("kabkota", "provinsi")] + [
+            d / f"pasar_harian_{nama}.csv.gz" for nama in self.KOMODITAS
+        ]
+
+    def perbarui(self, repo: Repo, log=None) -> list[Path]:
+        if self.mode == "siskaperbapo":
+            for nama, kode in self.KOMODITAS.items():
+                repo.jalankan([sys.executable, "scripts/siskaperbapo/ambil_harga.py", "--komoditas", str(kode), "--nama", nama], log=log)
+        elif self.mode != "berkas":
+            raise ValueError(f"TERAWANG_SUMBER_HARGA tidak dikenal: {self.mode}")
+        return self.berkas(repo)
+
+
+class SumberCitra(ConfigurableResource):
+    """Konektor citra satelit. Kontrak keluaran: src/lib/gee_wilayah.json (dibaca ingest silver satelit)."""
+
+    mode: str = "berkas"  # "berkas" | "gee"
+    gee_project: str = ""
+
+    def perbarui(self, repo: Repo, log=None) -> Path:
+        out = repo.path / "src/lib/gee_wilayah.json"
+        if self.mode == "gee":
+            if not self.gee_project:
+                raise ValueError("TERAWANG_SUMBER_CITRA=gee butuh GEE_PROJECT")
+            repo.jalankan([sys.executable, "scripts/gee/terawang_wilayah.py", "--project", self.gee_project, "--out", str(out)], log=log)
+        elif self.mode != "berkas":
+            raise ValueError(f"TERAWANG_SUMBER_CITRA tidak dikenal: {self.mode}")
+        return out
+
+
+def semua_resource() -> dict:
+    return {
+        "repo": Repo(akar=os.environ.get("TERAWANG_REPO", _repo_default())),
+        "db": Database(url=EnvVar("DATABASE_URL")),
+        "sumber_harga": SumberHarga(mode=os.environ.get("TERAWANG_SUMBER_HARGA", "berkas")),
+        "sumber_citra": SumberCitra(mode=os.environ.get("TERAWANG_SUMBER_CITRA", "berkas"), gee_project=os.environ.get("GEE_PROJECT", "")),
+    }

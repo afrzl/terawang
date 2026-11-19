@@ -1,0 +1,22 @@
+# Router Traefik untuk UI Dagster. Salin ke /opt/traefik/dynamic/dagster.yml (milik root).
+# Ganti GANTI_DENGAN_HASH dengan keluaran:  htpasswd -nbB <user> <sandi>   (atau openssl passwd -apr1)
+# UI Dagster bisa menjalankan ulang pipeline, jadi WAJIB di balik basic auth.
+http:
+  routers:
+    dagster:
+      rule: "Host(`dagster.terawang.tech`)"
+      entryPoints: [websecure]
+      service: dagster
+      middlewares: [dagster-auth]
+      tls:
+        certResolver: letsencrypt
+  middlewares:
+    dagster-auth:
+      basicAuth:
+        users:
+          - "GANTI_DENGAN_HASH"
+  services:
+    dagster:
+      loadBalancer:
+        servers:
+          - url: "http://172.19.0.1:3070"
