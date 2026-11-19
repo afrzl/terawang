@@ -1,7 +1,7 @@
 # Pipeline data TERAWANG (Dagster)
 
 Pipeline ini menjalankan alur **sumber → bronze → silver → model → app** secara berurutan dan terjadwal, dan
-menampilkan alurnya sebagai grafik aset di UI Dagster (https://dagster.terawang.tech, pakai basic auth).
+menampilkan alurnya sebagai grafik aset di UI Dagster (https://dagster.terawang.tech, publik dan hanya baca).
 
 ```
 sumber (SISKAPERBAPO, GEE, BPS, Bulog, OSRM)
@@ -62,7 +62,8 @@ cd ~/terawang && bash deploy/deploy-pipeline.sh
 ```
 
 Skrip memasang venv, menjalankan migrasi, menyalakan `dagster-webserver` dan `dagster-daemon`, dan mendaftarkan cron penjaga.
-Router Traefik: `deploy/traefik-dagster.yml` (disalin ke `/opt/traefik/dynamic/`, hash basic auth diisi di server, bukan di repo).
+Router Traefik: `deploy/traefik-dagster.yml` (disalin ke `/opt/traefik/dynamic/`). UI publik berjalan `--read-only`; menjalankan pipeline manual
+dilakukan di VPS: `cd ~/terawang-pipeline/pipeline && set -a && . ./.env && set +a && DAGSTER_HOME=~/dagster_home ../.venv-pipeline/bin/dagster job execute -m terawang_pipeline.definitions -j pipeline_penuh`.
 
 ## Catatan hasil run pertama (data per 17 Nov 2026, model baseline)
 

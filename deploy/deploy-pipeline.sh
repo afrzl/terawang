@@ -5,7 +5,8 @@
 # Prasyarat: Python 3.10+ dengan modul venv (Ubuntu: python3.12-venv), Node (untuk ingest api/), Postgres `terawang` yang sudah di-migrate,
 #            dan pipeline/.env (salin dari pipeline/.env.example).
 # Variabel: DAGSTER_PORT (default 3070), DAGSTER_HOST (default 127.0.0.1; isi IP bridge Docker agar Traefik bisa
-#           menjangkau, mis. 172.19.0.1). Jangan bind ke 0.0.0.0: UI Dagster bisa menjalankan pipeline.
+#           menjangkau, mis. 172.19.0.1). Jangan bind ke 0.0.0.0.
+#           DAGSTER_READ_ONLY (default 1): UI hanya baca. Isi 0 hanya kalau UI dilindungi basic auth.
 #           Kalau firewall INPUT = DROP, izinkan bridge Docker ke port ini (ufw allow in on <br-...> from 172.19.0.0/16 to 172.19.0.1 port 3070).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -14,6 +15,9 @@ VENV="$APP_DIR/.venv-pipeline"
 export DAGSTER_HOME="${DAGSTER_HOME:-$HOME/dagster_home}"
 DAGSTER_PORT="${DAGSTER_PORT:-3070}"
 DAGSTER_HOST="${DAGSTER_HOST:-127.0.0.1}"
+# 1 = UI publik hanya bisa melihat (tanpa tombol Materialize/Launch). Jadwal dan sensor tetap jalan lewat daemon.
+DAGSTER_READ_ONLY="${DAGSTER_READ_ONLY:-1}"
+RO_FLAG=""; [ "$DAGSTER_READ_ONLY" = "1" ] && RO_FLAG="--read-only"
 
 [ -f pipeline/.env ] || { echo "pipeline/.env belum ada (salin dari pipeline/.env.example)"; exit 1; }
 
@@ -50,7 +54,7 @@ cat > "$APP_DIR/deploy/pipeline-ensure.sh" <<SH
 export DAGSTER_HOME="$DAGSTER_HOME"
 export PATH="$NODE_BIN:\$PATH"
 cd "$APP_DIR/pipeline"
-pgrep -f "dagster-webserver -m terawang_pipeline.definitions .*--port $DAGSTER_PORT" >/dev/null || (setsid nohup "$VENV/bin/dagster-webserver" -m terawang_pipeline.definitions --host "$DAGSTER_HOST" --port "$DAGSTER_PORT" >>"$APP_DIR/deploy/dagster-webserver.log" 2>&1 < /dev/null &)
+pgrep -f "dagster-webserver -m terawang_pipeline.definitions .*--port $DAGSTER_PORT" >/dev/null || (setsid nohup "$VENV/bin/dagster-webserver" -m terawang_pipeline.definitions --host "$DAGSTER_HOST" --port "$DAGSTER_PORT" $RO_FLAG >>"$APP_DIR/deploy/dagster-webserver.log" 2>&1 < /dev/null &)
 pgrep -f "dagster-daemon run -m terawang_pipeline.definitions" >/dev/null || (setsid nohup "$VENV/bin/dagster-daemon" run -m terawang_pipeline.definitions >>"$APP_DIR/deploy/dagster-daemon.log" 2>&1 < /dev/null &)
 SH
 chmod +x "$APP_DIR/deploy/pipeline-ensure.sh"
