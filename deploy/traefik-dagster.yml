@@ -9,7 +9,7 @@ http:
       service: dagster
       middlewares: [dagster-auth]
       tls:
-        certResolver: letsencrypt
+        certResolver: le  # samakan dengan terawang.yml
   middlewares:
     dagster-auth:
       basicAuth:

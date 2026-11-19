@@ -2,10 +2,11 @@
 # Pasang dan jalankan pipeline Dagster TERAWANG di VPS tanpa sudo.
 # Jalankan dari root repo: bash deploy/deploy-pipeline.sh
 #
-# Prasyarat: Python 3.10+, Node (untuk ingest api/), Postgres `terawang` yang sudah di-migrate,
+# Prasyarat: Python 3.10+ dengan modul venv (Ubuntu: python3.12-venv), Node (untuk ingest api/), Postgres `terawang` yang sudah di-migrate,
 #            dan pipeline/.env (salin dari pipeline/.env.example).
 # Variabel: DAGSTER_PORT (default 3070), DAGSTER_HOST (default 127.0.0.1; isi IP bridge Docker agar Traefik bisa
 #           menjangkau, mis. 172.19.0.1). Jangan bind ke 0.0.0.0: UI Dagster bisa menjalankan pipeline.
+#           Kalau firewall INPUT = DROP, izinkan bridge Docker ke port ini (ufw allow in on <br-...> from 172.19.0.0/16 to 172.19.0.1 port 3070).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 APP_DIR="$(pwd)"
@@ -39,18 +40,22 @@ else
   printf 'telemetry:\n  enabled: false\n' > "$DAGSTER_HOME/dagster.yaml"
 fi
 
+NODE_BIN="$(dirname "$(command -v npm)")"
+
 # 4. Tulis penjaga proses, lalu jalankan ulang webserver dan daemon
 cat > "$APP_DIR/deploy/pipeline-ensure.sh" <<SH
 #!/usr/bin/env bash
 # Dibuat oleh deploy-pipeline.sh. Menyalakan webserver dan daemon Dagster kalau mati (dipanggil cron tiap menit).
+# PATH cron minimal: folder Node ditulis di sini supaya aset silver bisa memanggil npm.
 export DAGSTER_HOME="$DAGSTER_HOME"
+export PATH="$NODE_BIN:\$PATH"
 cd "$APP_DIR/pipeline"
-pgrep -f "dagster-webserver.*--port $DAGSTER_PORT" >/dev/null || setsid nohup "$VENV/bin/dagster-webserver" -m terawang_pipeline.definitions -h "$DAGSTER_HOST" -p "$DAGSTER_PORT" >>"$APP_DIR/deploy/dagster-webserver.log" 2>&1 < /dev/null &
-pgrep -f "dagster-daemon run" >/dev/null || setsid nohup "$VENV/bin/dagster-daemon" run -m terawang_pipeline.definitions >>"$APP_DIR/deploy/dagster-daemon.log" 2>&1 < /dev/null &
+pgrep -f "dagster-webserver -m terawang_pipeline.definitions .*--port $DAGSTER_PORT" >/dev/null || (setsid nohup "$VENV/bin/dagster-webserver" -m terawang_pipeline.definitions --host "$DAGSTER_HOST" --port "$DAGSTER_PORT" >>"$APP_DIR/deploy/dagster-webserver.log" 2>&1 < /dev/null &)
+pgrep -f "dagster-daemon run -m terawang_pipeline.definitions" >/dev/null || (setsid nohup "$VENV/bin/dagster-daemon" run -m terawang_pipeline.definitions >>"$APP_DIR/deploy/dagster-daemon.log" 2>&1 < /dev/null &)
 SH
 chmod +x "$APP_DIR/deploy/pipeline-ensure.sh"
-pkill -f "dagster-webserver.*--port $DAGSTER_PORT" 2>/dev/null || true
-pkill -f "dagster-daemon run" 2>/dev/null || true
+pkill -f "dagster-webserver -m terawang_pipeline.definitions .*--port $DAGSTER_PORT" 2>/dev/null || true
+pkill -f "dagster-daemon run -m terawang_pipeline.definitions" 2>/dev/null || true
 sleep 2
 bash "$APP_DIR/deploy/pipeline-ensure.sh"
 
