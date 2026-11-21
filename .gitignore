@@ -29,3 +29,6 @@ __pycache__/
 deploy/pipeline-ensure.sh
 deploy/dagster-*.log
 deploy/.deploy-berjalan
+
+# bot WhatsApp
+bot/.env
