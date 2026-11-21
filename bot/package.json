@@ -1,0 +1,24 @@
+{
+  "name": "terawang-bot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bot WhatsApp TERAWANG: GoWA + data app.* + OpenAI untuk pesan bebas",
+  "type": "module",
+  "engines": { "node": ">=20.19" },
+  "scripts": {
+    "start": "tsx src/server.ts",
+    "dev": "tsx watch src/server.ts",
+    "tanya": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/*.test.ts"
+  },
+  "dependencies": {
+    "pg": "^8.23.1",
+    "tsx": "^4.23.15"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@types/pg": "^8.23.1",
+    "typescript": "^5.9.3"
+  }
+}
