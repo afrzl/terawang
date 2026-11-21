@@ -12,6 +12,7 @@ enum StatusStok {
   CUKUP
   TIPIS
   DEFISIT
+  SURPLUS // cakupan >= 1,5 bulan konsumsi
 
   @@schema("app")
 }
@@ -112,6 +113,8 @@ model EstimasiStok {
   stok_ton      Float
   cakupan_bulan Float? // stok dibagi konsumsi bulanan
   status        StatusStok?
+  surplus_ton   Float? // stok di atas batas aman 1,0 bulan konsumsi (bisa dikirim keluar)
+  kebutuhan_ton Float? // kekurangan sampai batas aman 1,0 bulan konsumsi
   jenis_data    JenisData    @default(MODEL)
 
   model_run ModelRun @relation(fields: [model_run_id], references: [id])

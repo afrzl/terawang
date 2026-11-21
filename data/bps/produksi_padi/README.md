@@ -16,7 +16,9 @@ data/bps/produksi_padi/
 │   │   ├── bps_jatim_padi_kabkota_periode_2025_2026.csv     # Jan–Sep dan Okt–Des
 │   │   └── bps_jatim_padi_kabkota_janmar_2025_2026p.csv     # Jan–Mar
 │   └── bulanan/                   # satu angka per bulan per kabupaten (luas panen dan produksi beras)
-│       └── bps_jatim_padi_kabkota_bulanan_2025.csv
+│       ├── bps_jatim_padi_kabkota_bulanan_2025.csv
+│       ├── bps_jatim_padi_kabkota_bulanan_luas_panen_2019_2024.csv   # hanya luas panen, 6 tahun
+│       └── mentah/                                                    # salinan apa adanya dari tabel BPS (2019–2024)
 └── provinsi/
     └── bulanan/                   # satu angka per bulan, tingkat provinsi
         └── bps_jatim_padi_provinsi_bulanan_2024_2026.csv
