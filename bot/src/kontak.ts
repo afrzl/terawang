@@ -73,7 +73,7 @@ export async function simpanLaporan(kontakId: number, wilayahId: number | null, 
      ),
      ins as (
        insert into app.laporan_harga_warga (kontak_id, wilayah_id, komoditas_id, nama_pasar, harga_rp_kg, selisih_panel_pct)
-       values ($1, $2, (select id from k), $4, $5, (select round(((($5::float8 / h) - 1) * 100)::numeric, 1)::float8 from panel))
+       values ($1, $2, (select id from k), $4, $5::int, (select round(((($5::int::float8 / h) - 1) * 100)::numeric, 1)::float8 from panel))
        returning id, selisih_panel_pct
      )
      select ins.id, (select round(h)::int from panel) as panel, ins.selisih_panel_pct as selisih from ins`,
