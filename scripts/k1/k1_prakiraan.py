@@ -6,6 +6,7 @@ Taksiran citra per jarak waktu: lead 0 (bulan berjalan), 28 hari (bulan depan), 
   from k1_prakiraan import prakiraan
   prakiraan(tr=list(range(2019, 2026)), targets=[(2026, 11, 0), (2026, 12, 1), (2027, 1, 2)])
 """
+import os
 import sys
 
 import numpy as np
@@ -32,7 +33,7 @@ def prakiraan(tr, targets):
     ES = {}
     for h, L in LEAD.items():
         a = pd.read_csv(f"data/satelit/est_nowcast2_lead{L}.csv")[["kabkota", "t", "est"]]
-        b = pd.read_csv(f"data/satelit/est_nowcast2_lead{L}_2026.csv")[["kabkota", "t", "est"]]
+        b = pd.read_csv(os.path.join(os.environ.get("TERAWANG_K1_DIR", "data/satelit"), f"est_nowcast2_lead{L}_2026.csv"))[["kabkota", "t", "est"]]
         ES[h] = est_wide(pd.concat([a, b]).drop_duplicates(["kabkota", "t"], keep="last"))
 
     def latih(E, trn):

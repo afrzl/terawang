@@ -20,6 +20,10 @@ BERKAS_STATIS = {
     "jarak": "data/geografi/jarak_kabkota",
 }
 
+# Bahan K1 Danang yang tetap di repo: riwayat titik 2018-2024, taksiran citra retrospektif, luas sawah per kab.
+SATELIT_STATIS = [f"data/satelit/{k}_titik_riwayat_2018_2024.csv.gz" for k in ("vh", "vv", "lswi", "evi")] + \
+                 [f"data/satelit/est_nowcast2_lead{L}.csv" for L in (0, 28, 56)] + ["data/satelit/vh_panen_bulanan_kabkota.csv"]
+
 
 def berkas_di(repo: Repo, rel: str) -> list[Path]:
     akar = repo.path / rel
@@ -66,6 +70,18 @@ def bronze_harga(context: AssetExecutionContext, repo: Repo, sumber_harga: Sumbe
 def bronze_citra(context: AssetExecutionContext, repo: Repo, sumber_citra: SumberCitra) -> MaterializeResult:
     path = sumber_citra.perbarui(repo, log=context.log)
     return _hasil(repo, [path], f"citra ({sumber_citra.mode})")
+
+
+@asset(group_name=GRUP, kinds={"csv"}, description="Deret 12-harian VH, VV (Sentinel-1) dan LSWI, EVI (Sentinel-2) di 15.200 titik sawah, bahan K1. Mode gee: diperpanjang dari GEE sampai hari ini.")
+def bronze_titik_satelit(context: AssetExecutionContext, repo: Repo, sumber_citra: SumberCitra) -> MaterializeResult:
+    paths = sumber_citra.perbarui_titik(repo, log=context.log) + [repo.path / p for p in SATELIT_STATIS]
+    hasil = _hasil(repo, paths, f"titik ({sumber_citra.mode})")
+    import pandas as pd
+
+    kol = pd.read_csv(paths[0], nrows=0).columns
+    hasil.metadata["jendela_terakhir"] = kol[-1]
+    hasil.metadata["jumlah_jendela_12harian"] = len(kol) - 3
+    return hasil
 
 
 @asset(group_name=GRUP, kinds={"csv"}, description="BPS: produksi padi, penduduk, konsumsi beras (diketik dari BRS dan Jatim Dalam Angka).")

@@ -1,43 +1,32 @@
-"""K2 · Neraca stok beras beredar per kab/kota per bulan.
+"""K2 stok: model milik Danang (scripts/k2/k2_operasional.py). Metodologi: ai-notes/metodologi-k2.md.
 
-BASELINE: stok_t = stok_{t-1} + produksi_t - konsumsi_t, tanpa arus antarwilayah dan tanpa filter Kalman.
-Stok awal tidak diketahui (tidak dipublikasikan), jadi dibuat tiga skenario DUMMY sebagai kelipatan konsumsi bulanan.
-Ganti dengan model state-space (Kalman) + jangkar stok Bulog tanpa mengubah kolom keluaran.
+Neraca stok non-Bulog per kab (produksi K1 - konsumsi Susenas + arus antar kab hasil LP jarak jalan - keluar provinsi dari
+kelebihan panen), satu jangkar asumsi (cakupan terendah Jatim = 1,0 bulan), pita ketidakpastian ala Kalman tanpa pengamatan.
+Status: DEFISIT < 0,75 | TIPIS 0,75-1,0 | CUKUP 1,0-1,5 | SURPLUS >= 1,5 bulan konsumsi.
 """
-from __future__ import annotations
+
+import datetime as dt
+from pathlib import Path
 
 import pandas as pd
 
-VERSI = "k2-neraca-tanpa-arus-0.1"
+from .danang import di_repo, modul
+
+VERSI = "k2-neraca-lp-kalman-2026.11"
 JENIS_DATA = "MODEL"
-# Stok awal = N bulan konsumsi. DUMMY, bukan data.
-SKENARIO_STOK_AWAL_BULAN = {"RENDAH": 1.0, "TENGAH": 2.0, "TINGGI": 3.0}
-BATAS_DEFISIT = 0.0  # cakupan < 0 bulan
-BATAS_TIPIS = 1.0  # cakupan < 1 bulan
 
 
-def _status(cakupan: float) -> str:
-    if cakupan < BATAS_DEFISIT:
-        return "DEFISIT"
-    if cakupan < BATAS_TIPIS:
-        return "TIPIS"
-    return "CUKUP"
-
-
-def estimasi_stok(produksi: pd.DataFrame, konsumsi_bulanan: pd.DataFrame) -> pd.DataFrame:
-    """produksi: wilayah_id, tahun, bulan, produksi_beras_ton (gabungan BPS historis + prediksi K1).
-    konsumsi_bulanan: wilayah_id, konsumsi_ton_bulan (penduduk x kg/kapita/bulan / 1000).
-
-    Keluaran: wilayah_id, tahun, bulan, skenario, stok_ton, cakupan_bulan, status.
-    """
-    p = produksi.merge(konsumsi_bulanan, on="wilayah_id", how="inner").sort_values(["wilayah_id", "tahun", "bulan"])
-    baris = []
-    for wid, g in p.groupby("wilayah_id"):
-        kons = float(g["konsumsi_ton_bulan"].iloc[0])
-        for skenario, n_bulan in SKENARIO_STOK_AWAL_BULAN.items():
-            stok = n_bulan * kons
-            for r in g.itertuples(index=False):
-                stok = stok + float(r.produksi_beras_ton) - kons
-                cakupan = stok / kons if kons else 0.0
-                baris.append((wid, int(r.tahun), int(r.bulan), skenario, stok, cakupan, _status(cakupan)))
-    return pd.DataFrame(baris, columns=["wilayah_id", "tahun", "bulan", "skenario", "stok_ton", "cakupan_bulan", "status"])
+def estimasi_stok(akar: str | Path, hari_ini: dt.date, produksi: pd.DataFrame, env: dict[str, str]) -> dict:
+    """produksi = keluaran k1_produksi.prediksi_produksi. Kembalikan dict: skenario (baris app.estimasi_stok, kolom kab),
+    rinci (cakupan, sd, peluang per kab-bulan), konsumsi (ton/bulan per kab), hari_ke_defisit, jangkar."""
+    prod = {(int(t), int(b)): g.set_index("kab").produksi_beras_ton for (t, b), g in produksi.groupby(["tahun", "bulan"])}
+    sd = {(int(t), int(b)): float(g.sd_relatif.iloc[0]) for (t, b), g in produksi.groupby(["tahun", "bulan"])}
+    with di_repo(akar, env):
+        ko = modul("k2_operasional")
+        h = ko.hitung(hari_ini, prod=prod, sd_prod=sd)
+        sk = ko.skenario(h["R"], h["C"])
+        param = {"ambang": {"defisit": ko.AMBANG_DEFISIT, "cukup": ko.AMBANG_CUKUP, "surplus": ko.AMBANG_SURPLUS},
+                 "sigma": {"keluar_provinsi": ko.SIGMA_X, "konsumsi": ko.SIGMA_C, "prod_model": ko.SIGMA_P_MODEL, "prod_k1": ko.SIGMA_P_K1},
+                 "jangkar_min_bulan": ko.JANGKAR_MIN, "sd_jangkar": ko.SD_JANGKAR}
+    return {"skenario": sk, "rinci": h["R"], "konsumsi": h["C"].rename("konsumsi_ton_bulan"), "hari_ke_defisit": h["hit"],
+            "jangkar": float(h["a_jangkar"]), "parameter": param}

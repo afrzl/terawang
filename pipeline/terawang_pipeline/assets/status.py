@@ -11,7 +11,8 @@ from ._app import sekarang, sisipkan
 
 GRUP = "app"
 TINGKAT = {"AMAN": 0, "WASPADA": 1, "SIAGA": 2}
-STOK_KE_TINGKAT = {"CUKUP": "AMAN", "TIPIS": "WASPADA", "DEFISIT": "SIAGA"}
+HARI_PERINGATAN_DINI = 45  # target proposal: defisit terdeteksi +-1 bulan sebelumnya
+STOK_KE_TINGKAT = {"SURPLUS": "AMAN", "CUKUP": "AMAN", "TIPIS": "WASPADA", "DEFISIT": "SIAGA"}
 
 
 def _terburuk(*nilai) -> str:
@@ -43,6 +44,8 @@ def status_wilayah(context: AssetExecutionContext, db: Database, k1_prediksi_pro
     sisipkan(db, "app.status_wilayah", df.astype({"run_produksi_id": "Int64", "run_harga_id": "Int64"}))
     hitung = df["status_gabungan"].value_counts().to_dict()
     context.add_output_metadata({"tanggal": str(kini.date()), **{f"wilayah_{k.lower()}": int(v) for k, v in hitung.items()}})
+    if "hari_ke_defisit" in k2_estimasi_stok:  # untuk teks peringatan, tidak disimpan di app.status_wilayah
+        df = df.merge(k2_estimasi_stok[["wilayah_id", "hari_ke_defisit"]].drop_duplicates("wilayah_id"), on="wilayah_id", how="left")
     return df
 
 
@@ -53,11 +56,21 @@ def peringatan(context: AssetExecutionContext, db: Database, status_wilayah: pd.
     baris = []
     for r in s.itertuples():
         stok_t = STOK_KE_TINGKAT.get(r.status_stok)
+        hari = getattr(r, "hari_ke_defisit", None)
+        hari = None if hari is None or pd.isna(hari) else float(hari)
+        dasar = {"cakupan_bulan": round(float(r.cakupan_stok_bulan), 2), "hari_ke_defisit": None if hari is None else round(hari)}
         if stok_t in ("WASPADA", "SIAGA"):
             baris.append(dict(wilayah_id=r.wilayah_id, jenis="STOK", tingkat=stok_t, model_run_id=r.run_stok_id,
                               judul=f"Stok beras {r.nama} {r.status_stok.lower()}",
-                              pesan=f"Perkiraan cakupan stok {r.cakupan_stok_bulan:.1f} bulan konsumsi (skenario tengah, stok awal dummy).",
-                              dasar=json.dumps({"cakupan_bulan": round(float(r.cakupan_stok_bulan), 2)})))
+                              pesan=f"Perkiraan cakupan stok {r.cakupan_stok_bulan:.1f} bulan konsumsi (skenario tengah; stok awal asumsi).",
+                              dasar=json.dumps(dasar)))
+        elif hari is not None and 0 < hari <= HARI_PERINGATAN_DINI:
+            # peringatan dini: belum defisit, tetapi neraca K2 memperkirakan cakupan turun di bawah 0,75 bulan dalam horizon
+            baris.append(dict(wilayah_id=r.wilayah_id, jenis="STOK", tingkat="WASPADA", model_run_id=r.run_stok_id,
+                              judul=f"Stok beras {r.nama} diperkirakan defisit dalam {hari:.0f} hari",
+                              pesan=f"Cakupan stok sekarang {r.cakupan_stok_bulan:.1f} bulan konsumsi; diperkirakan di bawah 0,75 bulan dalam {hari:.0f} hari "
+                                    "(neraca K2 dengan prakiraan panen K1; stok awal asumsi).",
+                              dasar=json.dumps(dasar)))
         if r.status_harga in ("WASPADA", "SIAGA"):
             baris.append(dict(wilayah_id=r.wilayah_id, jenis="HARGA", tingkat=r.status_harga, model_run_id=int(r.run_harga_id),
                               judul=f"Harga beras medium {r.nama} {r.status_harga.lower()}",

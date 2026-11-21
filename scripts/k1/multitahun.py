@@ -14,6 +14,7 @@ Langkah:
 """
 import datetime as dt
 import io
+import os
 import subprocess
 import sys
 
@@ -46,9 +47,10 @@ def wape(a, p):
 def muat():
     """Kembalikan kab, lon/lat, tanggal jendela, dan matriks VH, VV, LSWI, EVI (N x W, NaN = kosong)."""
     S = "data/satelit/"
-    old_vh = pd.read_csv(S + "vh_titik_12harian_kabkota.csv.gz")
-    old_vv = pd.read_csv(S + "vv_titik_12harian_kabkota.csv.gz")
-    old_s2 = pd.read_csv(S + "s2_titik_12harian_kabkota.csv.gz")
+    T = os.environ.get("TERAWANG_TITIK_DIR", "data/satelit").rstrip("/") + "/"  # pipeline: deret 12-harian yang diperpanjang otomatis
+    old_vh = pd.read_csv(T + "vh_titik_12harian_kabkota.csv.gz")
+    old_vv = pd.read_csv(T + "vv_titik_12harian_kabkota.csv.gz")
+    old_s2 = pd.read_csv(T + "s2_titik_12harian_kabkota.csv.gz")
     new = {k: pd.read_csv(S + f"{k}_titik_riwayat_2018_2024.csv.gz") for k in ("vh", "vv", "lswi", "evi")}
     kab = old_vh.kabkota.to_numpy()
     for d in (old_vv, old_s2, *new.values()):

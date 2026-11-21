@@ -21,8 +21,8 @@ job_harga = define_asset_job(
 # Citra baru: bronze_citra dan turunannya (K1 -> K2 -> SPHP, status, peringatan). K3 ikut agar status lengkap.
 job_citra = define_asset_job(
     "pipeline_citra",
-    selection=AssetSelection.assets("bronze_citra").downstream() | AssetSelection.assets("k3_prediksi_harga"),
-    description="Citra Sentinel terbaru dari GEE -> silver satelit -> K1, K2, SPHP -> status dan peringatan.",
+    selection=AssetSelection.assets("bronze_citra", "bronze_titik_satelit").downstream() | AssetSelection.assets("k3_prediksi_harga"),
+    description="Citra Sentinel terbaru dari GEE -> silver satelit dan deret titik sawah -> K1 (nowcast citra, produksi), K2, SPHP -> status dan peringatan.",
 )
 
 # SISKAPERBAPO memperbarui harga sepanjang hari, jadi diambil pagi dan siang.
@@ -33,13 +33,13 @@ jadwal_mingguan = ScheduleDefinition(name="penuh_senin_0500_wib", job=job_penuh,
 
 
 @sensor(job=job_penuh, minimum_interval_seconds=300, default_status=DefaultSensorStatus.RUNNING,
-        description="Jalankan ulang alur penuh kalau berkas BPS, Bulog, jarak, atau citra di repo berubah (mis. setelah git pull).")
+        description="Jalankan ulang alur penuh kalau berkas BPS, Bulog, jarak, atau bahan citra K1 di repo berubah (mis. setelah git pull).")
 def sensor_berkas_data(context: SensorEvaluationContext):
     res = semua_resource()
     repo = res["repo"]
-    paths = [p for rel in bronze.BERKAS_STATIS.values() for p in bronze.berkas_di(repo, rel)]
+    paths = [p for rel in bronze.BERKAS_STATIS.values() for p in bronze.berkas_di(repo, rel)] + [repo.path / p for p in bronze.SATELIT_STATIS]
     if res["sumber_citra"].mode == "berkas":  # mode gee dipantau sensor_citra_baru
-        paths.append(repo.path / "src/lib/gee_wilayah.json")
+        paths += [repo.path / "src/lib/gee_wilayah.json"] + [repo.path / "data/satelit" / b for b in res["sumber_citra"].TITIK]
     cs = bronze.checksum_gabungan([p for p in paths if p.exists()])[:16]
     if context.cursor == cs:
         return SkipReason("berkas data tidak berubah")

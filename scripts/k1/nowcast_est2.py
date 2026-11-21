@@ -10,6 +10,7 @@ Keluaran: est (nilai harapan), est_ver (hanya yang terverifikasi), est_pend (kon
 """
 import argparse
 import datetime as dt
+import os
 import sys
 import time
 
@@ -170,7 +171,7 @@ def main():
         if m == 12 or (y, m) == bulan[-1]:
             print(f"  lead {a.lead}: sampai {y}-{m:02d} ({time.time() - t0:.0f} detik)", flush=True)
     out = pd.DataFrame(hasil, columns=["kabkota", "t", "est", "est_ver", "est_pend"])
-    path = f"data/satelit/est_nowcast2_lead{a.lead}{a.sufiks}.csv"
+    path = os.path.join(os.environ.get("TERAWANG_K1_DIR", "data/satelit"), f"est_nowcast2_lead{a.lead}{a.sufiks}.csv")  # pipeline: di luar repo
     out.to_csv(path, index=False)
     print("tersimpan", path, len(out), "baris", flush=True)
 

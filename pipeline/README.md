@@ -7,7 +7,9 @@ menampilkan alurnya sebagai grafik aset di UI Dagster (https://dagster.terawang.
 sumber (SISKAPERBAPO, GEE, BPS, Bulog, OSRM)
   └─ bronze_*   berkas mentah di data/ + checksum (data version)
       └─ silver_*   tabel bersih di Postgres, dimuat oleh `npm run ingest <modul>` di api/
-          └─ k1_prediksi_produksi → k2_estimasi_stok → k3_rekomendasi_sphp
+  bronze_titik_satelit (deret 12-harian di 15.200 titik sawah)
+      └─ k1_nowcast_citra (scripts/k1/nowcast_est2.py, jarak 0/28/56 hari)
+          └─ k1_prediksi_produksi → k2_estimasi_stok → k3_rekomendasi_sphp     (model asli Danang, scripts/k1 dan scripts/k2)
              k3_prediksi_harga
               └─ status_wilayah → peringatan     (dibaca dasbor dan bot WhatsApp lewat API)
 ```
@@ -16,13 +18,16 @@ sumber (SISKAPERBAPO, GEE, BPS, Bulog, OSRM)
 
 | Bagian | Folder | Pemilik |
 |---|---|---|
-| Model (fungsi pandas murni) | `models/terawang_models/` | Danang |
+| Model K1, K2 (skrip asli) | `scripts/k1/`, `scripts/k2/` | Danang |
+| Jembatan model, K3 dan SPHP baseline | `models/terawang_models/` | Danang |
 | Orkestrasi, konektor sumber, jadwal, deploy | `pipeline/`, `deploy/deploy-pipeline.sh` | Afrizal |
 | Skema database dan ingest silver | `api/prisma/`, `api/src/ingest/` | Danang |
 
-Pipeline **tidak berisi logika model**. Aset di `pipeline/terawang_pipeline/assets/model.py` hanya mengambil masukan dari
-silver, memanggil fungsi di `terawang_models`, mencatat `app.model_run` (versi, parameter, metrik), dan menyimpan hasil.
-Mengganti model = mengganti isi `models/terawang_models/*.py` dengan tanda tangan dan kolom keluaran yang sama.
+Pipeline **tidak berisi logika model**. Aset di `pipeline/terawang_pipeline/assets/model.py` hanya memanggil model,
+mencatat `app.model_run` (versi, parameter, metrik), dan menyimpan hasil. K1 dan K2 memanggil skrip Danang di `scripts/k1`
+dan `scripts/k2` lewat `models/terawang_models/danang.py` (cwd akar repo, `DATABASE_URL`); memperbaiki model cukup di skrip itu.
+Taksiran citra bulan operasional ditulis ke `TERAWANG_K1_DIR` (default `~/.local/share/terawang/k1`, di luar repo); run pertama
+menyalin `data/satelit/est_nowcast2_lead*_2026.csv` sebagai awal.
 
 ## Mengganti sumber data
 
@@ -35,6 +40,10 @@ Setiap sumber adalah konektor (resource) di `pipeline/terawang_pipeline/resource
 | `TERAWANG_SUMBER_CITRA` | `berkas` (default) | pakai `src/lib/gee_wilayah.json` |
 | | `gee` | jalankan `scripts/gee/terawang_wilayah.py` dengan `--acuan` = tanggal Sentinel-1 terbaru, keluaran ke `TERAWANG_GEE_JSON` (default `~/.local/share/terawang/gee_wilayah.json`, di luar repo). Butuh `pip install -e "pipeline[gee]"`, `GEE_PROJECT`, dan kredensial (`earthengine authenticate --auth_mode=notebook` sekali di server, atau `GOOGLE_APPLICATION_CREDENTIALS` ke kunci service account) |
 
+Mode `gee` juga memperpanjang deret titik sawah K1 (`scripts/gee/perpanjang_titik.py`: VH, VV, LSWI/EVI di titik yang sama,
+dua jendela terakhir diambil ulang) ke `TERAWANG_TITIK_DIR` (default `~/.local/share/terawang/titik`). Mode `berkas` memakai
+`data/satelit/*_titik_12harian_kabkota.csv.gz` di repo.
+
 Sumber baru (mis. Panel Harga Bapanas) cukup menulis berkas dengan kolom yang sama; silver, model, dan dasbor tidak berubah.
 
 ## Jadwal
@@ -43,7 +52,7 @@ Sumber baru (mis. Panel Harga Bapanas) cukup menulis berkas dengan kolom yang sa
 |---|---|---|
 | `harga_0600_1400_wib` | setiap hari 06.00 dan 14.00 | harga → silver harga → K3 → status → peringatan |
 | `penuh_senin_0500_wib` | Senin 05.00 | seluruh alur |
-| `sensor_citra_baru` | cek GEE tiap 6 jam | `pipeline_citra` kalau ada akuisisi Sentinel-1 baru di Jawa Timur (mode `gee`) |
+| `sensor_citra_baru` | cek GEE tiap 6 jam | `pipeline_citra` kalau ada akuisisi Sentinel-1 baru di Jawa Timur (mode `gee`): citra wilayah, deret titik, K1 nowcast, K1, K2, SPHP, status, peringatan |
 | `sensor_berkas_data` | cek tiap 5 menit | seluruh alur kalau berkas BPS/Bulog/jarak/citra berubah (mis. setelah `git pull`) |
 
 ## Menjalankan di laptop

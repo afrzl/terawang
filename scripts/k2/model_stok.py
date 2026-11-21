@@ -19,6 +19,7 @@ diskalakan 0,625 = 1,0/1,6 karena yang dinilai hanya bagian non-Bulog).
 import argparse
 import io
 import json
+import os
 import subprocess
 
 import numpy as np
@@ -31,8 +32,21 @@ TAHUN = 2025
 
 
 def sql(q):
+    if os.environ.get("DATABASE_URL"):  # dipakai pipeline Dagster (server tanpa psql lokal); tanpa env ini tetap lewat psql
+        return _sql_url(q, os.environ["DATABASE_URL"])
     out = subprocess.run(["psql", "-d", "terawang", "--csv", "-c", q], capture_output=True, text=True, check=True).stdout
     return pd.read_csv(io.StringIO(out))
+
+
+def _sql_url(q, url):
+    import sqlalchemy as sa
+    from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+    u = urlsplit(url)
+    qs = urlencode([(k, v) for k, v in parse_qsl(u.query) if k != "schema"])  # parameter schema milik Prisma
+    eng = sa.create_engine(urlunsplit(("postgresql+psycopg2", u.netloc, u.path, qs, "")))
+    with eng.connect() as c:
+        return pd.read_sql(sa.text(q), c)
 
 
 def muat():

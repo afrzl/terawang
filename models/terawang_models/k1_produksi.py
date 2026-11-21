@@ -1,30 +1,46 @@
-"""K1 · Estimasi produksi beras bulanan per kab/kota.
+"""K1 produksi: model gabungan milik Danang (scripts/k1/k1_prakiraan.py, nowcast_est2.py).
 
-BASELINE: musiman naif. Produksi bulan m tahun target = produksi bulan m pada tahun terakhir yang tersedia.
-Ganti dengan model citra (luas panen satelit x produktivitas, kalibrasi BPS) tanpa mengubah kolom keluaran.
+Luas panen per kab per bulan = gabungan (citra Sentinel per kab + klimatologi + musiman, bobot NNLS leave-one-year-out),
+taksiran citra jarak 0/28/56 hari dari nowcast v2 (aturan banjir optik + fusi S1, genangan belum terverifikasi dibobot peluang).
+Beras = luas panen x produktivitas BPS per kab. Lihat ai-notes/progress.md (18-19 Nov 2026).
 """
-from __future__ import annotations
+
+import datetime as dt
+from pathlib import Path
 
 import pandas as pd
 
-VERSI = "k1-musiman-naif-0.1"
+from .danang import di_repo, modul
+
+VERSI = "k1-gabungan-nowcast2-2026.11"
 JENIS_DATA = "MODEL"
-LEBAR_INTERVAL = 0.10  # +-10%, placeholder
+Z80 = 1.2816  # pita P10-P90
+LEAD_HARI = (0, 28, 56)
+MULAI_OPERASIONAL = "2026-10"  # sebelum ini taksiran citra retrospektif ada di data/satelit/est_nowcast2_lead*.csv
 
 
-def prediksi_produksi(produksi_bulanan: pd.DataFrame, tahun_target: int, bulan_target: list[int]) -> pd.DataFrame:
-    """produksi_bulanan: wilayah_id, tahun, bulan, produksi_beras_ton (angka BPS bulanan).
+def perintah_nowcast(python: str, lead: int, akhir: str) -> list[str]:
+    """Perintah memperbarui taksiran citra bulan operasional (dijalankan dari akar repo)."""
+    return [python, "scripts/k1/nowcast_est2.py", "--lead", str(lead), "--mulai", MULAI_OPERASIONAL, "--akhir", akhir, "--sufiks", "_2026"]
 
-    Keluaran: wilayah_id, tahun, bulan, produksi_beras_ton, batas_bawah_ton, batas_atas_ton.
-    """
-    df = produksi_bulanan.dropna(subset=["produksi_beras_ton"])
-    df = df[df["tahun"] < tahun_target]
-    if df.empty:
-        raise ValueError("tidak ada produksi bulanan sebelum tahun target")
-    # tahun terakhir per (wilayah, bulan)
-    terakhir = df.sort_values("tahun").groupby(["wilayah_id", "bulan"], as_index=False).last()
-    out = terakhir[terakhir["bulan"].isin(bulan_target)].copy()
-    out["tahun"] = tahun_target
-    out["batas_bawah_ton"] = out["produksi_beras_ton"] * (1 - LEBAR_INTERVAL)
-    out["batas_atas_ton"] = out["produksi_beras_ton"] * (1 + LEBAR_INTERVAL)
-    return out[["wilayah_id", "tahun", "bulan", "produksi_beras_ton", "batas_bawah_ton", "batas_atas_ton"]].reset_index(drop=True)
+
+def bulan_akhir(hari_ini: dt.date) -> str:
+    p = pd.Period(hari_ini, freq="M") + 2
+    return f"{p.year}-{p.month:02d}"
+
+
+def prediksi_produksi(akar: str | Path, hari_ini: dt.date, env: dict[str, str]) -> pd.DataFrame:
+    """Produksi beras per kab per bulan (Jan 2026 .. bulan ini + 2). Kolom: kab, tahun, bulan, produksi_beras_ton,
+    luas_panen_ha, sd_relatif, batas_bawah_ton, batas_atas_ton, jarak_bulan."""
+    with di_repo(akar, env):
+        ms, ko = modul("model_stok"), modul("k2_operasional")
+        kab = list(ms.sql("select nama_repo kab from ref.wilayah where level='KABKOTA' order by id").kab)
+        prod, sd, luas = ko.produksi(kab, hari_ini)
+        _, lead, _ = ko.bulan_horizon(hari_ini)
+    baris = []
+    for (th, bl), p in prod.items():
+        for k in kab:
+            v = float(p[k])
+            baris.append((k, th, bl, v, float(luas[(th, bl)][k]), sd[(th, bl)], max(v * (1 - Z80 * sd[(th, bl)]), 0.0), v * (1 + Z80 * sd[(th, bl)]), lead[(th, bl)]))
+    return pd.DataFrame(baris, columns=["kab", "tahun", "bulan", "produksi_beras_ton", "luas_panen_ha", "sd_relatif",
+                                        "batas_bawah_ton", "batas_atas_ton", "jarak_bulan"])

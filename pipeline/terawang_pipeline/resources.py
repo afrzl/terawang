@@ -5,6 +5,8 @@ Pengaturan lewat environment (lihat pipeline/.env.example):
   TERAWANG_REPO          akar repo (default: folder induk pipeline/)
   TERAWANG_SUMBER_HARGA  "berkas" (pakai CSV di data/, default) atau "siskaperbapo" (unduh baru)
   TERAWANG_SUMBER_CITRA  "berkas" (pakai src/lib/gee_wilayah.json, default) atau "gee" (jalankan GEE, butuh GEE_PROJECT)
+  TERAWANG_TITIK_DIR     mode gee: deret titik sawah 12-harian yang diperpanjang (default ~/.local/share/terawang/titik)
+  TERAWANG_K1_DIR        taksiran citra K1 bulan operasional (default ~/.local/share/terawang/k1)
 """
 from __future__ import annotations
 
@@ -119,6 +121,22 @@ class SumberCitra(ConfigurableResource):
     mode: str = "berkas"  # "berkas" | "gee"
     gee_project: str = ""
     berkas_keluaran: str = str(Path.home() / ".local/share/terawang/gee_wilayah.json")
+    folder_titik_gee: str = str(Path.home() / ".local/share/terawang/titik")
+    TITIK: ClassVar[tuple[str, ...]] = ("vh_titik_12harian_kabkota.csv.gz", "vv_titik_12harian_kabkota.csv.gz", "s2_titik_12harian_kabkota.csv.gz")
+
+    def folder_titik(self, repo: Repo) -> Path:
+        """Deret 12-harian VH, VV, LSWI/EVI di 15.200 titik sawah (masukan K1 Danang)."""
+        return Path(self.folder_titik_gee) if self.mode == "gee" else repo.path / "data/satelit"
+
+    def perbarui_titik(self, repo: Repo, log=None) -> list[Path]:
+        """Mode gee: perpanjang deret titik sampai hari ini (scripts/gee/perpanjang_titik.py). Mode berkas: pakai data/satelit."""
+        folder = self.folder_titik(repo)
+        if self.mode == "gee":
+            if not self.gee_project:
+                raise ValueError("TERAWANG_SUMBER_CITRA=gee butuh GEE_PROJECT")
+            repo.jalankan([sys.executable, "scripts/gee/perpanjang_titik.py", "--project", self.gee_project,
+                           "--dasar", "data/satelit", "--keluar", str(folder)], log=log)
+        return [folder / b for b in self.TITIK]
 
     def berkas(self, repo: Repo) -> Path:
         return Path(self.berkas_keluaran) if self.mode == "gee" else repo.path / "src/lib/gee_wilayah.json"
@@ -163,5 +181,6 @@ def semua_resource() -> dict:
         "sumber_harga": SumberHarga(mode=os.environ.get("TERAWANG_SUMBER_HARGA", "berkas"),
                                     **({"folder_unduhan": os.environ["TERAWANG_HARGA_DIR"]} if os.environ.get("TERAWANG_HARGA_DIR") else {})),
         "sumber_citra": SumberCitra(mode=os.environ.get("TERAWANG_SUMBER_CITRA", "berkas"), gee_project=os.environ.get("GEE_PROJECT", ""),
-                                    **({"berkas_keluaran": os.environ["TERAWANG_GEE_JSON"]} if os.environ.get("TERAWANG_GEE_JSON") else {})),
+                                    **({"berkas_keluaran": os.environ["TERAWANG_GEE_JSON"]} if os.environ.get("TERAWANG_GEE_JSON") else {}),
+                                    **({"folder_titik_gee": os.environ["TERAWANG_TITIK_DIR"]} if os.environ.get("TERAWANG_TITIK_DIR") else {})),
     }
