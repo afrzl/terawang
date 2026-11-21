@@ -21,6 +21,13 @@ RO_FLAG=""; [ "$DAGSTER_READ_ONLY" = "1" ] && RO_FLAG="--read-only"
 
 [ -f pipeline/.env ] || { echo "pipeline/.env belum ada (salin dari pipeline/.env.example)"; exit 1; }
 
+# 0. Hentikan daemon selama pemasangan: sensor jangan memulai run saat npm ci menghapus node_modules atau pip mengganti paket.
+#    Penjaga cron melewati penyalaan ulang selama berkas kunci ini ada.
+KUNCI="$APP_DIR/deploy/.deploy-berjalan"
+touch "$KUNCI"
+trap 'rm -f "$KUNCI"' EXIT
+pkill -f "dagster-daemon run -m terawang_pipeline.definitions" 2>/dev/null || true
+
 # 1. Lingkungan Python dan dependensi (models milik Danang + pipeline)
 [ -d "$VENV" ] || python3 -m venv "$VENV"
 "$VENV/bin/pip" install -q --upgrade pip
@@ -55,6 +62,7 @@ cat > "$APP_DIR/deploy/pipeline-ensure.sh" <<SH
 export DAGSTER_HOME="$DAGSTER_HOME"
 export PATH="$NODE_BIN:\$PATH"
 cd "$APP_DIR/pipeline"
+[ -f "$APP_DIR/deploy/.deploy-berjalan" ] && [ "\${1:-}" != "--paksa" ] && exit 0  # deploy sedang berjalan
 pgrep -f "dagster-webserver -m terawang_pipeline.definitions .*--port $DAGSTER_PORT" >/dev/null || (setsid nohup "$VENV/bin/dagster-webserver" -m terawang_pipeline.definitions --host "$DAGSTER_HOST" --port "$DAGSTER_PORT" $RO_FLAG >>"$APP_DIR/deploy/dagster-webserver.log" 2>&1 < /dev/null &)
 pgrep -f "dagster-daemon run -m terawang_pipeline.definitions" >/dev/null || (setsid nohup "$VENV/bin/dagster-daemon" run -m terawang_pipeline.definitions >>"$APP_DIR/deploy/dagster-daemon.log" 2>&1 < /dev/null &)
 SH
@@ -62,7 +70,7 @@ chmod +x "$APP_DIR/deploy/pipeline-ensure.sh"
 pkill -f "dagster-webserver -m terawang_pipeline.definitions .*--port $DAGSTER_PORT" 2>/dev/null || true
 pkill -f "dagster-daemon run -m terawang_pipeline.definitions" 2>/dev/null || true
 sleep 2
-bash "$APP_DIR/deploy/pipeline-ensure.sh"
+bash "$APP_DIR/deploy/pipeline-ensure.sh" --paksa
 
 # 5. Cron: jaga proses tetap hidup (juga setelah reboot)
 CRON_LINE="* * * * * bash $APP_DIR/deploy/pipeline-ensure.sh"

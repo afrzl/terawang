@@ -28,3 +28,4 @@ __pycache__/
 *.egg-info/
 deploy/pipeline-ensure.sh
 deploy/dagster-*.log
+deploy/.deploy-berjalan
