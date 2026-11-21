@@ -1,0 +1,10 @@
+strategi,ton_rb,ton_bulog_rb,km_rata,kurang_sebelum_rb,kurang_sesudah_rb,kurang_berbobot_turun_pct,defisit_sebelum_pct,defisit_sesudah_pct,ketepatan_pct
+"A. terdekat, kekurangan berbobot harga",72.14,72.14,87.85,149.79,131.13,12.32,30.48,26.62,65.78
+"B. terdekat, tanpa bobot harga",72.14,72.14,83.86,149.79,131.13,12.32,30.48,26.62,65.78
+C. rata per konsumsi (tidak ditarget),136.05,136.05,75.22,149.79,115.53,22.76,30.48,22.35,43.49
+D. LP deterministik (rerata),72.14,72.14,79.4,149.79,131.13,12.32,30.48,26.62,65.78
+E. LP stokastik S=10,136.05,136.05,72.06,149.79,108.57,28.75,30.48,23.85,51.0
+E. LP stokastik S=40,136.05,136.05,107.8,149.79,109.83,30.84,30.48,23.96,49.28
+E. LP stokastik S=100,136.05,136.05,80.2,149.79,105.69,30.82,30.48,22.65,54.23
+"E2. LP stokastik, tonase sama dengan A",72.14,72.14,89.21,149.79,121.09,20.68,30.48,25.13,61.95
+F. LP stokastik + sumber kab surplus,145.23,136.05,80.59,149.79,105.29,31.09,30.48,22.68,54.15
