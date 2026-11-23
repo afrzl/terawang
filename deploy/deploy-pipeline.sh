@@ -69,7 +69,13 @@ SH
 chmod +x "$APP_DIR/deploy/pipeline-ensure.sh"
 pkill -f "dagster-webserver -m terawang_pipeline.definitions .*--port $DAGSTER_PORT" 2>/dev/null || true
 pkill -f "dagster-daemon run -m terawang_pipeline.definitions" 2>/dev/null || true
-sleep 2
+# Tunggu proses lama benar-benar berhenti (code server bisa butuh sampai 60 detik); kalau tidak, pipeline-ensure melihatnya
+# masih hidup dan tidak menyalakan yang baru sampai cron menit berikutnya.
+for i in $(seq 1 45); do
+  pgrep -f "dagster-(webserver|daemon) .*terawang_pipeline.definitions" >/dev/null || break
+  sleep 2
+done
+pkill -9 -f "dagster-(webserver|daemon) .*terawang_pipeline.definitions" 2>/dev/null || true
 bash "$APP_DIR/deploy/pipeline-ensure.sh" --paksa
 
 # 5. Cron: jaga proses tetap hidup (juga setelah reboot)
