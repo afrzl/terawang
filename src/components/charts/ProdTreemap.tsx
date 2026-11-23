@@ -1,5 +1,6 @@
 import { REGIONS } from "@/lib/arus"
 import { WILAYAH, byName } from "@/lib/data"
+import { useFilter } from "@/lib/filter"
 import { nf, short, sum } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
@@ -13,16 +14,18 @@ const HEAD = 18
 export function ProdTreemap() {
   const { sel, select } = useSelection()
   const { show, hide } = useTooltip()
-  const total = sum(WILAYAH, (k) => k.est)
-  const groups = REGIONS.map((r) => ({ r, v: sum(r.members, (m) => byName[m].est) }))
+  const { lolos } = useFilter()
+  const total = sum(WILAYAH.filter(lolos), (k) => k.est)
+  const groups = REGIONS.map((r) => ({ r, v: sum(r.members.filter((m) => lolos(byName[m])), (m) => byName[m].est) })).filter((g) => g.v > 0)
   const outer = squarify(groups, (g) => g.v, { x: 0, y: 0, w: W, h: H })
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Treemap proyeksi panen per kabupaten/kota" className="tmap">
       {outer.map((o) => {
         const g = o.item
-        const inner = squarify(g.r.members, (m) => byName[m].est, { x: o.x + 1.5, y: o.y + HEAD, w: o.w - 3, h: o.h - HEAD - 1.5 })
-        const mx = Math.max(...g.r.members.map((m) => byName[m].est))
+        const mem = g.r.members.filter((m) => lolos(byName[m]))
+        const inner = squarify(mem, (m) => byName[m].est, { x: o.x + 1.5, y: o.y + HEAD, w: o.w - 3, h: o.h - HEAD - 1.5 })
+        const mx = Math.max(...mem.map((m) => byName[m].est))
         return (
           <g key={g.r.key}>
             <rect x={o.x} y={o.y} width={o.w} height={o.h} fill={g.r.color} opacity={0.16} />
@@ -46,7 +49,7 @@ export function ProdTreemap() {
                         <br />
                         Proyeksi panen <span className="m">{nf(k.est, 1)} rb ton GKG</span>
                         <br />
-                        Porsi Jatim <span className="m">{nf((k.est / total) * 100, 1)}%</span>
+                        Porsi <span className="m">{nf((k.est / total) * 100, 1)}%</span>
                         <br />
                         vs 2025 <span className="m">{nf(k.yoy * 100, 1)}%</span>
                       </>,

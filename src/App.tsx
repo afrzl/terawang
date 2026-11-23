@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 import { AppShell } from "@/components/layout/AppShell"
+import { FilterProvider } from "@/lib/filter"
 import { SelectionProvider } from "@/lib/selection"
 import { ThemeProvider } from "@/lib/theme"
 import { TooltipProvider } from "@/lib/tooltip"
@@ -17,6 +18,7 @@ export default function App() {
       <SelectionProvider>
         <TooltipProvider>
           <BrowserRouter>
+            <FilterProvider>
             <Routes>
               <Route element={<AppShell />}>
                 <Route path="/" element={<Ringkasan />} />
@@ -29,6 +31,7 @@ export default function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>
+            </FilterProvider>
           </BrowserRouter>
         </TooltipProvider>
       </SelectionProvider>

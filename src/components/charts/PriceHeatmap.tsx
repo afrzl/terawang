@@ -1,7 +1,8 @@
-import { HET, HIST, SIAGA, WILAYAH, fcDates, histDates } from "@/lib/data"
+import { HET, HIST, SIAGA, fcDates, histDates } from "@/lib/data"
 import { dfmt, nf, rp, short } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
+import { useWilayah } from "@/lib/filter"
 
 const BINS: [number, string, string][] = [
   [12700, "--d5", "< 12.700"],
@@ -14,9 +15,10 @@ const colorFor = (v: number) => `var(${BINS.find((b) => v < b[0])![1]})`
 
 /** Peta panas harga beras medium: 38 wilayah × 26 pekan riwayat + 4 pekan prakiraan. */
 export function PriceHeatmap() {
+  const wil = useWilayah()
   const { sel, select } = useSelection()
   const { show, hide } = useTooltip()
-  const rows = WILAYAH.slice().sort((a, b) => b.p4 - a.p4)
+  const rows = wil.slice().sort((a, b) => b.p4 - a.p4)
   const dates = histDates.concat(fcDates)
   const n = dates.length
   const W = 1100

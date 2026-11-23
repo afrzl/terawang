@@ -1,3 +1,4 @@
+import { Sprout } from "lucide-react"
 import { LineChart } from "@/components/charts/LineChart"
 import { ProdTreemap } from "@/components/charts/ProdTreemap"
 import { SatCompare } from "@/components/charts/SatCompare"
@@ -5,10 +6,11 @@ import { Bacaan } from "@/components/ui/Bacaan"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
 import { bacaFase, bacaKalender, bacaProyeksi, bacaRadar, bacaTreemap, kalenderPanen } from "@/lib/bacaan"
-import { PHASES, WILAYAH, byName } from "@/lib/data"
+import { PHASES, byName } from "@/lib/data"
 import { dfmt, nf, scale, short, sum, ticks } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
+import { useWilayah } from "@/lib/filter"
 
 const STEPS = ["--s1", "--s2", "--s3", "--s4", "--s5"]
 const PHASE_COLORS = ["--s0", "--s1", "--s2", "--s4", "--s5"]
@@ -16,16 +18,14 @@ const ROW_H = 22
 const MT = 8
 
 export default function Produksi() {
-  const estT = sum(WILAYAH, (k) => k.est)
-  const prevT = sum(WILAYAH, (k) => k.prev)
-  const lagHa = sum(WILAYAH, (k) => (k.ha * k.lag) / 100)
+  const wil = useWilayah()
+  const estT = sum(wil, (k) => k.est)
+  const prevT = sum(wil, (k) => k.prev)
+  const lagHa = sum(wil, (k) => (k.ha * k.lag) / 100)
 
   return (
     <section className="view">
-      <ViewHeader eyebrow="Kasus 1 · hulu" title="Estimasi produksi gabah sebelum panen">
-        Sentinel-1 (radar, tembus awan) memetakan sawah dan fase tumbuh setiap 12 hari. Sentinel-2 menandai petak yang tertinggal. Produktivitas
-        dari model ML dikalibrasi ke ubinan BPS dengan model Fay-Herriot.
-      </ViewHeader>
+      <ViewHeader icon={Sprout} title="Produksi pra-panen" />
       <KpiStrip
         items={[
           {
@@ -37,7 +37,7 @@ export default function Produksi() {
               </>
             ),
           },
-          { k: "Sawah terpetakan", v: `${nf(sum(WILAYAH, (k) => k.ha) / 1e6, 2)} jt ha`, t: "Sentinel-1 VH, akurasi peta 91,4%" },
+          { k: "Sawah terpetakan", v: `${nf(sum(wil, (k) => k.ha) / 1e6, 2)} jt ha`, t: "Sentinel-1 VH, akurasi peta 91,4%" },
           { k: "Petak tertinggal", v: `${nf(lagHa / 1000, 1)} rb ha`, t: "peringatan dini hama/kekeringan" },
           { k: "Uji balik MT I 2025", v: "MAPE 8,7%", t: "terhadap angka BPS · target ≤ 10%" },
         ]}
@@ -215,9 +215,10 @@ function RadarProfile() {
 }
 
 function EstimateBars() {
+  const wil = useWilayah()
   const { sel, select } = useSelection()
   const { show, hide } = useTooltip()
-  const est = WILAYAH.filter((k) => !k.isKota)
+  const est = wil.filter((k) => !k.isKota)
     .sort((a, b) => b.est - a.est)
     .slice(0, 16)
   const W = 560
@@ -288,9 +289,10 @@ function EstimateBars() {
 }
 
 function PhaseBars() {
+  const wil = useWilayah()
   const { sel, select } = useSelection()
   const { show, hide } = useTooltip()
-  const ps = WILAYAH.filter((k) => !k.isKota)
+  const ps = wil.filter((k) => !k.isKota)
     .sort((a, b) => b.ph[2] + b.ph[3] - (a.ph[2] + a.ph[3]))
     .slice(0, 16)
   const W = 560

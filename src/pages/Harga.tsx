@@ -1,3 +1,4 @@
+import { TrendingUp } from "lucide-react"
 import { LineChart } from "@/components/charts/LineChart"
 import { MapLegend, PetaJatim } from "@/components/charts/PetaJatim"
 import { PriceHeatmap } from "@/components/charts/PriceHeatmap"
@@ -8,12 +9,13 @@ import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
 import { HargaPill, StokPill } from "@/components/ui/Pill"
 import { bacaHarga, bacaHeatmap, bacaRidgeline, bacaSphp } from "@/lib/bacaan"
-import { FLOWS, HET, HIST, SIAGA, STATUS, WILAYAH, byName, fcDates, histDates, type Flow } from "@/lib/data"
+import { FLOWS, HET, HIST, SIAGA, STATUS, byName, fcDates, histDates, type Flow } from "@/lib/data"
 import { dfmt, nf, rp, sum } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
+import { useWilayah } from "@/lib/filter"
 
 const HS: Record<string, number> = { aman: 0, waspada: 1, siaga: 2 }
-const SS: Record<string, number> = { cukup: 0, tipis: 1, defisit: 2 }
+const SS: Record<string, number> = { surplus: -1, cukup: 0, tipis: 1, defisit: 2 }
 
 const flowColumns: Column<Flow>[] = [
   { head: "Prioritas", cell: (f) => <span className="mono">P{f.pri}</span>, sort: (f) => -f.pri },
@@ -34,21 +36,20 @@ const flowColumns: Column<Flow>[] = [
 ]
 
 export default function Harga() {
-  const nS = WILAYAH.filter((k) => k.hs === "siaga").length
-  const nW = WILAYAH.filter((k) => k.hs === "waspada").length
-  const pAvg = sum(WILAYAH, (k) => k.pNow * k.pop) / sum(WILAYAH, (k) => k.pop)
+  const wil = useWilayah()
+  const flows = FLOWS.filter((f) => wil.includes(f.to))
+  const nS = wil.filter((k) => k.hs === "siaga").length
+  const nW = wil.filter((k) => k.hs === "waspada").length
+  const pAvg = sum(wil, (k) => k.pNow * k.pop) / sum(wil, (k) => k.pop)
 
   return (
     <section className="view">
-      <ViewHeader eyebrow="Kasus 3 · hilir" title="Prakiraan harga dan rekomendasi SPHP">
-        Harga beras medium dari Panel Harga Pangan Bapanas diprakirakan 1–4 pekan ke depan dengan memakai produksi dan stok sebagai peubah
-        penjelas. Wilayah yang diprakirakan melewati HET ditandai, lalu dipasangkan dengan wilayah surplus terdekat untuk penyaluran beras SPHP.
-      </ViewHeader>
+      <ViewHeader icon={TrendingUp} title="Harga & SPHP" />
       <KpiStrip
         items={[
           { k: "Rata-rata medium Jatim", v: rp(pAvg), t: "tertimbang penduduk · HET Rp13.500" },
           { k: "Wilayah Siaga / Waspada", v: `${nS} / ${nW}`, t: "berdasar prakiraan 4 pekan" },
-          { k: "Rekomendasi SPHP", v: `${nf(sum(FLOWS, (f) => f.ton))} ton`, t: `${FLOWS.length} rute, pekan 45–48` },
+          { k: "Rekomendasi SPHP", v: `${nf(sum(flows, (f) => f.ton))} ton`, t: `${flows.length} rute, pekan 45–48` },
           { k: "Uji balik prakiraan 4 pekan", v: "MAPE 3,9%", t: "Jan–Okt 2026 · target ≤ 5%" },
         ]}
       />
@@ -99,7 +100,7 @@ export default function Harga() {
         title="Rekomendasi penyaluran pekan 45–48"
         note="Hasil optimasi: kebutuhan wilayah defisit dipenuhi dari gudang surplus dengan jarak tempuh terpendek"
       >
-        <DataTable rows={FLOWS} columns={flowColumns} rowKey={(f, i) => `${f.to.n}-${f.from.n}-${i}`} rowName={(f) => f.to.n} />
+        <DataTable rows={flows} columns={flowColumns} rowKey={(f, i) => `${f.to.n}-${f.from.n}-${i}`} rowName={(f) => f.to.n} />
       </Panel>
     </section>
   )
@@ -115,14 +116,15 @@ function pAbove(m: number, sd: number) {
 }
 
 function PricePanel() {
+  const wil = useWilayah()
   const { sel } = useSelection()
   const k = byName[sel]
   const dates = histDates.concat(fcDates)
   const z95 = 1.96 / 1.2816
   const lo = Math.min(...k.price, ...k.fc.map((f) => f.m - (f.m - f.lo) * z95), HET) - 150
   const hi = Math.max(...k.fc.map((f) => f.m + (f.hi - f.m) * z95), SIAGA) + 120
-  const popT = sum(WILAYAH, (q) => q.pop)
-  const prov = histDates.map((_, i) => sum(WILAYAH, (q) => q.price[i] * q.pop) / popT)
+  const popT = sum(wil, (q) => q.pop)
+  const prov = histDates.map((_, i) => sum(wil, (q) => q.price[i] * q.pop) / popT)
   const fcLine = [k.pNow].concat(k.fc.map((f) => f.m))
 
   return (

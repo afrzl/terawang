@@ -1,7 +1,8 @@
 import { CountUp } from "@/components/ui/CountUp"
-import { WILAYAH, type Wilayah } from "@/lib/data"
+import { type Wilayah } from "@/lib/data"
 import { DAY, NOW, dfmt, nf } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
+import { useWilayah } from "@/lib/filter"
 
 const DEF = 0.75
 
@@ -41,8 +42,9 @@ function Ring({ frac, color }: { frac: number; color: string }) {
 
 /** Kartu hitung mundur: wilayah yang paling cepat jatuh ke defisit stok. */
 export function DeficitCountdown() {
+  const wil = useWilayah()
   const { sel, select } = useSelection()
-  const list = WILAYAH.map((k) => ({ k, d: daysToDeficit(k) }))
+  const list = wil.map((k) => ({ k, d: daysToDeficit(k) }))
     .filter((x): x is { k: Wilayah; d: number } => x.d != null)
     .sort((a, b) => a.d - b.d || a.k.cov - b.k.cov)
   const shown = list.slice(0, 8)

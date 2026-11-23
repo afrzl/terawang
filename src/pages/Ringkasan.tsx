@@ -1,3 +1,4 @@
+import { LayoutDashboard } from "lucide-react"
 import { useCallback, useState } from "react"
 import { Link } from "react-router-dom"
 import { PetaInteraktif } from "@/components/charts/PetaInteraktif"
@@ -9,11 +10,12 @@ import { DataTable, type Column } from "@/components/ui/DataTable"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
 import { HargaPill, StokPill } from "@/components/ui/Pill"
 import { WeekSlider } from "@/components/ui/WeekSlider"
-import { FLOWS, HET, HIST, LAYERS, LAYER_KEYS, SIAGA, WILAYAH, byName, fcDates, risk, type LayerKey, type Wilayah } from "@/lib/data"
+import { FLOWS, HET, HIST, LAYERS, LAYER_KEYS, SIAGA, byName, fcDates, risk, type LayerKey, type Wilayah } from "@/lib/data"
 import { bacaPeta } from "@/lib/bacaan"
 import { dfmt, nf, rp, short, sum } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { weekLabel } from "@/lib/weeks"
+import { useWilayah } from "@/lib/filter"
 
 const LAYER_KEY = "terawang.layer"
 
@@ -45,7 +47,7 @@ function valueAt(layer: LayerKey, k: Wilayah, w: number) {
 }
 
 const HS: Record<string, number> = { aman: 0, waspada: 1, siaga: 2 }
-const SS: Record<string, number> = { cukup: 0, tipis: 1, defisit: 2 }
+const SS: Record<string, number> = { surplus: -1, cukup: 0, tipis: 1, defisit: 2 }
 
 const watchColumns: Column<Wilayah>[] = [
   { head: "Wilayah", cell: (k) => <b>{k.n}</b>, sort: (k) => k.n },
@@ -58,6 +60,7 @@ const watchColumns: Column<Wilayah>[] = [
 ]
 
 export default function Ringkasan() {
+  const wil = useWilayah()
   const [layer, setLayer] = useState<LayerKey>(initialLayer)
   const [wk, setWk] = useState(4)
   const onWeek = useCallback((w: number) => setWk(w), [])
@@ -66,7 +69,7 @@ export default function Ringkasan() {
   const wkNow = Math.min(wk, wkMax)
   const counts = timed
     ? Array.from({ length: wkMax - WK_MIN + 1 }, (_, i) =>
-        WILAYAH.filter((k) => (layer === "stok" ? valueAt("stok", k, WK_MIN + i) < 0.75 : valueAt("harga", k, WK_MIN + i) > SIAGA)).length,
+        wil.filter((k) => (layer === "stok" ? valueAt("stok", k, WK_MIN + i) < 0.75 : valueAt("harga", k, WK_MIN + i) > SIAGA)).length,
       )
     : []
   const chooseLayer = (l: LayerKey) => {
@@ -78,30 +81,28 @@ export default function Ringkasan() {
     }
   }
 
-  const estT = sum(WILAYAH, (k) => k.est)
-  const prevT = sum(WILAYAH, (k) => k.prev)
+  const estT = sum(wil, (k) => k.est)
+  const prevT = sum(wil, (k) => k.prev)
   const yoy = estT / prevT - 1
-  const stT = sum(WILAYAH, (k) => k.cov * k.C)
-  const cT = sum(WILAYAH, (k) => k.C)
-  const popT = sum(WILAYAH, (k) => k.pop)
-  const pAvg = sum(WILAYAH, (k) => k.pNow * k.pop) / popT
-  const fAvg = sum(WILAYAH, (k) => k.p4 * k.pop) / popT
-  const nDef = WILAYAH.filter((k) => k.ss === "defisit").length
-  const nTip = WILAYAH.filter((k) => k.ss === "tipis").length
-  const nS = WILAYAH.filter((k) => k.hs === "siaga").length
-  const nW = WILAYAH.filter((k) => k.hs === "waspada").length
-  const tonS = sum(FLOWS, (f) => f.ton)
-  const ciPct = (Math.sqrt(sum(WILAYAH, (k) => k.ci * k.ci)) / estT) * 100
-  const watch = WILAYAH.slice()
+  const stT = sum(wil, (k) => k.cov * k.C)
+  const cT = sum(wil, (k) => k.C)
+  const popT = sum(wil, (k) => k.pop)
+  const pAvg = sum(wil, (k) => k.pNow * k.pop) / popT
+  const fAvg = sum(wil, (k) => k.p4 * k.pop) / popT
+  const nDef = wil.filter((k) => k.ss === "defisit").length
+  const nTip = wil.filter((k) => k.ss === "tipis").length
+  const nS = wil.filter((k) => k.hs === "siaga").length
+  const nW = wil.filter((k) => k.hs === "waspada").length
+  const flows = FLOWS.filter((f) => wil.includes(f.to))
+  const tonS = sum(flows, (f) => f.ton)
+  const ciPct = (Math.sqrt(sum(wil, (k) => k.ci * k.ci)) / estT) * 100
+  const watch = wil.slice()
     .sort((a, b) => risk(b) - risk(a))
     .slice(0, 12)
 
   return (
     <section className="view">
-      <ViewHeader eyebrow="Laporan pekanan untuk DKP, TPID, Bulog Kanwil Jatim" title="Ringkasan kondisi beras Jawa Timur">
-        Awal hujan terlambat memundurkan tanam MT I. Panen Nov–Jan diproyeksikan turun {nf(Math.abs(yoy * 100), 1)}% dari 2025, stok {nDef} wilayah
-        terancam di bawah batas aman dalam 4 pekan, dan harga di {nS} wilayah diprakirakan melewati HET lebih dari 3%.
-      </ViewHeader>
+      <ViewHeader icon={LayoutDashboard} title="Ringkasan" />
 
       <div className="chain">
         <Link className="link" to="/produksi">
@@ -109,10 +110,21 @@ export default function Ringkasan() {
             <span className="eyebrow">K1 · Sawah</span>
           </div>
           <div className="big">
-            <CountUp value={estT / 1000} format={(v) => nf(v, 2)} /> <small>juta ton GKG</small>
+            <CountUp value={estT * 1000 * 0.6402} format={(v) => nf(v, 0)} /> <small>ton beras</small>
           </div>
-          <div className="line">
-            Proyeksi panen Nov 2026 – Jan 2027 · <span className="delta-dn">{nf(yoy * 100, 1)}%</span> vs 2025 · selang 90% ±{nf(ciPct, 1)}%
+          <div className="rows">
+            <div className="row">
+              <span>Periode panen</span>
+              <b>Nov 2026 – Jan 2027</b>
+            </div>
+            <div className="row">
+              <span>Perubahan vs 2025</span>
+              <b className={yoy < 0 ? "delta-dn" : "delta-up"}>{nf(yoy * 100, 1)}%</b>
+            </div>
+            <div className="row">
+              <span>Selang 90%</span>
+              <b>±{nf(ciPct, 1)}%</b>
+            </div>
           </div>
         </Link>
         <Link className="link" to="/stok">
@@ -120,10 +132,21 @@ export default function Ringkasan() {
             <span className="eyebrow">K2 · Stok</span>
           </div>
           <div className="big">
-            <CountUp value={stT} format={(v) => nf(v, 0)} delay={120} /> <small>ribu ton beras</small>
+            <CountUp value={stT * 1000} format={(v) => nf(v, 0)} delay={120} /> <small>ton beras</small>
           </div>
-          <div className="line">
-            Setara {nf(stT / cT, 2)} bulan konsumsi provinsi · <b>{nDef}</b> wilayah proyeksi defisit, {nTip} tipis
+          <div className="rows">
+            <div className="row">
+              <span>Cakupan</span>
+              <b>{nf(stT / cT, 2)} bulan</b>
+            </div>
+            <div className="row">
+              <span>Wilayah defisit</span>
+              <b>{nDef}</b>
+            </div>
+            <div className="row">
+              <span>Wilayah tipis</span>
+              <b>{nTip}</b>
+            </div>
           </div>
         </Link>
         <Link className="link" to="/harga">
@@ -133,8 +156,21 @@ export default function Ringkasan() {
           <div className="big">
             <CountUp value={pAvg} from={11500} format={rp} delay={240} /> <small>/kg medium</small>
           </div>
-          <div className="line">
-            Prakiraan 4 pekan {rp(fAvg)} · <b>{nS}</b> Siaga, {nW} Waspada · SPHP {nf(tonS)} ton ke {new Set(FLOWS.map((f) => f.to.n)).size} wilayah
+          <div className="rows">
+            <div className="row">
+              <span>Prakiraan 4 pekan</span>
+              <b>{rp(fAvg)}</b>
+            </div>
+            <div className="row">
+              <span>Siaga / Waspada</span>
+              <b>
+                {nS} / {nW}
+              </b>
+            </div>
+            <div className="row">
+              <span>Rekomendasi SPHP</span>
+              <b>{nf(tonS)} ton</b>
+            </div>
           </div>
         </Link>
       </div>

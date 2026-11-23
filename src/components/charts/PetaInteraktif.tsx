@@ -6,6 +6,7 @@ import { Crosshair } from "lucide-react"
 import { LAYERS, binColor, byName, type LayerKey, type Wilayah } from "@/lib/data"
 import { fallbackKab, loadCitraKab, loadGeeKab, loadGeeOverlays, type CitraKab, type GeeOverlay, type KabCollection } from "@/lib/geo"
 import { nf, rp } from "@/lib/format"
+import { useFilter } from "@/lib/filter"
 import { useSelection } from "@/lib/selection"
 import { useTheme } from "@/lib/theme"
 import { useTooltip } from "@/lib/tooltip"
@@ -106,6 +107,7 @@ export function PetaInteraktif({ layer, getValue, valueLabel }: PetaInteraktifPr
   const [citraMode, setCitraMode] = useState<CitraMode>("off")
   const [fillOp, setFillOp] = useState(0.7)
   const { sel, select } = useSelection()
+  const { lolos } = useFilter()
   const { theme } = useTheme()
   const { show, hide } = useTooltip()
   const d = LAYERS[layer]
@@ -215,7 +217,10 @@ export function PetaInteraktif({ layer, getValue, valueLabel }: PetaInteraktifPr
   }, [ready, d, val, valueLabel, show, hide, select])
 
   // Warna isian mengikuti lapisan, pekan, dan tema.
-  const dataKey = useMemo(() => kab.features.map((f) => (byName[f.properties.n] ? val(byName[f.properties.n]) : 0)).join(","), [kab, val])
+  const dataKey = useMemo(
+    () => kab.features.map((f) => (byName[f.properties.n] ? val(byName[f.properties.n]) + (lolos(byName[f.properties.n]) ? "" : "x") : 0)).join(","),
+    [kab, val, lolos],
+  )
   useEffect(() => {
     const map = mapRef.current
     if (!map || !ready) return
@@ -224,7 +229,7 @@ export function PetaInteraktif({ layer, getValue, valueLabel }: PetaInteraktifPr
         type: "FeatureCollection",
         features: kab.features.map((f) => {
           const k = byName[f.properties.n]
-          const fill = !k ? "#999" : d.na?.(k) ? cssVar("var(--s0)") : cssVar(binColor(layer, val(k)))
+          const fill = !k ? "#999" : !lolos(k) ? cssVar("var(--rule)") : d.na?.(k) ? cssVar("var(--s0)") : cssVar(binColor(layer, val(k)))
           return { ...f, properties: { ...f.properties, fill } }
         }),
       }

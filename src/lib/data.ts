@@ -39,7 +39,7 @@ export const HET = 13500
 export const SIAGA = 13900
 
 export type HargaStatus = "aman" | "waspada" | "siaga"
-export type StokStatus = "cukup" | "tipis" | "defisit"
+export type StokStatus = "surplus" | "cukup" | "tipis" | "defisit"
 
 export interface Forecast {
   m: number
@@ -171,7 +171,7 @@ function simulate([n, pop0, prod0, pb]: [string, number, number, number]): Wilay
   const prem = pNow + 1450 + R() * 250
   const p4 = fc[3].m
   const hs: HargaStatus = p4 > SIAGA ? "siaga" : p4 >= HET ? "waspada" : "aman"
-  const ss: StokStatus = covP[3] < 0.75 ? "defisit" : covP[3] < 1 ? "tipis" : "cukup"
+  const ss: StokStatus = covP[3] < 0.75 ? "defisit" : covP[3] < 1 ? "tipis" : covP[3] < 1.5 ? "cukup" : "surplus"
   // Profil Sentinel-1 VH: 15 akuisisi tiap 12 hari mulai 1 Jun. shift = geser (akuisisi) titik VH terendah
   // musim ini terhadap rata-rata 2023–25 → positif berarti tanam lebih lambat.
   const vh = g?.vh ?? []
@@ -210,7 +210,7 @@ function planFlows(): Flow[] {
     k,
     cap: Math.round(((k.cov - 2) * k.C * 1000 * 0.12) / 10) * 10,
   }))
-  const needs = WILAYAH.filter((k) => k.ss !== "cukup" || k.hs === "siaga")
+  const needs = WILAYAH.filter((k) => k.ss === "defisit" || k.ss === "tipis" || k.hs === "siaga")
     .map((k) => {
       const need = Math.max((1.05 - k.covP[3]) * k.C * 1000, k.hs === "siaga" ? k.C * 1000 * 0.12 : 0)
       return { k, need: Math.round(need / 10) * 10 }
@@ -227,7 +227,7 @@ function planFlows(): Flow[] {
       const v = Math.min(rem, s.cap)
       s.cap -= v
       rem -= v
-      const pri = d.k.hs === "siaga" && d.k.ss !== "cukup" ? 1 : d.k.hs === "siaga" || d.k.ss === "defisit" ? 2 : 3
+      const pri = d.k.hs === "siaga" && (d.k.ss === "defisit" || d.k.ss === "tipis") ? 1 : d.k.hs === "siaga" || d.k.ss === "defisit" ? 2 : 3
       flows.push({ to: d.k, from: s.k, ton: v, km: dist(s.k.n, d.k.n), pri })
     }
   }
@@ -243,6 +243,7 @@ export const STATUS: Record<HargaStatus, { lab: string; g: string; c: string }> 
   siaga: { lab: "Siaga", g: "◆", c: "var(--crit)" },
 }
 export const SSTAT: Record<StokStatus, { lab: string; g: string }> = {
+  surplus: { lab: "Surplus", g: "■" },
   cukup: { lab: "Cukup", g: "●" },
   tipis: { lab: "Tipis", g: "▲" },
   defisit: { lab: "Defisit", g: "◆" },
@@ -308,5 +309,5 @@ export function colorOf(L: LayerKey, k: Wilayah) {
 
 /** Skor risiko untuk mengurutkan daftar perhatian. */
 export function risk(k: Wilayah) {
-  return { siaga: 3, waspada: 1.5, aman: 0 }[k.hs] + { defisit: 3, tipis: 1.2, cukup: 0 }[k.ss] + (k.p4 - HET) / 1000
+  return { siaga: 3, waspada: 1.5, aman: 0 }[k.hs] + { defisit: 3, tipis: 1.2, cukup: 0, surplus: 0 }[k.ss] + (k.p4 - HET) / 1000
 }

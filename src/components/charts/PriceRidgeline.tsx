@@ -1,8 +1,9 @@
 import { useId } from "react"
-import { HET, HIST, SIAGA, WILAYAH, byName, fcDates, histDates } from "@/lib/data"
+import { HET, HIST, SIAGA, byName, fcDates, histDates } from "@/lib/data"
 import { dfmt, nf, rp, scale } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
+import { useWilayah } from "@/lib/filter"
 
 const NH = 12
 const W = 1100
@@ -15,15 +16,16 @@ const BW = 95
 
 /** Ridgeline sebaran harga beras medium 38 wilayah per pekan: 12 pekan terakhir dan 4 pekan prakiraan. */
 export function PriceRidgeline() {
+  const wil = useWilayah()
   const { sel } = useSelection()
   const { show, hide } = useTooltip()
   const gid = useId().replace(/:/g, "")
   const weeks = [
     ...Array.from({ length: NH }, (_, j) => {
       const i = HIST - NH + j
-      return { d: histDates[i], fc: false, vals: WILAYAH.map((k) => k.price[i]), mine: byName[sel].price[i] }
+      return { d: histDates[i], fc: false, vals: wil.map((k) => k.price[i]), mine: byName[sel].price[i] }
     }),
-    ...fcDates.map((d, h) => ({ d, fc: true, vals: WILAYAH.map((k) => k.fc[h].m), mine: byName[sel].fc[h].m })),
+    ...fcDates.map((d, h) => ({ d, fc: true, vals: wil.map((k) => k.fc[h].m), mine: byName[sel].fc[h].m })),
   ]
   const all = weeks.flatMap((w) => w.vals)
   const lo = Math.floor((Math.min(...all) - 250) / 100) * 100

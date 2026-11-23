@@ -1,3 +1,4 @@
+import { Warehouse } from "lucide-react"
 import { DeficitCountdown } from "@/components/charts/DeficitCountdown"
 import { LineChart } from "@/components/charts/LineChart"
 import { Bacaan } from "@/components/ui/Bacaan"
@@ -6,22 +7,24 @@ import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
 import { StokPill } from "@/components/ui/Pill"
 import { bacaHitungMundur, bacaKalman, bacaNeraca } from "@/lib/bacaan"
-import { HIST, WILAYAH, binColor, byName, histDates, type Wilayah } from "@/lib/data"
+import { HIST, binColor, byName, histDates, type Wilayah } from "@/lib/data"
 import { DAY, NOW, dfmt, nf, scale, sum, ticks } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
+import { useWilayah } from "@/lib/filter"
 
 function CountdownBacaan() {
   const { sel } = useSelection()
   return <Bacaan>{bacaHitungMundur(sel)}</Bacaan>
 }
 
-const SS: Record<string, number> = { cukup: 0, tipis: 1, defisit: 2 }
+const SS: Record<string, number> = { surplus: -1, cukup: 0, tipis: 1, defisit: 2 }
 
 export default function Stok() {
-  const stT = sum(WILAYAH, (k) => k.cov * k.C)
-  const cT = sum(WILAYAH, (k) => k.C)
-  const rows = WILAYAH.slice().sort((a, b) => a.covP[3] - b.covP[3])
-  const mxc = Math.max(...WILAYAH.map((k) => k.cov))
+  const wil = useWilayah()
+  const stT = sum(wil, (k) => k.cov * k.C)
+  const cT = sum(wil, (k) => k.C)
+  const rows = wil.slice().sort((a, b) => a.covP[3] - b.covP[3])
+  const mxc = Math.max(...wil.map((k) => k.cov))
 
   const columns: Column<Wilayah>[] = [
     { head: "Wilayah", cell: (k) => <b>{k.n}</b>, sort: (k) => k.n },
@@ -59,18 +62,15 @@ export default function Stok() {
 
   return (
     <section className="view">
-      <ViewHeader eyebrow="Kasus 2 · tengah" title="Neraca stok beras beredar">
-        Stok di penggilingan, pedagang, dan rumah tangga jarang teramati. Model state-space menaksir stok tiap pekan dari produksi Kasus 1,
-        konsumsi, dan arus antarwilayah, lalu filter Kalman mengoreksinya setiap kali data stok Bulog atau survei masuk.
-      </ViewHeader>
+      <ViewHeader icon={Warehouse} title="Stok beredar" />
       <KpiStrip
         items={[
           { k: "Stok beredar provinsi", v: `${nf(stT, 0)} rb ton`, t: `≈ ${nf(stT / cT, 2)} bulan konsumsi` },
-          { k: "Konsumsi bulanan", v: `${nf(cT, 0)} rb ton`, t: `${nf(sum(WILAYAH, (k) => k.pop) / 1000, 1)} juta jiwa × 6,39 kg` },
+          { k: "Konsumsi bulanan", v: `${nf(cT, 0)} rb ton`, t: `${nf(sum(wil, (k) => k.pop) / 1000, 1)} juta jiwa × 6,39 kg` },
           {
             k: "Proyeksi defisit ≤ 4 pekan",
-            v: `${WILAYAH.filter((k) => k.ss === "defisit").length} wilayah`,
-            t: `${WILAYAH.filter((k) => k.ss === "tipis").length} wilayah lain tipis (0,75–1 bln)`,
+            v: `${wil.filter((k) => k.ss === "defisit").length} wilayah`,
+            t: `${wil.filter((k) => k.ss === "tipis").length} wilayah lain tipis (0,75–1 bln)`,
           },
           { k: "Uji balik deteksi defisit 2025", v: "7 dari 8", t: "terdeteksi ≥ 1 bulan sebelumnya" },
         ]}

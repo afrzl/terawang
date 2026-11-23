@@ -1,32 +1,33 @@
+import { ArrowLeftRight } from "lucide-react"
 import { ChordArus } from "@/components/charts/ChordArus"
 import { MapLegend, PetaJatim } from "@/components/charts/PetaJatim"
 import { SankeyArus } from "@/components/charts/SankeyArus"
 import { Bacaan } from "@/components/ui/Bacaan"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
-import { REGIONS, TRADE, TRADE_TOTAL, inflow, neraca, outflow, regionOf, regionStats } from "@/lib/arus"
+import { REGIONS, TRADE, inflow, neraca, outflow, regionOf, regionStats } from "@/lib/arus"
 import { bacaChord, bacaNeracaKawasan, bacaPetaArus, bacaSankey } from "@/lib/bacaan"
-import { WILAYAH, byName } from "@/lib/data"
+import { byName } from "@/lib/data"
 import { nf, scale, short } from "@/lib/format"
+import { useFilter } from "@/lib/filter"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
 
 export default function ArusBeras() {
-  const antar = TRADE.filter((t) => regionOf[t.from.n] !== regionOf[t.to.n]).reduce((a, t) => a + t.ton, 0)
-  const kmAvg = TRADE.reduce((a, t) => a + t.ton * t.km, 0) / TRADE_TOTAL
-  const nSur = WILAYAH.filter((k) => neraca(k) > 0).length
+  const { lolos, W } = useFilter()
+  const trade = TRADE.filter((t) => lolos(t.from) || lolos(t.to))
+  const total = trade.reduce((a, t) => a + t.ton, 0) || 1
+  const antar = trade.filter((t) => regionOf[t.from.n] !== regionOf[t.to.n]).reduce((a, t) => a + t.ton, 0)
+  const kmAvg = trade.reduce((a, t) => a + t.ton * t.km, 0) / total
+  const nSur = W.filter((k) => neraca(k) > 0).length
 
   return (
     <section className="view">
-      <ViewHeader eyebrow="Kasus 2 · mobilitas" title="Arus beras antarwilayah">
-        Beras bergerak dari lumbung di Mataraman, Pantura, dan Tapal Kuda ke kota dan Madura. Arus ini ditaksir tiap bulan dari selisih produksi Kasus 1
-        dan konsumsi, lalu dibagi ke wilayah tujuan dengan model gravitasi (makin dekat dan makin besar surplus, makin besar arusnya). Taksiran arus
-        dipakai untuk membaca wilayah mana yang paling bergantung pada pasokan luar.
-      </ViewHeader>
+      <ViewHeader icon={ArrowLeftRight} title="Arus beras" />
       <KpiStrip
         items={[
-          { k: "Arus beras antarwilayah", v: `${nf(TRADE_TOTAL / 1000, 1)} rb ton`, t: "per bulan, taksiran Okt 2026" },
-          { k: "Lintas kawasan", v: `${nf((antar / TRADE_TOTAL) * 100, 0)}%`, t: `${nf(antar / 1000, 1)} rb ton keluar dari kawasan asal` },
+          { k: "Arus beras antarwilayah", v: `${nf(total / 1000, 1)} rb ton`, t: "per bulan, taksiran Okt 2026" },
+          { k: "Lintas kawasan", v: `${nf((antar / total) * 100, 0)}%`, t: `${nf(antar / 1000, 1)} rb ton keluar dari kawasan asal` },
           { k: "Wilayah surplus", v: `${nSur} dari 38`, t: "produksi Okt > konsumsi" },
           { k: "Jarak tempuh rata-rata", v: `${nf(kmAvg)} km`, t: "tertimbang volume" },
         ]}
@@ -38,7 +39,7 @@ export default function ArusBeras() {
               layer="stok"
               muted
               labels={false}
-              arcs={TRADE.slice(0, 25).map((t) => ({ from: t.from.n, to: t.to.n, ton: t.ton, color: regionOf[t.from.n].color }))}
+              arcs={trade.slice(0, 25).map((t) => ({ from: t.from.n, to: t.to.n, ton: t.ton, color: regionOf[t.from.n].color }))}
             />
           </div>
           <MapLegend layer="stok" />
@@ -152,9 +153,10 @@ function RegionBalance() {
 
 function Corridors() {
   const { sel, select } = useSelection()
+  const { lolos } = useFilter()
   const k = byName[sel]
-  const top = TRADE.slice(0, 10)
-  const mx = top[0].ton
+  const top = TRADE.filter((t) => lolos(t.from) || lolos(t.to)).slice(0, 10)
+  const mx = top[0]?.ton ?? 1
   const out = outflow(k.n)
   const inn = inflow(k.n)
   return (

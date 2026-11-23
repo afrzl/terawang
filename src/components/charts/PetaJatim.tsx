@@ -1,5 +1,6 @@
 import { FLOWS, GEO, LAYERS, WILAYAH, binColor, byName, type LayerKey, type Wilayah } from "@/lib/data"
 import { clamp, nf, rp, short } from "@/lib/format"
+import { useFilter } from "@/lib/filter"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
 
@@ -29,10 +30,11 @@ interface PetaJatimProps {
 /** Peta choropleth 38 kabupaten/kota Jawa Timur, opsional dengan rute penyaluran SPHP. */
 export function PetaJatim({ layer, flows = false, labels = true, arcs, muted = false, getValue, valueLabel }: PetaJatimProps) {
   const { sel, select } = useSelection()
+  const { lolos } = useFilter()
   const { show, hide } = useTooltip()
   const d = LAYERS[layer]
   const val = getValue ?? d.val
-  const fillOf = (k: Wilayah) => (d.na?.(k) ? "var(--s0)" : binColor(layer, val(k)))
+  const fillOf = (k: Wilayah) => (!lolos(k) ? "var(--rule)" : d.na?.(k) ? "var(--s0)" : binColor(layer, val(k)))
 
   const tipFor = (n: string) => {
     const k = byName[n]

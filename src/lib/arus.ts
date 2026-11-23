@@ -5,7 +5,7 @@ import { WILAYAH, byName, dist, type Wilayah } from "./data"
  * Kebutuhan tiap wilayah defisit dibagi ke wilayah surplus dengan model gravitasi:
  * bobot = surplus asal / jarak^1,6. Semua angka dalam ton beras per bulan. */
 
-export type RegionKey = "mataraman" | "pantura" | "surabaya" | "malang" | "tapalkuda" | "madura"
+export type RegionKey = "arek" | "mataraman" | "tapalkuda" | "madura"
 
 export interface Region {
   key: RegionKey
@@ -15,23 +15,29 @@ export interface Region {
   members: string[]
 }
 
+/* Pembagian kultural-ekonomi Jawa Timur (empat kawasan klasik). Pengelompokan analitik tim, bukan batas administratif.
+ * Kabupaten/kota yang berada di perbatasan ditempatkan secara pertimbangan: Pasuruan, Jombang, Lamongan (Arek); Tuban, Bojonegoro (Mataraman). */
 export const REGIONS: Region[] = [
+  {
+    key: "arek",
+    name: "Arek",
+    short: "Arek",
+    color: "var(--r3)",
+    members: [
+      "Kota Surabaya", "Sidoarjo", "Gresik", "Lamongan", "Mojokerto", "Kota Mojokerto", "Jombang",
+      "Malang", "Kota Malang", "Batu", "Pasuruan", "Kota Pasuruan",
+    ],
+  },
   {
     key: "mataraman",
     name: "Mataraman",
     short: "Mataraman",
     color: "var(--r1)",
-    members: ["Pacitan", "Ponorogo", "Trenggalek", "Tulungagung", "Blitar", "Kediri", "Nganjuk", "Madiun", "Magetan", "Ngawi", "Kota Kediri", "Kota Blitar", "Kota Madiun"],
+    members: [
+      "Pacitan", "Ponorogo", "Trenggalek", "Tulungagung", "Blitar", "Kediri", "Nganjuk", "Madiun", "Magetan", "Ngawi",
+      "Bojonegoro", "Tuban", "Kota Kediri", "Kota Blitar", "Kota Madiun",
+    ],
   },
-  { key: "pantura", name: "Pantura (Bojonegoro–Tuban–Lamongan)", short: "Pantura", color: "var(--r2)", members: ["Bojonegoro", "Tuban", "Lamongan"] },
-  {
-    key: "surabaya",
-    name: "Surabaya Raya",
-    short: "Surabaya Raya",
-    color: "var(--r3)",
-    members: ["Kota Surabaya", "Gresik", "Sidoarjo", "Mojokerto", "Kota Mojokerto", "Jombang"],
-  },
-  { key: "malang", name: "Malang Raya & Pasuruan", short: "Malang Raya", color: "var(--r4)", members: ["Malang", "Kota Malang", "Batu", "Pasuruan", "Kota Pasuruan"] },
   {
     key: "tapalkuda",
     name: "Tapal Kuda",
