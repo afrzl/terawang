@@ -9,6 +9,7 @@ dependencies = [
   "pandas>=2.0",
   "sqlalchemy>=2.0",
   "psycopg2-binary>=2.9",
+  "pdfplumber>=0.11",  # konektor Bulog: tabel PDF Jatim Dalam Angka
 ]
 
 [project.optional-dependencies]

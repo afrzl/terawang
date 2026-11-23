@@ -6,14 +6,15 @@ Setiap modul ingest idempoten dan memeriksa hasilnya terhadap total di sumber (g
 
 from dagster import AssetExecutionContext, AssetKey, MaterializeResult, asset
 
-from ..resources import Database, Repo, SumberCitra, SumberHarga
+from ..resources import Database, Repo, SumberCitra, SumberHarga, folder_lapisan
 
 GRUP = "silver"
 
 
 def _ingest(context: AssetExecutionContext, repo: Repo, db: Database, sumber_harga: SumberHarga, sumber_citra: SumberCitra,
             modul: str, tabel: list[str]) -> MaterializeResult:
-    env = {"DATABASE_URL": db.url, "TERAWANG_HARGA_DIR": str(sumber_harga.folder(repo)), "TERAWANG_GEE_JSON": str(sumber_citra.berkas(repo))}
+    env = {"DATABASE_URL": db.url, "TERAWANG_HARGA_DIR": str(sumber_harga.folder(repo)), "TERAWANG_GEE_JSON": str(sumber_citra.berkas(repo)),
+           "TERAWANG_DATA_DIR": str(folder_lapisan())}
     keluaran = repo.jalankan(["npm", "run", "--silent", "ingest", modul], cwd="api", env=env, log=context.log)
     jumlah = {t: int(db.baca(f"select count(*) as n from {t}")["n"].iloc[0]) for t in tabel}
     cek = sum(1 for b in keluaran.splitlines() if b.strip().startswith("OK"))

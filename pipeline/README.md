@@ -37,12 +37,34 @@ Setiap sumber adalah konektor (resource) di `pipeline/terawang_pipeline/resource
 |---|---|---|
 | `TERAWANG_SUMBER_HARGA` | `berkas` (default) | pakai CSV di `data/siskaperbapo/` apa adanya |
 | | `siskaperbapo` | unduh harga terbaru dari SISKAPERBAPO setiap run, ke `TERAWANG_HARGA_DIR` (default `~/.local/share/terawang/harga_beras`, di luar repo); data yang belum terbit hari itu otomatis memakai tanggal terakhir |
+| | `manual` | CSV repo ditimpa unggahan di `TERAWANG_MANUAL_DIR/harga/`, disusun di `TERAWANG_HARGA_DIR` |
+| `TERAWANG_SUMBER_BPS` | `berkas` (default) | pakai CSV di `data/bps/` |
+| | `webapi` | `scripts/bps/ambil_webapi.py` mengambil luas panen dan produksi beras bulanan per kab/kota (var 578, 580) dan konsumsi beras per kapita (var 2094) dari WebAPI BPS ke lapisan `TERAWANG_DATA_DIR/bps/`. Butuh `BPS_WEBAPI_KEY`. Penduduk dan angka sementara/potensi tidak ada di WebAPI, tetap dari CSV repo atau unggahan |
+| | `manual` | CSV repo ditimpa unggahan di `TERAWANG_MANUAL_DIR/bps/` |
+| `TERAWANG_SUMBER_BULOG` | `berkas` (default) | pakai CSV di `data/bulog/` |
+| | `jda` | `scripts/bulog/ambil_jda.py` mencari edisi terbaru "Provinsi Jawa Timur Dalam Angka" lewat WebAPI BPS, mengunduh PDF-nya (hanya kalau ada edisi atau revisi baru), membuang watermark, mengekstrak Tabel 10.1.3-10.1.7, dan memeriksa akuntansinya. Butuh `BPS_WEBAPI_KEY`. Bulog tidak punya API; data ini terbit setahun sekali |
+| | `manual` | CSV repo ditimpa unggahan di `TERAWANG_MANUAL_DIR/bulog/` |
 | `TERAWANG_SUMBER_CITRA` | `berkas` (default) | pakai `src/lib/gee_wilayah.json` |
 | | `gee` | jalankan `scripts/gee/terawang_wilayah.py` dengan `--acuan` = tanggal Sentinel-1 terbaru, keluaran ke `TERAWANG_GEE_JSON` (default `~/.local/share/terawang/gee_wilayah.json`, di luar repo). Butuh `pip install -e "pipeline[gee]"`, `GEE_PROJECT`, dan kredensial (`earthengine authenticate --auth_mode=notebook` sekali di server, atau `GOOGLE_APPLICATION_CREDENTIALS` ke kunci service account) |
 
 Mode `gee` juga memperpanjang deret titik sawah K1 (`scripts/gee/perpanjang_titik.py`: VH, VV, LSWI/EVI di titik yang sama,
 dua jendela terakhir diambil ulang) ke `TERAWANG_TITIK_DIR` (default `~/.local/share/terawang/titik`). Mode `berkas` memakai
 `data/satelit/*_titik_12harian_kabkota.csv.gz` di repo.
+
+**Lapisan data dan unggahan manual.** Hasil konektor BPS dan Bulog ditulis ke `TERAWANG_DATA_DIR` (default
+`~/.local/share/terawang/data`) dengan struktur yang sama dengan `data/`. Ingest (`api/src/ingest/util.ts`, `lokasi()`) dan
+skrip model Danang (`data_bps()`) membaca berkas `data/...` dari lapisan bila ada di sana, selain itu dari repo.
+Unggahan manual (halaman admin) disimpan di `TERAWANG_MANUAL_DIR/<bps|bulog|harga|jarak>/` (default
+`~/.local/share/terawang/manual`). Nama berkas harus sama dengan berkas repo dan header-nya sama persis; selain itu dilewati
+dengan peringatan. Urutan pakai tiap berkas: hasil otomatis run ini, lalu unggahan manual (dipakai kalau konektor gagal, tidak
+menulis ulang berkas itu, atau mode `manual`), lalu CSV repo. Konektor yang gagal tidak menggagalkan aset: asset check
+`otomatis_berhasil` menjadi peringatan dan galatnya ada di metadata. `sensor_berkas_data` juga menjalankan alur penuh setelah ada
+unggahan baru. Key BPS hanya dibaca skrip dari env `BPS_WEBAPI_KEY`, tidak lewat argumen atau konfigurasi resource yang tampil
+di UI.
+
+Batas saat ini: ingest masih menyebut nama berkas bertahun (mis. `..._2025.csv`), jadi data tahun baru dari WebAPI atau edisi
+Jatim Dalam Angka berikutnya sudah tertulis di lapisan tetapi baru dipakai setelah ingest dan model disesuaikan. Revisi BPS
+untuk tahun yang sama langsung terpakai.
 
 Sumber baru (mis. Panel Harga Bapanas) cukup menulis berkas dengan kolom yang sama; silver, model, dan dasbor tidak berubah.
 
@@ -53,7 +75,7 @@ Sumber baru (mis. Panel Harga Bapanas) cukup menulis berkas dengan kolom yang sa
 | `harga_0600_1400_wib` | setiap hari 06.00 dan 14.00 | harga → silver harga → K3 → status → peringatan |
 | `penuh_senin_0500_wib` | Senin 05.00 | seluruh alur |
 | `sensor_citra_baru` | cek GEE tiap 6 jam | `pipeline_citra` kalau ada akuisisi Sentinel-1 baru di Jawa Timur (mode `gee`): citra wilayah, deret titik, K1 nowcast, K1, K2, SPHP, status, peringatan |
-| `sensor_berkas_data` | cek tiap 5 menit | seluruh alur kalau berkas BPS/Bulog/jarak/citra berubah (mis. setelah `git pull`) |
+| `sensor_berkas_data` | cek tiap 5 menit | seluruh alur kalau berkas BPS/Bulog/jarak/citra di repo berubah (mis. setelah `git pull`) atau ada unggahan manual baru |
 
 ## Menjalankan di laptop
 

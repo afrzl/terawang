@@ -7,11 +7,21 @@ Pengaturan lewat environment (lihat pipeline/.env.example):
   TERAWANG_SUMBER_CITRA  "berkas" (pakai src/lib/gee_wilayah.json, default) atau "gee" (jalankan GEE, butuh GEE_PROJECT)
   TERAWANG_TITIK_DIR     mode gee: deret titik sawah 12-harian yang diperpanjang (default ~/.local/share/terawang/titik)
   TERAWANG_K1_DIR        taksiran citra K1 bulan operasional (default ~/.local/share/terawang/k1)
+  TERAWANG_SUMBER_BPS    "berkas" (CSV repo, default), "webapi" (WebAPI BPS, butuh BPS_WEBAPI_KEY) atau "manual" (repo + unggahan)
+  TERAWANG_SUMBER_BULOG  "berkas" (CSV repo, default), "jda" (PDF Jatim Dalam Angka via WebAPI BPS) atau "manual"
+  TERAWANG_DATA_DIR      lapisan data hasil konektor di atas data/ repo (default ~/.local/share/terawang/data)
+  TERAWANG_MANUAL_DIR    unggahan manual per sumber: <dir>/{bps,bulog,harga,jarak}/<nama berkas repo> (default ~/.local/share/terawang/manual)
+
+Urutan pakai tiap berkas: hasil otomatis -> unggahan manual (bila otomatis gagal, tidak menulis berkas itu, atau mode manual)
+-> CSV repo. Key BPS hanya dibaca dari env BPS_WEBAPI_KEY oleh skrip (tidak masuk konfigurasi resource yang tampil di UI).
 """
 from __future__ import annotations
 
+import gzip
 import hashlib
 import os
+import shutil
+import time
 import subprocess
 import sys
 from pathlib import Path
@@ -73,6 +83,135 @@ class Database(ConfigurableResource):
             return pd.read_sql(sa.text(sql), c, params=params)
 
 
+# ---------------------------------------------------------------- lapisan data dan unggahan manual
+REPO_DIR = {"bps": "data/bps", "bulog": "data/bulog", "jarak": "data/geografi/jarak_kabkota", "harga": "data/siskaperbapo/harga_beras"}
+EKSTENSI = (".csv", ".csv.gz")
+
+
+def folder_lapisan() -> Path:
+    return Path(os.environ.get("TERAWANG_DATA_DIR") or Path.home() / ".local/share/terawang/data").expanduser()
+
+
+def folder_manual() -> Path:
+    return Path(os.environ.get("TERAWANG_MANUAL_DIR") or Path.home() / ".local/share/terawang/manual").expanduser()
+
+
+def tujuan_lapisan(sumber: str) -> Path:
+    """Folder di lapisan yang mencerminkan data/<...> sumber ini (dibaca ingest lewat TERAWANG_DATA_DIR)."""
+    return folder_lapisan() / REPO_DIR[sumber].removeprefix("data/")
+
+
+def _data(p: Path) -> bool:
+    return p.is_file() and p.name.endswith(EKSTENSI)
+
+
+def _header(p: Path) -> str:
+    buka = gzip.open if p.name.endswith(".gz") else open
+    with buka(p, "rt", encoding="utf-8-sig") as f:
+        return f.readline().strip().replace("\r", "")
+
+
+def berkas_repo(repo: "Repo", sumber: str) -> dict[str, Path]:
+    """{path relatif terhadap folder sumber: path repo} untuk semua CSV sumber ini di repo."""
+    akar = repo.path / REPO_DIR[sumber]
+    return {str(p.relative_to(akar)): p for p in sorted(akar.rglob("*")) if _data(p)}
+
+
+def kosongkan_lapisan(sumber: str) -> None:
+    """Hapus hasil konektor sumber ini dari lapisan (folder berawalan _ seperti cache PDF dibiarkan)."""
+    akar = tujuan_lapisan(sumber)
+    if akar.exists():
+        for p in akar.rglob("*"):
+            if p.is_file() and not any(b.startswith("_") for b in p.relative_to(akar).parts[:-1]):
+                p.unlink()
+
+
+def terapkan_manual(repo: "Repo", sumber: str, tujuan: Path, sejak: float | None, log=None) -> list[str]:
+    """Salin unggahan <TERAWANG_MANUAL_DIR>/<sumber>/<nama> ke `tujuan`, di path repo yang namanya sama.
+
+    Berkas yang namanya tidak ada di repo atau header-nya beda dilewati dengan peringatan. Kalau `sejak` diisi (konektor
+    otomatis sukses di run ini), berkas yang baru ditulis konektor (mtime >= sejak) tidak ditimpa unggahan."""
+    folder = folder_manual() / sumber
+    if not folder.is_dir():
+        return []
+    peta = {p.name: rel for rel, p in berkas_repo(repo, sumber).items()}
+    dipakai = []
+    for u in sorted(folder.iterdir()):
+        if u.name.startswith((".", "_")) or not _data(u):
+            continue
+        rel = peta.get(u.name)
+        if rel is None:
+            log and log.warning(f"unggahan {sumber}/{u.name} dilewati: tidak ada berkas repo bernama sama")
+            continue
+        if _header(u) != _header(repo.path / REPO_DIR[sumber] / rel):
+            log and log.warning(f"unggahan {sumber}/{u.name} dilewati: kolom beda dengan berkas repo")
+            continue
+        t = tujuan / rel
+        if sejak is not None and t.exists() and t.stat().st_mtime >= sejak:
+            continue
+        t.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(u, t)
+        dipakai.append(rel)
+    if dipakai and log:
+        log.info(f"unggahan manual {sumber} dipakai: {dipakai}")
+    return dipakai
+
+
+def berkas_efektif(repo: "Repo", sumber: str, tujuan: Path, manual: list[str], label_otomatis: str) -> list[tuple[Path, str]]:
+    """Berkas yang akan dibaca ingest beserta asalnya: (path, 'otomatis'|'manual'|'repo'). Berkas lapisan yang tidak ada
+    di repo (mis. tahun baru dari WebAPI) ikut dicantumkan."""
+    rp = berkas_repo(repo, sumber)
+    hasil = []
+    for rel, p in rp.items():
+        t = tujuan / rel
+        hasil.append((t, "manual" if rel in manual else label_otomatis) if t.exists() else (p, "repo"))
+    if tujuan.exists():
+        for t in sorted(tujuan.rglob("*")):
+            rel = str(t.relative_to(tujuan))
+            if _data(t) and rel not in rp and not any(b.startswith("_") for b in t.relative_to(tujuan).parts[:-1]):
+                hasil.append((t, f"{label_otomatis} (baru)"))
+    return hasil
+
+
+class SumberStatis(ConfigurableResource):
+    """Konektor sumber tahunan/bulanan BPS atau Bulog. Kontrak keluaran: CSV berformat data/<sumber> di lapisan
+    TERAWANG_DATA_DIR (ingest membaca lapisan dulu, lalu repo).
+
+    - bps:   mode berkas | webapi (scripts/bps/ambil_webapi.py) | manual
+    - bulog: mode berkas | jda (scripts/bulog/ambil_jda.py, PDF Jatim Dalam Angka) | manual
+    """
+
+    sumber: str
+    mode: str = "berkas"
+    SKRIP: ClassVar[dict[str, tuple[str, str]]] = {"bps": ("webapi", "scripts/bps/ambil_webapi.py"), "bulog": ("jda", "scripts/bulog/ambil_jda.py")}
+
+    def perbarui(self, repo: "Repo", log=None) -> dict:
+        """Jalankan konektor otomatis (bila mode-nya), lalu unggahan manual. Galat konektor tidak menggagalkan aset:
+        data terakhir yang sah + unggahan manual + repo tetap dipakai, dan status dicatat untuk asset check."""
+        mode_oto, skrip = self.SKRIP[self.sumber]
+        tujuan = tujuan_lapisan(self.sumber)
+        status = {"mode": self.mode, "otomatis": None, "galat": None}
+        sejak = None
+        if self.mode == mode_oto:
+            t0 = time.time()
+            try:
+                if not os.environ.get("BPS_WEBAPI_KEY"):
+                    raise RuntimeError("BPS_WEBAPI_KEY belum diisi di pipeline/.env")
+                repo.jalankan([sys.executable, skrip, "--keluar", str(folder_lapisan())], log=log)
+                status["otomatis"], sejak = "berhasil", t0
+            except Exception as e:
+                status["otomatis"], status["galat"] = "gagal", str(e)[-1500:]
+                log and log.warning(f"konektor {self.sumber} ({self.mode}) gagal, memakai data terakhir + unggahan manual + repo: {str(e)[-500:]}")
+        elif self.mode in ("berkas", "manual"):
+            kosongkan_lapisan(self.sumber)
+        else:
+            raise ValueError(f"TERAWANG_SUMBER_{self.sumber.upper()} tidak dikenal: {self.mode}")
+        manual = terapkan_manual(repo, self.sumber, tujuan, sejak, log) if self.mode != "berkas" else []
+        status["manual"] = manual
+        status["berkas"] = berkas_efektif(repo, self.sumber, tujuan, manual, self.mode if self.mode == mode_oto else "lapisan")
+        return status
+
+
 class SumberHarga(ConfigurableResource):
     """Konektor harga konsumen beras. Kontrak keluaran: folder berisi kabkota/provinsi_harian_*.csv dan pasar_harian_*.csv.gz
     (kolom sama dengan data/siskaperbapo/harga_beras/), dibaca ingest silver lewat TERAWANG_HARGA_DIR.
@@ -82,13 +221,13 @@ class SumberHarga(ConfigurableResource):
     Menambah sumber baru (mis. Panel Harga Bapanas): tambah cabang `mode` yang menulis berkas dengan kolom sama.
     """
 
-    mode: str = "berkas"  # "berkas" | "siskaperbapo"
+    mode: str = "berkas"  # "berkas" | "siskaperbapo" | "manual"
     folder_unduhan: str = str(Path.home() / ".local/share/terawang/harga_beras")
 
     KOMODITAS: ClassVar[dict[str, int]] = {"beras_medium": 4, "beras_premium": 2}
 
     def folder(self, repo: Repo) -> Path:
-        return Path(self.folder_unduhan) if self.mode == "siskaperbapo" else repo.path / "data/siskaperbapo/harga_beras"
+        return Path(self.folder_unduhan) if self.mode in ("siskaperbapo", "manual") else repo.path / "data/siskaperbapo/harga_beras"
 
     def berkas(self, repo: Repo) -> list[Path]:
         d = self.folder(repo)
@@ -96,15 +235,31 @@ class SumberHarga(ConfigurableResource):
             d / f"pasar_harian_{nama}.csv.gz" for nama in self.KOMODITAS
         ]
 
-    def perbarui(self, repo: Repo, log=None) -> list[Path]:
+    def perbarui(self, repo: Repo, log=None) -> tuple[list[Path], dict]:
+        """Mode siskaperbapo: unduh; kalau gagal, pakai unduhan terakhir + unggahan manual (manual/harga). Mode manual:
+        CSV repo + unggahan manual, disusun di folder_unduhan."""
+        status = {"mode": self.mode, "otomatis": None, "galat": None, "manual": []}
+        d = self.folder(repo)
         if self.mode == "siskaperbapo":
-            self.folder(repo).mkdir(parents=True, exist_ok=True)
-            for nama, kode in self.KOMODITAS.items():
-                repo.jalankan([sys.executable, "scripts/siskaperbapo/ambil_harga.py", "--komoditas", str(kode), "--nama", nama,
-                               "--keluar", str(self.folder(repo))], log=log)
+            d.mkdir(parents=True, exist_ok=True)
+            t0 = time.time()
+            try:
+                for nama, kode in self.KOMODITAS.items():
+                    repo.jalankan([sys.executable, "scripts/siskaperbapo/ambil_harga.py", "--komoditas", str(kode), "--nama", nama,
+                                   "--keluar", str(d)], log=log)
+                status["otomatis"] = "berhasil"
+            except Exception as e:
+                status["otomatis"], status["galat"], t0 = "gagal", str(e)[-1500:], None
+                log and log.warning(f"unduh SISKAPERBAPO gagal, memakai unduhan terakhir + unggahan manual: {str(e)[-500:]}")
+            status["manual"] = terapkan_manual(repo, "harga", d, t0, log)
+        elif self.mode == "manual":
+            d.mkdir(parents=True, exist_ok=True)
+            for rel, p in berkas_repo(repo, "harga").items():
+                shutil.copyfile(p, d / rel)
+            status["manual"] = terapkan_manual(repo, "harga", d, None, log)
         elif self.mode != "berkas":
             raise ValueError(f"TERAWANG_SUMBER_HARGA tidak dikenal: {self.mode}")
-        return self.berkas(repo)
+        return self.berkas(repo), status
 
 
 class SumberCitra(ConfigurableResource):
@@ -180,6 +335,8 @@ def semua_resource() -> dict:
         "db": Database(url=EnvVar("DATABASE_URL")),
         "sumber_harga": SumberHarga(mode=os.environ.get("TERAWANG_SUMBER_HARGA", "berkas"),
                                     **({"folder_unduhan": os.environ["TERAWANG_HARGA_DIR"]} if os.environ.get("TERAWANG_HARGA_DIR") else {})),
+        "sumber_bps": SumberStatis(sumber="bps", mode=os.environ.get("TERAWANG_SUMBER_BPS", "berkas")),
+        "sumber_bulog": SumberStatis(sumber="bulog", mode=os.environ.get("TERAWANG_SUMBER_BULOG", "berkas")),
         "sumber_citra": SumberCitra(mode=os.environ.get("TERAWANG_SUMBER_CITRA", "berkas"), gee_project=os.environ.get("GEE_PROJECT", ""),
                                     **({"berkas_keluaran": os.environ["TERAWANG_GEE_JSON"]} if os.environ.get("TERAWANG_GEE_JSON") else {}),
                                     **({"folder_titik_gee": os.environ["TERAWANG_TITIK_DIR"]} if os.environ.get("TERAWANG_TITIK_DIR") else {})),

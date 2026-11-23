@@ -44,6 +44,13 @@ def wape(a, p):
     return np.abs(p - a).sum() / a.sum() * 100
 
 
+def data_bps(rel):
+    """Berkas data/... dari lapisan konektor (TERAWANG_DATA_DIR, mis. BPS WebAPI) bila ada, selain itu dari repo."""
+    lapis = os.environ.get("TERAWANG_DATA_DIR")
+    p = os.path.join(lapis, rel[len("data/"):]) if lapis and rel.startswith("data/") else None
+    return p if p and os.path.exists(p) else rel
+
+
 def muat():
     """Kembalikan kab, lon/lat, tanggal jendela, dan matriks VH, VV, LSWI, EVI (N x W, NaN = kosong)."""
     S = "data/satelit/"
@@ -152,8 +159,8 @@ def main():
     est["bulan"] = (est.t - 1) % 12 + 1
 
     # ----- target BPS
-    b = pd.read_csv("data/bps/produksi_padi/kabkota/bulanan/bps_jatim_padi_kabkota_bulanan_luas_panen_2019_2024.csv")
-    b25 = pd.read_csv("data/bps/produksi_padi/kabkota/bulanan/bps_jatim_padi_kabkota_bulanan_2025.csv")
+    b = pd.read_csv(data_bps("data/bps/produksi_padi/kabkota/bulanan/bps_jatim_padi_kabkota_bulanan_luas_panen_2019_2024.csv"))
+    b25 = pd.read_csv(data_bps("data/bps/produksi_padi/kabkota/bulanan/bps_jatim_padi_kabkota_bulanan_2025.csv"))
     y = pd.concat([b[["nama_repo", "tahun", "bulan", "luas_panen_ha"]], b25[["nama_repo", "tahun", "bulan", "luas_panen_ha"]]]).rename(
         columns={"nama_repo": "kabkota", "luas_panen_ha": "y"})
     kk = sorted(y.kabkota.unique())

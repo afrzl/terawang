@@ -15,7 +15,7 @@ from dagster import AssetExecutionContext, AssetKey, MaterializeResult, Metadata
 
 from terawang_models import k1_produksi, k2_stok, k3_harga, sphp
 
-from ..resources import Database, Repo, SumberCitra
+from ..resources import Database, Repo, SumberCitra, folder_lapisan
 from ._app import model_run, sekarang, sisipkan
 
 GRUP = "model"
@@ -32,7 +32,8 @@ def folder_k1() -> Path:
 
 
 def _env_danang(repo: Repo, db: Database, sumber_citra: SumberCitra) -> dict[str, str]:
-    return {"DATABASE_URL": db.url, "TERAWANG_K1_DIR": str(folder_k1()), "TERAWANG_TITIK_DIR": str(sumber_citra.folder_titik(repo))}
+    return {"DATABASE_URL": db.url, "TERAWANG_K1_DIR": str(folder_k1()), "TERAWANG_TITIK_DIR": str(sumber_citra.folder_titik(repo)),
+            "TERAWANG_DATA_DIR": str(folder_lapisan())}
 
 
 @asset(group_name=GRUP, kinds={"python"}, deps=[AssetKey("bronze_titik_satelit")],

@@ -49,11 +49,18 @@ def _sql_url(q, url):
         return pd.read_sql(sa.text(q), c)
 
 
+def data_bps(rel):
+    """Berkas data/... dari lapisan konektor (TERAWANG_DATA_DIR, mis. BPS WebAPI) bila ada, selain itu dari repo."""
+    lapis = os.environ.get("TERAWANG_DATA_DIR")
+    p = os.path.join(lapis, rel[len("data/"):]) if lapis and rel.startswith("data/") else None
+    return p if p and os.path.exists(p) else rel
+
+
 def muat():
     w = sql("select id, nama_repo kab from ref.wilayah where level='KABKOTA' order by id").set_index("kab")
     pop = sql(f"select w.nama_repo kab, p.jumlah_jiwa from silver.penduduk p join ref.wilayah w on w.id=p.wilayah_id where w.level='KABKOTA' and p.tahun={TAHUN}").set_index("kab").jumlah_jiwa
     ks = sql("select w.nama_repo kab, k.kg_per_kapita from silver.konsumsi_beras k join ref.wilayah w on w.id=k.wilayah_id where w.level='KABKOTA' and k.tahun=2025").set_index("kab").kg_per_kapita
-    b = pd.read_csv("data/bps/produksi_padi/kabkota/bulanan/bps_jatim_padi_kabkota_bulanan_2025.csv")
+    b = pd.read_csv(data_bps("data/bps/produksi_padi/kabkota/bulanan/bps_jatim_padi_kabkota_bulanan_2025.csv"))
     P = b.pivot(index="nama_repo", columns="bulan", values="produksi_beras_ton").loc[w.index]
     C = (pop * ks * 30 / 7 / 1000).loc[w.index]
     j = sql("select a.nama_repo dari, b.nama_repo ke, j.jarak_jalan_km km from silver.jarak_antar_wilayah j join ref.wilayah a on a.id=j.dari_id join ref.wilayah b on b.id=j.ke_id")

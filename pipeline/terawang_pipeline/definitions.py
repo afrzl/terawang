@@ -4,7 +4,7 @@ from dagster import (AssetSelection, DefaultScheduleStatus, DefaultSensorStatus,
                      SensorEvaluationContext, SkipReason, define_asset_job, load_assets_from_modules, sensor)
 
 from .assets import bronze, model, silver, status
-from .resources import semua_resource
+from .resources import folder_manual, semua_resource
 
 ASET = load_assets_from_modules([bronze, silver, model, status])
 
@@ -33,13 +33,17 @@ jadwal_mingguan = ScheduleDefinition(name="penuh_senin_0500_wib", job=job_penuh,
 
 
 @sensor(job=job_penuh, minimum_interval_seconds=300, default_status=DefaultSensorStatus.RUNNING,
-        description="Jalankan ulang alur penuh kalau berkas BPS, Bulog, jarak, atau bahan citra K1 di repo berubah (mis. setelah git pull).")
+        description="Jalankan ulang alur penuh kalau berkas BPS, Bulog, jarak, atau bahan citra K1 di repo berubah (mis. setelah git pull), "
+                    "atau ada unggahan manual baru di TERAWANG_MANUAL_DIR.")
 def sensor_berkas_data(context: SensorEvaluationContext):
     res = semua_resource()
     repo = res["repo"]
     paths = [p for rel in bronze.BERKAS_STATIS.values() for p in bronze.berkas_di(repo, rel)] + [repo.path / p for p in bronze.SATELIT_STATIS]
     if res["sumber_citra"].mode == "berkas":  # mode gee dipantau sensor_citra_baru
         paths += [repo.path / "src/lib/gee_wilayah.json"] + [repo.path / "data/satelit" / b for b in res["sumber_citra"].TITIK]
+    manual = folder_manual()
+    if manual.is_dir():  # unggahan halaman admin (folder _arsip dan berkas _log diabaikan)
+        paths += sorted(p for p in manual.rglob("*") if p.is_file() and not any(b.startswith((".", "_")) for b in p.relative_to(manual).parts))
     cs = bronze.checksum_gabungan([p for p in paths if p.exists()])[:16]
     if context.cursor == cs:
         return SkipReason("berkas data tidak berubah")

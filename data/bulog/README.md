@@ -74,3 +74,7 @@ Berkas diekstrak dari teks PDF publikasi, bukan diekspor dari BPS.
 - **Stok bulanan sebelum 2025.** Edisi *Jawa Timur Dalam Angka 2025* kemungkinan memuat 2024 (belum dicek).
 - **Realisasi penyaluran SPHP** per wilayah.
 - Sumber pemasukan di luar pengadaan (lihat catatan 3).
+
+## Pembaruan otomatis
+
+Pipeline Dagster (mode `TERAWANG_SUMBER_BULOG=jda`) mengambil edisi terbaru publikasi ini lewat WebAPI BPS dan mengekstrak kelima tabel dengan `scripts/bulog/ambil_jda.py` (watermark dibuang, validasi seperti di atas). Hasilnya ditulis ke lapisan di luar repo; berkas di folder ini menjadi cadangan.

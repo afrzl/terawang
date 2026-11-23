@@ -5,11 +5,14 @@ tidak basi; kalau berubah (data baru), silver dan model di bawahnya ditandai per
 """
 
 import hashlib
+import json
 from pathlib import Path
 
-from dagster import AssetExecutionContext, DataVersion, MaterializeResult, MetadataValue, asset
+from dagster import (AssetCheckResult, AssetCheckSeverity, AssetCheckSpec, AssetExecutionContext, DataVersion, MaterializeResult,
+                     MetadataValue, asset)
 
-from ..resources import Repo, SumberCitra, SumberHarga, sha256
+from ..resources import (Repo, SumberCitra, SumberHarga, SumberStatis, berkas_efektif, kosongkan_lapisan, sha256, terapkan_manual,
+                         tujuan_lapisan)
 
 GRUP = "bronze"
 
@@ -60,10 +63,29 @@ def _hasil(repo: Repo, paths: list[Path], sumber: str) -> MaterializeResult:
     )
 
 
-@asset(group_name=GRUP, kinds={"csv"}, description="Harga konsumen beras harian per pasar, 38 kab/kota (SISKAPERBAPO, atau konektor lain).")
+def _cek(nama: str) -> list[AssetCheckSpec]:
+    return [AssetCheckSpec("otomatis_berhasil", asset=nama, description="Konektor otomatis berhasil di run terakhir. "
+                           "Kalau gagal, aset tetap jalan dengan data terakhir + unggahan manual + CSV repo (peringatan, bukan galat).")]
+
+
+def _status(hasil: MaterializeResult, status: dict, nama: str) -> MaterializeResult:
+    """Tambahkan status konektor ke metadata dan hasil asset check (WARN kalau otomatis gagal)."""
+    hasil.metadata["mode"] = status["mode"]
+    hasil.metadata["otomatis"] = status["otomatis"] or "tidak dipakai"
+    hasil.metadata["unggahan_manual_dipakai"] = MetadataValue.md("\n".join(f"- `{m}`" for m in status["manual"]) or "tidak ada")
+    if status.get("galat"):
+        hasil.metadata["galat_otomatis"] = MetadataValue.md(f"```\n{status['galat']}\n```")
+    lolos = status["otomatis"] != "gagal"
+    return MaterializeResult(data_version=hasil.data_version, metadata=hasil.metadata, check_results=[AssetCheckResult(
+        asset_key=nama, check_name="otomatis_berhasil", passed=lolos, severity=AssetCheckSeverity.WARN,
+        metadata={"mode": status["mode"], "otomatis": status["otomatis"] or "tidak dipakai"})])
+
+
+@asset(group_name=GRUP, kinds={"csv"}, check_specs=_cek("bronze_harga"),
+       description="Harga konsumen beras harian per pasar, 38 kab/kota (SISKAPERBAPO; cadangan: unggahan manual/harga).")
 def bronze_harga(context: AssetExecutionContext, repo: Repo, sumber_harga: SumberHarga) -> MaterializeResult:
-    paths = sumber_harga.perbarui(repo, log=context.log)
-    return _hasil(repo, paths, f"harga ({sumber_harga.mode})")
+    paths, status = sumber_harga.perbarui(repo, log=context.log)
+    return _status(_hasil(repo, paths, f"harga ({sumber_harga.mode})"), status, "bronze_harga")
 
 
 @asset(group_name=GRUP, kinds={"json"}, description="Olahan citra Sentinel-1/2 per wilayah dari Google Earth Engine (gee_wilayah.json).")
@@ -84,16 +106,37 @@ def bronze_titik_satelit(context: AssetExecutionContext, repo: Repo, sumber_citr
     return hasil
 
 
-@asset(group_name=GRUP, kinds={"csv"}, description="BPS: produksi padi, penduduk, konsumsi beras (diketik dari BRS dan Jatim Dalam Angka).")
-def bronze_bps(repo: Repo) -> MaterializeResult:
-    return _hasil(repo, berkas_di(repo, BERKAS_STATIS["bps"]), "bps")
+def _statis(context: AssetExecutionContext, repo: Repo, sumber: SumberStatis, laporan: str) -> MaterializeResult:
+    status = sumber.perbarui(repo, log=context.log)
+    efektif = status["berkas"]
+    hasil = _hasil(repo, [p for p, _ in efektif], f"{sumber.sumber} ({sumber.mode})")
+    hasil.metadata["berkas"] = MetadataValue.md("\n".join(f"- `{_tampil(repo, p)}` ({asal})" for p, asal in efektif))
+    lap = tujuan_lapisan(sumber.sumber) / laporan
+    if status["otomatis"] == "berhasil" and lap.exists():
+        hasil.metadata["laporan"] = MetadataValue.json(json.loads(lap.read_text()))
+    return _status(hasil, status, f"bronze_{sumber.sumber}")
 
 
-@asset(group_name=GRUP, kinds={"csv"}, description="Bulog Kanwil Jatim: stok, pengadaan, harga (via Jatim Dalam Angka 2026).")
-def bronze_bulog(repo: Repo) -> MaterializeResult:
-    return _hasil(repo, berkas_di(repo, BERKAS_STATIS["bulog"]), "bulog")
+@asset(group_name=GRUP, kinds={"csv"}, check_specs=_cek("bronze_bps"),
+       description="BPS: luas panen dan produksi beras bulanan per kab/kota, konsumsi beras (WebAPI BPS); penduduk dan angka "
+                   "sementara/potensi dari CSV repo atau unggahan manual (tidak tersedia di WebAPI).")
+def bronze_bps(context: AssetExecutionContext, repo: Repo, sumber_bps: SumberStatis) -> MaterializeResult:
+    return _statis(context, repo, sumber_bps, "laporan_webapi.json")
 
 
-@asset(group_name=GRUP, kinds={"csv"}, description="Matriks jarak dan waktu tempuh antar kab/kota (OSRM).")
-def bronze_jarak(repo: Repo) -> MaterializeResult:
-    return _hasil(repo, berkas_di(repo, BERKAS_STATIS["jarak"]), "jarak")
+@asset(group_name=GRUP, kinds={"csv", "pdf"}, check_specs=_cek("bronze_bulog"),
+       description="Bulog Kanwil Jatim: stok bulanan, stok per kanwil, pengadaan, harga penggilingan, HPP. Diekstrak dari PDF "
+                   "Provinsi Jawa Timur Dalam Angka edisi terbaru (terbit tiap Februari); cadangan: unggahan manual/bulog.")
+def bronze_bulog(context: AssetExecutionContext, repo: Repo, sumber_bulog: SumberStatis) -> MaterializeResult:
+    return _statis(context, repo, sumber_bulog, "laporan_jda.json")
+
+
+@asset(group_name=GRUP, kinds={"csv"}, description="Matriks jarak dan waktu tempuh antar kab/kota (OSRM). Pembaruan: unggahan manual/jarak.")
+def bronze_jarak(context: AssetExecutionContext, repo: Repo) -> MaterializeResult:
+    tujuan = tujuan_lapisan("jarak")
+    kosongkan_lapisan("jarak")
+    manual = terapkan_manual(repo, "jarak", tujuan, None, context.log)
+    efektif = berkas_efektif(repo, "jarak", tujuan, manual, "manual")
+    hasil = _hasil(repo, [p for p, _ in efektif], "jarak")
+    hasil.metadata["berkas"] = MetadataValue.md("\n".join(f"- `{_tampil(repo, p)}` ({asal})" for p, asal in efektif))
+    return hasil
