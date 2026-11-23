@@ -114,6 +114,13 @@ def periksa_koreksi(m, tahunan, prov, nama_kolom, tahun, repo_nilai, laporan) ->
     """Kembalikan matriks terkoreksi dan matriks teks koreksi."""
     m = m.copy()
     catatan = pd.DataFrame("", index=m.index, columns=m.columns)
+    # BPS tidak mengirim kunci untuk sel bernilai nol ("-"): sel kosong di baris yang punya angka Tahunan dibaca 0. Kalau ternyata
+    # sel itu memang hilang, pemeriksaan jumlah 12 bulan = Tahunan dan jumlah kab = Jawa Timur di bawah akan menangkapnya.
+    isi_nol = [(k, int(b)) for k in m.index if pd.notna(tahunan.get(k)) for b in m.columns if pd.isna(m.loc[k, b])]
+    for k, b in isi_nol:
+        m.loc[k, b] = 0.0
+    if isi_nol:
+        laporan.setdefault("sel_nol_tersirat", []).append({"kolom": nama_kolom, "tahun": tahun, "jumlah": len(isi_nol), "sel": isi_nol[:40]})
     if m.isna().any().any():
         kosong = [(k, b) for k in m.index for b in m.columns if pd.isna(m.loc[k, b])]
         raise SystemExit(f"{nama_kolom} {tahun}: sel kosong {kosong[:5]}")
