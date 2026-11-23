@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Admin TERAWANG</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="/admin/static/admin.css" />
+  <script src="/admin/static/admin.js" defer></script>
+</head>
+<body>
+  <header class="kop">
+    <div class="wrap kop-isi">
+      <a class="brand" href="/" title="Kembali ke dasbor">
+        <span class="logo" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B9E39A" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg></span>
+        <span><span class="judul">TERA<span>WANG</span></span><span class="sub">Panel admin pipeline data</span></span>
+      </a>
+      <div class="kop-kanan" id="kop-kanan" hidden>
+        <span class="chip">Masuk sebagai <b id="nama-pengguna"></b></span>
+        <button class="tombol tombol-kop" id="tombol-keluar" type="button">Keluar</button>
+      </div>
+    </div>
+    <nav class="wrap tab" id="tab" hidden aria-label="Bagian admin">
+      <button type="button" data-tab="pipeline" aria-selected="true">Pipeline</button>
+      <button type="button" data-tab="unggah">Unggah manual</button>
+      <button type="button" data-tab="konfigurasi">Konfigurasi &amp; secret</button>
+      <button type="button" data-tab="jejak">Jejak admin</button>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <section id="layar-masuk" class="masuk" hidden>
+      <form id="form-masuk" class="panel kartu-masuk">
+        <h2>Masuk admin</h2>
+        <p class="redup">Halaman ini memuat pengaturan dan secret pipeline. Hanya untuk tim TERAWANG.</p>
+        <label>Nama pengguna<input name="pengguna" autocomplete="username" required /></label>
+        <label>Sandi<input name="sandi" type="password" autocomplete="current-password" required /></label>
+        <p class="pesan-galat" id="galat-masuk" role="alert"></p>
+        <button class="tombol utama" type="submit">Masuk</button>
+      </form>
+    </section>
+
+    <section id="bagian-pipeline" class="bagian" hidden>
+      <div class="baris-judul">
+        <div><h2>Pemantauan pipeline</h2><p class="redup" id="info-perbarui">Memuat…</p></div>
+        <div class="aksi">
+          <select id="pilih-job" aria-label="Job"></select>
+          <button class="tombol" id="tombol-jalankan" type="button">Jalankan sekarang</button>
+          <button class="tombol" id="tombol-segarkan" type="button">Segarkan</button>
+          <a class="tombol" href="https://dagster.terawang.tech" target="_blank" rel="noopener">Buka Dagster ↗</a>
+        </div>
+      </div>
+      <div id="peringatan-pipeline"></div>
+      <div class="ringkas" id="ringkas-aset"></div>
+      <div class="dua-kolom">
+        <div class="panel">
+          <h3>Status per aset</h3>
+          <p class="redup kecil">Status = hasil langkah aset itu di run terakhir yang menjalankannya. Aset bronze yang gagal bisa diganti dengan unggah manual.</p>
+          <div class="tabel-gulir"><table class="tabel" id="tabel-aset"><thead><tr><th>Aset</th><th>Status</th><th>Terakhir jalan</th><th>Data terakhir</th><th></th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="panel">
+          <h3>Run terakhir</h3>
+          <div class="tabel-gulir"><table class="tabel" id="tabel-run"><thead><tr><th>Job</th><th>Status</th><th>Mulai</th><th>Durasi</th><th>Pemicu</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+      <div class="panel" id="panel-log" hidden>
+        <div class="baris-judul">
+          <div><h3 id="judul-log">Log run</h3><p class="redup kecil" id="info-log"></p></div>
+          <div class="aksi">
+            <label class="centang"><input type="checkbox" id="hanya-galat" /> Hanya peringatan &amp; galat</label>
+            <button class="tombol" type="button" id="tutup-log">Tutup</button>
+          </div>
+        </div>
+        <div id="isi-log" class="log"></div>
+      </div>
+    </section>
+
+    <section id="bagian-unggah" class="bagian" hidden>
+      <div class="baris-judul">
+        <div><h2>Unggah manual data sumber</h2>
+          <p class="redup">Dipakai kalau pengambilan otomatis gagal. Aset bronze memakai unggahan ini bila sumber otomatis gagal atau mode sumber = <code>manual</code>. Nama berkas dan baris kolom harus sama persis dengan berkas acuan. Folder di server: <code id="folder-manual"></code></p></div>
+      </div>
+      <div id="daftar-sumber"></div>
+    </section>
+
+    <section id="bagian-konfigurasi" class="bagian" hidden>
+      <div class="baris-judul">
+        <div><h2>Konfigurasi &amp; secret</h2>
+          <p class="redup">Secret tidak pernah ditampilkan utuh, hanya 4 karakter terakhir. Mengisi kolom secret = mengganti nilainya. Setelah menyimpan, muat ulang layanan supaya nilai baru dipakai. Setiap perubahan disimpan cadangannya (5 terakhir) dan dicatat di jejak.</p></div>
+      </div>
+      <div id="daftar-konfigurasi"></div>
+    </section>
+
+    <section id="bagian-jejak" class="bagian" hidden>
+      <div class="baris-judul"><div><h2>Jejak admin</h2><p class="redup">Login, perubahan konfigurasi, unggahan, dan job yang dijalankan dari halaman ini. Nilai secret tidak dicatat.</p></div></div>
+      <div class="panel"><div class="tabel-gulir"><table class="tabel" id="tabel-jejak"><thead><tr><th>Waktu</th><th>Tindakan</th><th>Pengguna</th><th>Rincian</th><th>IP</th></tr></thead><tbody></tbody></table></div></div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

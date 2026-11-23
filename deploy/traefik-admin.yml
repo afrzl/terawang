@@ -1,0 +1,17 @@
+# Router Traefik untuk halaman admin TERAWANG. Salin ke /opt/traefik/dynamic/terawang-admin.yml (milik root).
+# https://terawang.tech/admin -> layanan admin (uvicorn) di 172.19.0.1:3071. Login ditangani layanan itu sendiri.
+# Prioritas tinggi supaya /admin tidak jatuh ke router dasbor statis (terawang.yml).
+http:
+  routers:
+    terawang-admin:
+      rule: "Host(`terawang.tech`) && PathPrefix(`/admin`)"
+      entryPoints: [websecure]
+      priority: 1000
+      service: terawang-admin
+      tls:
+        certResolver: le
+  services:
+    terawang-admin:
+      loadBalancer:
+        servers:
+          - url: "http://172.19.0.1:3071"
