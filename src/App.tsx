@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 import { AppShell } from "@/components/layout/AppShell"
 import { SelectionProvider } from "@/lib/selection"
+import { SesiProvider } from "@/lib/sesi"
 import { ThemeProvider } from "@/lib/theme"
 import { TooltipProvider } from "@/lib/tooltip"
 import Ringkasan from "@/pages/Ringkasan"
@@ -14,6 +15,7 @@ import Cerita from "@/pages/Cerita"
 export default function App() {
   return (
     <ThemeProvider>
+      <SesiProvider>
       <SelectionProvider>
         <TooltipProvider>
           <BrowserRouter>
@@ -32,6 +34,7 @@ export default function App() {
           </BrowserRouter>
         </TooltipProvider>
       </SelectionProvider>
+      </SesiProvider>
     </ThemeProvider>
   )
 }

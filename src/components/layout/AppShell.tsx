@@ -1,12 +1,13 @@
 import { useEffect } from "react"
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom"
-import { CalendarDays, Sprout } from "lucide-react"
+import { CalendarDays, LogIn, LogOut, Settings, Sprout, UserRound } from "lucide-react"
 import { KopPattern } from "@/components/layout/KopPattern"
 import { ThemeToggle } from "@/components/layout/ThemeToggle"
 import { navItems } from "@/components/layout/nav"
 import { WilayahPicker } from "@/components/ui/WilayahPicker"
 import { FLOWS, WILAYAH } from "@/lib/data"
 import { nf, sum } from "@/lib/format"
+import { tautanMasuk, useSesi } from "@/lib/sesi"
 
 const estT = sum(WILAYAH, (k) => k.est)
 const yoy = (estT / sum(WILAYAH, (k) => k.prev) - 1) * 100
@@ -25,8 +26,39 @@ function Logo() {
   )
 }
 
+function Akun() {
+  const { sesi, siap, boleh, keluar } = useSesi()
+  const { pathname } = useLocation()
+  if (!siap) return null
+  if (!sesi.pengguna)
+    return (
+      <a className="chip chip-akun" href={tautanMasuk(pathname)}>
+        <LogIn size={13} />
+        <b>Masuk</b>
+      </a>
+    )
+  return (
+    <span className="akun-grup">
+      <span className="chip" title={`Masuk sebagai ${sesi.pengguna}`}>
+        <UserRound size={13} />
+        <b>{sesi.pengguna}</b> · {sesi.labelPeran}
+      </span>
+      {boleh("pipeline") && (
+        <a className="chip chip-akun" href="/admin/">
+          <Settings size={13} />
+          Admin
+        </a>
+      )}
+      <button type="button" className="chip chip-akun" onClick={keluar} aria-label="Keluar">
+        <LogOut size={13} />
+      </button>
+    </span>
+  )
+}
+
 export function AppShell() {
   const { pathname } = useLocation()
+  const { boleh } = useSesi()
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -59,6 +91,7 @@ export function AppShell() {
             </span>
             <WilayahPicker />
             <span className="tag">Prototipe · data simulasi</span>
+            <Akun />
             <ThemeToggle />
           </div>
           <div className="pulse" aria-label="Sorotan pekan ini">
@@ -77,11 +110,13 @@ export function AppShell() {
               <span className="n">{nSiaga}</span>
               <span className="lbl">wilayah Siaga harga</span>
             </Link>
-            <Link to="/harga">
-              <span className="dot" style={{ background: "#9CC3F5" }} />
-              <span className="n">{nf(tonSphp)} t</span>
-              <span className="lbl">rekomendasi SPHP</span>
-            </Link>
+            {boleh("dasbor_sphp") && (
+              <Link to="/harga">
+                <span className="dot" style={{ background: "#9CC3F5" }} />
+                <span className="n">{nf(tonSphp)} t</span>
+                <span className="lbl">rekomendasi SPHP</span>
+              </Link>
+            )}
           </div>
         </div>
       </header>
