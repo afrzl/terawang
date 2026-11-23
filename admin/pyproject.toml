@@ -1,0 +1,17 @@
+[project]
+name = "terawang-admin"
+version = "0.1.0"
+description = "Halaman admin TERAWANG: pantau pipeline Dagster, atur konfigurasi/secret, unggah manual data sumber"
+requires-python = ">=3.10"
+# starlette dan uvicorn sudah ikut terpasang bersama dagster-webserver di .venv-pipeline
+dependencies = ["starlette>=0.37", "uvicorn>=0.29"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["terawang_admin*"]
+
+[tool.setuptools.package-data]
+terawang_admin = ["static/*"]
