@@ -11,6 +11,8 @@ import { bacaHarga, bacaHeatmap, bacaRidgeline, bacaSphp } from "@/lib/bacaan"
 import { FLOWS, HET, HIST, SIAGA, STATUS, WILAYAH, byName, fcDates, histDates, type Flow } from "@/lib/data"
 import { dfmt, nf, rp, sum } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
+import { useSesi } from "@/lib/sesi"
+import { Terkunci } from "@/components/ui/Terkunci"
 
 const HS: Record<string, number> = { aman: 0, waspada: 1, siaga: 2 }
 const SS: Record<string, number> = { cukup: 0, tipis: 1, defisit: 2 }
@@ -37,6 +39,7 @@ export default function Harga() {
   const nS = WILAYAH.filter((k) => k.hs === "siaga").length
   const nW = WILAYAH.filter((k) => k.hs === "waspada").length
   const pAvg = sum(WILAYAH, (k) => k.pNow * k.pop) / sum(WILAYAH, (k) => k.pop)
+  const sphp = useSesi().boleh("dasbor_sphp")
 
   return (
     <section className="view">
@@ -48,13 +51,16 @@ export default function Harga() {
         items={[
           { k: "Rata-rata medium Jatim", v: rp(pAvg), t: "tertimbang penduduk · HET Rp13.500" },
           { k: "Wilayah Siaga / Waspada", v: `${nS} / ${nW}`, t: "berdasar prakiraan 4 pekan" },
-          { k: "Rekomendasi SPHP", v: `${nf(sum(FLOWS, (f) => f.ton))} ton`, t: `${FLOWS.length} rute, pekan 45–48` },
+          sphp
+            ? { k: "Rekomendasi SPHP", v: `${nf(sum(FLOWS, (f) => f.ton))} ton`, t: `${FLOWS.length} rute, pekan 45–48` }
+            : { k: "Rekomendasi SPHP", v: "Terbatas", t: "untuk akun dinas dan perusahaan" },
           { k: "Uji balik prakiraan 4 pekan", v: "MAPE 3,9%", t: "Jan–Okt 2026 · target ≤ 5%" },
         ]}
       />
       <div className="grid-21">
         <PricePanel />
         <Panel title="Arah penyaluran SPHP" note="Dari gudang wilayah surplus ke wilayah rawan">
+          <Terkunci judul="Rekomendasi penyaluran SPHP">
           <div className="map">
             <PetaJatim layer="harga" flows labels={false} />
           </div>
@@ -78,6 +84,7 @@ export default function Harga() {
             }
           />
           <Bacaan>{bacaSphp()}</Bacaan>
+          </Terkunci>
         </Panel>
       </div>
       <Panel
@@ -99,7 +106,9 @@ export default function Harga() {
         title="Rekomendasi penyaluran pekan 45–48"
         note="Hasil optimasi: kebutuhan wilayah defisit dipenuhi dari gudang surplus dengan jarak tempuh terpendek"
       >
-        <DataTable rows={FLOWS} columns={flowColumns} rowKey={(f, i) => `${f.to.n}-${f.from.n}-${i}`} rowName={(f) => f.to.n} />
+        <Terkunci judul="Rekomendasi penyaluran SPHP">
+          <DataTable rows={FLOWS} columns={flowColumns} rowKey={(f, i) => `${f.to.n}-${f.from.n}-${i}`} rowName={(f) => f.to.n} />
+        </Terkunci>
       </Panel>
     </section>
   )

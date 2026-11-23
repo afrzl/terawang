@@ -539,3 +539,15 @@ body{margin:0;min-height:100vh}
 .th-sort .idle{opacity:.35}
 .th-sort:hover .idle{opacity:.8}
 th.r .th-sort{flex-direction:row-reverse}
+
+/* akun & konten terkunci per peran */
+.akun-grup{display:inline-flex;gap:6px;align-items:center}
+.chip-akun{cursor:pointer;text-decoration:none;font:inherit;font-size:12.5px}
+.chip-akun:hover{background:rgba(255,255,255,.2)}
+.terkunci{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:18px;margin:12px;border:1px dashed var(--rule);border-radius:12px;background:var(--panel-2);color:var(--ink-2)}
+.terkunci svg{flex:none;color:var(--accent)}
+.terkunci > div{flex:1 1 240px;min-width:0}
+.terkunci b{color:var(--ink)}
+.terkunci p{margin:2px 0 0;font-size:13px}
+.btn-masuk{display:inline-flex;padding:7px 14px;border-radius:9px;background:var(--accent);color:var(--onaccent);font-weight:600;text-decoration:none;font-size:13px}
+.terkunci-ringkas{display:inline-flex;gap:4px;align-items:center;font-size:12.5px;color:var(--accent)}
