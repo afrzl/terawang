@@ -156,3 +156,10 @@ select,input[type=text],input[type=password],input:not([type]),textarea{backgrou
 
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);max-width:min(560px,calc(100% - 32px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:50;white-space:pre-wrap}
 .toast.gagal{background:var(--crit);color:#fff}
+
+.dialog{border:1px solid var(--rule);border-radius:14px;background:var(--panel);color:var(--ink);padding:0;max-width:calc(100% - 32px)}
+.dialog::backdrop{background:rgba(0,0,0,.35)}
+.peran-kartu{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.peran-kartu > div{border:1px solid var(--rule-2);border-radius:10px;padding:10px 12px;background:var(--panel-2)}
+.peran-kartu b{display:block;margin-bottom:4px}
+.peran-kartu ul{margin:0;padding-left:18px;color:var(--ink-2);font-size:12.5px}

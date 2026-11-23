@@ -84,7 +84,12 @@ const lencana = (st) => { const [t, k] = STATUS[st] || [st ? st.toLowerCase() : 
 let tabAktif = "pipeline";
 const pemuat = {};
 
+let sesi = null;
+const punya = (hak) => !!sesi?.hak?.includes(hak);
+
 function tampilMasuk() {
+  sesi = null;
+  $("#layar-tanpa-akses").hidden = true;
   $("#layar-masuk").hidden = false;
   $("#tab").hidden = true;
   $("#kop-kanan").hidden = true;
@@ -100,13 +105,32 @@ function pilihTab(nama) {
   pemuat[nama]?.();
 }
 
-function masukBerhasil(pengguna) {
+function tujuanKembali() {
+  // ?kembali=/harga dari dasbor; hanya path relatif di situs ini
+  const k = new URLSearchParams(location.search).get("kembali");
+  return k && k.startsWith("/") && !k.startsWith("//") && !k.startsWith("/\\") ? k : null;
+}
+
+function masukBerhasil(d, baruMasuk = false) {
+  sesi = d;
+  const kembali = tujuanKembali();
+  if (baruMasuk && kembali) { location.href = kembali; return; }
   $("#layar-masuk").hidden = true;
-  $("#tab").hidden = false;
   $("#kop-kanan").hidden = false;
-  $("#nama-pengguna").textContent = pengguna;
+  $("#nama-pengguna").textContent = d.pengguna;
+  $("#peran-pengguna").textContent = d.labelPeran;
+  document.querySelectorAll("[data-hak]").forEach((e) => (e.hidden = !punya(e.dataset.hak)));
+  const tab = [...document.querySelectorAll("#tab button")].filter((b) => punya(b.dataset.hak)).map((b) => b.dataset.tab);
+  if (!tab.length) {
+    $("#tab").hidden = true;
+    $("#nama-tanpa-akses").textContent = d.pengguna;
+    $("#peran-tanpa-akses").textContent = d.labelPeran;
+    $("#layar-tanpa-akses").hidden = false;
+    return;
+  }
+  $("#tab").hidden = false;
   const awal = location.hash.slice(1);
-  pilihTab(["pipeline", "unggah", "konfigurasi", "jejak"].includes(awal) ? awal : "pipeline");
+  pilihTab(tab.includes(awal) ? awal : tab[0]);
   clearInterval(intervalPipeline);
   intervalPipeline = setInterval(() => { if (tabAktif === "pipeline" && !document.hidden) muatPipeline(true); }, 30000);
 }
@@ -146,17 +170,17 @@ function gambarPipeline(d) {
 
   const peringatan = [];
   const daemonSakit = d.daemon.filter((x) => !x.sehat);
-  if (daemonSakit.length) peringatan.push(el("p", { class: "pemberitahuan gagal" }, `Daemon Dagster tidak sehat (${daemonSakit.map((x) => x.jenis).join(", ")}): jadwal dan sensor tidak berjalan. Coba "Muat ulang Dagster" di tab Konfigurasi.`));
+  if (daemonSakit.length) peringatan.push(el("p", { class: "pemberitahuan gagal" }, `Daemon Dagster tidak sehat (${daemonSakit.map((x) => x.jenis).join(", ")}): jadwal dan sensor tidak berjalan. ${punya("konfigurasi") ? 'Coba "Muat ulang Dagster" di tab Konfigurasi.' : "Hubungi superadmin."}`));
   for (const a of gagal) {
     const p = el("p", { class: "pemberitahuan gagal" }, el("b", {}, a.nama), ` gagal ${relatif(a.selesai)}. `,
       el("a", { href: "#", onclick: (e) => { e.preventDefault(); bukaLog(a.runId); } }, "Lihat log"));
-    if (a.sumberManual) p.append(" · ", el("a", { href: "#unggah", onclick: (e) => { e.preventDefault(); pilihTab("unggah"); setTimeout(() => document.getElementById("sumber-" + a.sumberManual)?.scrollIntoView({ behavior: "smooth" }), 300); } }, "Unggah data manual"));
+    if (a.sumberManual && punya("unggah")) p.append(" · ", el("a", { href: "#unggah", onclick: (e) => { e.preventDefault(); pilihTab("unggah"); setTimeout(() => document.getElementById("sumber-" + a.sumberManual)?.scrollIntoView({ behavior: "smooth" }), 300); } }, "Unggah data manual"));
     peringatan.push(p);
   }
   for (const a of d.aset) for (const c of a.cek.filter((c) => c.status === "FAILED" || c.status === "EXECUTION_FAILED")) {
     const p = el("p", { class: "pemberitahuan " + (c.keparahan === "ERROR" ? "gagal" : "waspada") }, el("b", {}, a.nama), ` · cek ${c.nama}: `, c.pesan || c.ket || "tidak lolos", ` (${relatif(c.waktu)}). `);
     if (c.runId) p.append(el("a", { href: "#", onclick: (e) => { e.preventDefault(); bukaLog(c.runId); } }, "Lihat log"));
-    if (a.sumberManual) p.append(" · ", el("a", { href: "#unggah", onclick: (e) => { e.preventDefault(); pilihTab("unggah"); } }, "Unggah data manual"));
+    if (a.sumberManual && punya("unggah")) p.append(" · ", el("a", { href: "#unggah", onclick: (e) => { e.preventDefault(); pilihTab("unggah"); } }, "Unggah data manual"));
     peringatan.push(p);
   }
   $("#peringatan-pipeline").replaceChildren(...peringatan);
@@ -169,7 +193,7 @@ function gambarPipeline(d) {
     for (const a of d.aset.filter((x) => x.grup === g)) {
       const aksi = el("td", {});
       if (a.runId) aksi.append(el("button", { class: "tombol kecil", type: "button", onclick: (e) => { e.stopPropagation(); bukaLog(a.runId); } }, "Log"));
-      if (a.status === "FAILURE" && a.sumberManual) aksi.append(" ", el("button", { class: "tombol kecil bahaya", type: "button", onclick: (e) => { e.stopPropagation(); pilihTab("unggah"); } }, "Unggah"));
+      if (a.status === "FAILURE" && a.sumberManual && punya("unggah")) aksi.append(" ", el("button", { class: "tombol kecil bahaya", type: "button", onclick: (e) => { e.stopPropagation(); pilihTab("unggah"); } }, "Unggah"));
       const cekGagal = a.cek.some((c) => c.status === "FAILED" || c.status === "EXECUTION_FAILED");
       baris.push(el("tr", { class: (a.status === "FAILURE" ? "gagal " : cekGagal ? "waspada " : "") + (a.runId ? "klik" : ""), onclick: a.runId ? () => bukaLog(a.runId) : null },
         el("td", {}, el("div", { class: "nama-aset" }, a.nama), a.ket ? el("div", { class: "ket" }, a.ket) : null,
@@ -259,7 +283,7 @@ function gambarSumber(s, status) {
 
   const daftar = el("div", { class: "berkas-daftar" }, ...s.acuan.map((b) => gambarBerkas(s, b)));
   const bagian = [kepala];
-  if (s.env && s.mode && s.mode !== "manual") bagian.push(el("p", { class: "pemberitahuan info kecil" }, `Unggahan dipakai otomatis bila pengambilan ${s.mode} gagal. Untuk memaksa selalu memakai unggahan, ubah ${s.env} menjadi manual di tab Konfigurasi.`));
+  if (s.env && s.mode && s.mode !== "manual") bagian.push(el("p", { class: "pemberitahuan info kecil" }, `Unggahan dipakai otomatis bila pengambilan ${s.mode} gagal. Untuk memaksa selalu memakai unggahan, ${punya("konfigurasi") ? `ubah ${s.env} menjadi manual di tab Konfigurasi` : `minta superadmin mengubah ${s.env} menjadi manual`}.`));
   bagian.push(daftar);
   if (s.lain.length) bagian.push(el("p", { class: "pemberitahuan waspada kecil" }, "Berkas di folder manual yang tidak dikenali aset (diabaikan): " + s.lain.map((x) => x.nama).join(", ")));
   if (s.riwayat.length) bagian.push(el("details", { class: "riwayat" }, el("summary", {}, `Riwayat unggahan (${s.riwayat.length})`),
@@ -382,8 +406,48 @@ function gambarVar(berkas, v) {
 
 pemuat.konfigurasi = muatKonfigurasi;
 
+// ---------- akun ----------
+const NAMA_HAK = { dasbor_sphp: "Dasbor lengkap termasuk SPHP", pipeline: "Pantau pipeline", jalankan: "Jalankan job",
+  unggah: "Unggah data manual", konfigurasi: "Konfigurasi & secret", akun: "Kelola akun", jejak: "Jejak admin" };
+pemuat.akun = async () => {
+  try {
+    const d = await api("/akun");
+    $("#daftar-peran").replaceChildren(el("h3", {}, "Hak tiap peran"), el("div", { class: "peran-kartu" },
+      el("div", {}, el("b", {}, "Guest (tanpa login)"), el("ul", {}, el("li", {}, "Dasbor umum"))),
+      ...d.peran.map((p) => el("div", {}, el("b", {}, p.label), el("ul", {}, el("li", {}, "Dasbor umum"), ...p.hak.map((h) => el("li", {}, NAMA_HAK[h] || h)))))));
+    const pilih = $("#pilih-peran-baru");
+    if (!pilih.options.length) pilih.append(...d.peran.map((p) => el("option", { value: p.id, selected: p.id === "dinas" }, p.label)));
+    $("#tabel-akun tbody").replaceChildren(...d.akun.map((a) => {
+      const diri = a.nama === sesi?.pengguna;
+      const peran = el("select", { "aria-label": "Peran " + a.nama }, ...d.peran.map((p) => el("option", { value: p.id, selected: p.id === a.peran }, p.label)));
+      peran.addEventListener("change", async () => {
+        try { toast((await api(`/akun/${encodeURIComponent(a.nama)}`, { method: "PUT", json: { peran: peran.value } })).pesan); } catch (e) { toast(e.message, true); }
+        pemuat.akun();
+      });
+      const aksi = el("td", { class: "aksi" },
+        el("button", { class: "tombol kecil", type: "button", onclick: async (e) => {
+          const baru = prompt(`Sandi baru untuk ${a.nama} (min. 10 karakter):`);
+          if (!baru) return;
+          await sibuk(e.currentTarget, async () => toast((await api(`/akun/${encodeURIComponent(a.nama)}`, { method: "PUT", json: { sandi: baru } })).pesan));
+        } }, "Atur ulang sandi"),
+        el("button", { class: "tombol kecil", type: "button", onclick: async (e) => {
+          await sibuk(e.currentTarget, async () => toast((await api(`/akun/${encodeURIComponent(a.nama)}`, { method: "PUT", json: { aktif: !a.aktif } })).pesan));
+          pemuat.akun();
+        } }, a.aktif ? "Nonaktifkan" : "Aktifkan"),
+        diri ? null : el("button", { class: "tombol kecil bahaya", type: "button", onclick: async (e) => {
+          if (!confirm(`Hapus akun ${a.nama}?`)) return;
+          await sibuk(e.currentTarget, async () => toast((await api(`/akun/${encodeURIComponent(a.nama)}`, { method: "DELETE" })).pesan));
+          pemuat.akun();
+        } }, "Hapus"));
+      return el("tr", { class: a.aktif ? "" : "waspada" }, el("td", { class: "nama-aset" }, a.nama, diri ? " (kamu)" : ""), el("td", {}, peran),
+        el("td", {}, a.aktif ? el("span", { class: "lencana ok" }, "Aktif") : el("span", { class: "lencana waspada" }, "Nonaktif")),
+        el("td", { class: "waktu" }, relatif(a.terakhirMasuk)), aksi);
+    }));
+  } catch (e) { toast(e.message, true); }
+};
+
 // ---------- jejak ----------
-const NAMA_TINDAKAN = { login: "Masuk", login_gagal: "Gagal masuk", ubah_konfigurasi: "Ubah konfigurasi", uji_konfigurasi: "Uji key",
+const NAMA_TINDAKAN = { buat_akun: "Buat akun", ubah_akun: "Ubah akun", hapus_akun: "Hapus akun", ganti_sandi: "Ganti sandi sendiri", login: "Masuk", login_gagal: "Gagal masuk", ubah_konfigurasi: "Ubah konfigurasi", uji_konfigurasi: "Uji key",
   muat_ulang: "Muat ulang layanan", unggah_manual: "Unggah manual", tarik_unggahan: "Tarik unggahan", jalankan_job: "Jalankan job" };
 pemuat.jejak = async () => {
   try {
@@ -418,8 +482,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       const d = await api("/masuk", { method: "POST", json: { pengguna: f.get("pengguna"), sandi: f.get("sandi") } });
       e.target.reset();
-      masukBerhasil(d.pengguna);
+      masukBerhasil(d, true);
     } catch (err) { $("#galat-masuk").textContent = err.message; } finally { tombol.disabled = false; }
   });
-  try { masukBerhasil((await api("/saya")).pengguna); } catch { tampilMasuk(); }
+  // ganti sandi sendiri
+  const dlg = $("#dialog-sandi");
+  $("#tombol-sandi").addEventListener("click", () => { $("#form-sandi").reset(); $("#galat-sandi").textContent = ""; dlg.showModal(); });
+  $("#batal-sandi").addEventListener("click", () => dlg.close());
+  $("#form-sandi").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    if (f.get("baru") !== f.get("ulang")) { $("#galat-sandi").textContent = "Sandi baru tidak sama."; return; }
+    try {
+      const d = await api("/sandi", { method: "POST", json: { lama: f.get("lama"), baru: f.get("baru") } });
+      dlg.close(); toast(d.pesan); tampilMasuk();
+    } catch (err) { $("#galat-sandi").textContent = err.message; }
+  });
+  $("#form-akun").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget, f = new FormData(form);
+    await sibuk(form.querySelector("button"), async () => {
+      const d = await api("/akun", { method: "POST", json: { nama: f.get("nama"), peran: f.get("peran"), sandi: f.get("sandi") } });
+      toast(d.pesan); form.reset(); pemuat.akun();
+    });
+  });
+  try {
+    const d = await api("/saya");
+    if (d.pengguna) masukBerhasil(d); else tampilMasuk();
+  } catch { tampilMasuk(); }
 });
