@@ -153,6 +153,12 @@ function gambarPipeline(d) {
     if (a.sumberManual) p.append(" · ", el("a", { href: "#unggah", onclick: (e) => { e.preventDefault(); pilihTab("unggah"); setTimeout(() => document.getElementById("sumber-" + a.sumberManual)?.scrollIntoView({ behavior: "smooth" }), 300); } }, "Unggah data manual"));
     peringatan.push(p);
   }
+  for (const a of d.aset) for (const c of a.cek.filter((c) => c.status === "FAILED" || c.status === "EXECUTION_FAILED")) {
+    const p = el("p", { class: "pemberitahuan " + (c.keparahan === "ERROR" ? "gagal" : "waspada") }, el("b", {}, a.nama), ` · cek ${c.nama}: `, c.pesan || c.ket || "tidak lolos", ` (${relatif(c.waktu)}). `);
+    if (c.runId) p.append(el("a", { href: "#", onclick: (e) => { e.preventDefault(); bukaLog(c.runId); } }, "Lihat log"));
+    if (a.sumberManual) p.append(" · ", el("a", { href: "#unggah", onclick: (e) => { e.preventDefault(); pilihTab("unggah"); } }, "Unggah data manual"));
+    peringatan.push(p);
+  }
   $("#peringatan-pipeline").replaceChildren(...peringatan);
 
   const urutGrup = ["bronze", "silver", "model", "status"];
@@ -164,8 +170,10 @@ function gambarPipeline(d) {
       const aksi = el("td", {});
       if (a.runId) aksi.append(el("button", { class: "tombol kecil", type: "button", onclick: (e) => { e.stopPropagation(); bukaLog(a.runId); } }, "Log"));
       if (a.status === "FAILURE" && a.sumberManual) aksi.append(" ", el("button", { class: "tombol kecil bahaya", type: "button", onclick: (e) => { e.stopPropagation(); pilihTab("unggah"); } }, "Unggah"));
-      baris.push(el("tr", { class: (a.status === "FAILURE" ? "gagal " : "") + (a.runId ? "klik" : ""), onclick: a.runId ? () => bukaLog(a.runId) : null },
-        el("td", {}, el("div", { class: "nama-aset" }, a.nama), a.ket ? el("div", { class: "ket" }, a.ket) : null),
+      const cekGagal = a.cek.some((c) => c.status === "FAILED" || c.status === "EXECUTION_FAILED");
+      baris.push(el("tr", { class: (a.status === "FAILURE" ? "gagal " : cekGagal ? "waspada " : "") + (a.runId ? "klik" : ""), onclick: a.runId ? () => bukaLog(a.runId) : null },
+        el("td", {}, el("div", { class: "nama-aset" }, a.nama), a.ket ? el("div", { class: "ket" }, a.ket) : null,
+          ...a.cek.filter((c) => c.status === "FAILED" || c.status === "EXECUTION_FAILED").map((c) => el("div", { class: "cek-gagal" }, "⚠ " + (c.pesan || c.nama)))),
         el("td", {}, lencana(a.status), a.antre && a.status !== "IN_PROGRESS" ? el("div", { class: "ket" }, "+ ada run antre") : null),
         el("td", { class: "waktu", title: waktu(a.selesai || a.mulai) }, relatif(a.selesai || a.mulai)),
         el("td", { class: "waktu", title: waktu(a.materialisasi) }, relatif(a.materialisasi)),

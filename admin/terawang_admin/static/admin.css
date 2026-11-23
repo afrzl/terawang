@@ -92,6 +92,8 @@ select,input[type=text],input[type=password],input:not([type]),textarea{backgrou
 .tabel th{position:sticky;top:0;background:var(--panel);text-align:left;font-weight:600;color:var(--ink-3);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--rule)}
 .tabel td{padding:7px 8px;border-bottom:1px solid var(--rule-2);vertical-align:top}
 .tabel tr.gagal td{background:var(--crit-bg)}
+.tabel tr.waspada td{background:var(--warn-bg)}
+.cek-gagal{color:var(--warn);font-size:12px;margin-top:3px;max-width:60ch}
 .tabel tr.grup td{background:var(--panel-2);font-family:var(--f-mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-2);padding-block:4px}
 .tabel tr.klik{cursor:pointer}
 .tabel tr.klik:hover td{background:var(--panel-2)}
