@@ -1,6 +1,6 @@
 # Halaman admin TERAWANG
 
-`https://terawang.tech/admin` — wajib login. Tiga bagian:
+`https://terawang.tech/admin` — wajib login. Bagian yang tampil tergantung peran (lihat tabel Peran):
 
 1. **Pipeline**: status tiap aset Dagster (hasil langkahnya di run terakhir), run terakhir, dan log per run. Aset/run gagal
    disorot merah, galat dan penyebabnya ditampilkan di atas. Bisa memasukkan job (`pipeline_penuh`, `pipeline_harga_harian`,
@@ -15,9 +15,21 @@
 
 Semua tindakan dicatat di `~/.local/share/terawang/admin/jejak.jsonl` (tab Jejak), tanpa nilai secret.
 
+## Peran
+| Peran | Dasbor | SPHP | Pipeline, unggah manual, jalankan job | Konfigurasi/secret, akun, jejak |
+|---|---|---|---|---|
+| guest (tanpa login) | ya | tidak | tidak | tidak |
+| perusahaan (hilirisasi) | ya | ya | tidak | tidak |
+| dinas | ya | ya | ya | tidak |
+| superadmin | ya | ya | ya | ya |
+
+Hak per peran ada di `akun.HAK`. Dasbor membaca peran lewat `GET /admin/api/saya` (tanpa login = guest).
+Akun dikelola superadmin di tab **Akun & peran**; akun pertama dibuat di server: `.venv-pipeline/bin/python -m terawang_admin.sandi NAMA superadmin`.
+
 ## Keamanan
-- Satu akun admin, sandi di-hash scrypt di `~/.config/terawang/admin.json` (mode 600). Ganti sandi = semua sesi lama keluar.
-- Sesi: cookie `HttpOnly; Secure; SameSite=Strict; Path=/admin`, 12 jam. Permintaan yang mengubah sesuatu wajib header `X-Terawang-Admin`.
+- Sandi di-hash scrypt di `~/.config/terawang/admin.json` (mode 600). Ganti sandi/peran atau nonaktifkan akun = sesi lama akun itu keluar.
+  Selalu harus ada minimal satu superadmin aktif.
+- Sesi: cookie `tw_sesi` `HttpOnly; Secure; SameSite=Strict; Path=/` (supaya dasbor tahu peran), 12 jam. Permintaan yang mengubah sesuatu wajib header `X-Terawang-Admin`.
 - 5 kali salah sandi dalam 15 menit per IP = dikunci sementara.
 - Layanan hanya mendengar di IP bridge Docker; satu-satunya jalan masuk lewat Traefik (HTTPS).
 
@@ -25,7 +37,7 @@ Semua tindakan dicatat di `~/.local/share/terawang/admin/jejak.jsonl` (tab Jejak
 ```bash
 cd ~/terawang-pipeline && git pull
 ADMIN_HOST=172.19.0.1 DAGSTER_HOST=172.19.0.1 bash deploy/deploy-admin.sh
-.venv-pipeline/bin/python -m terawang_admin.sandi admin     # sekali, atau untuk ganti sandi
+.venv-pipeline/bin/python -m terawang_admin.sandi admin superadmin   # akun pertama, atau atur ulang sandi
 ```
 Sekali sebagai root: salin `deploy/traefik-admin.yml` ke `/opt/traefik/dynamic/terawang-admin.yml` dan izinkan bridge Docker ke port 3071 di ufw.
 

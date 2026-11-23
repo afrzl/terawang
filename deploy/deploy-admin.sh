@@ -6,7 +6,7 @@
 #           ADMIN_PORT (default 3071), DAGSTER_HOST/DAGSTER_PORT (GraphQL Dagster, default 127.0.0.1:3070).
 # Sekali saja sesudahnya (sebagai root): salin deploy/traefik-admin.yml ke /opt/traefik/dynamic/terawang-admin.yml,
 #   dan bila firewall INPUT = DROP: ufw allow in on <br-...> from 172.19.0.0/16 to 172.19.0.1 port 3071 proto tcp
-# Akun admin: .venv-pipeline/bin/python -m terawang_admin.sandi admin
+# Akun pertama: .venv-pipeline/bin/python -m terawang_admin.sandi admin superadmin
 set -euo pipefail
 cd "$(dirname "$0")/.."
 APP_DIR="$(pwd)"
@@ -40,7 +40,7 @@ bash "$APP_DIR/deploy/admin-ensure.sh"
 for i in $(seq 1 30); do
   if curl -fsS -o /dev/null "http://$ADMIN_HOST:$ADMIN_PORT/admin/"; then
     echo "Selesai: admin di http://$ADMIN_HOST:$ADMIN_PORT/admin/"
-    [ -f "$HOME/.config/terawang/admin.json" ] || echo "Akun belum ada: $VENV/bin/python -m terawang_admin.sandi admin"
+    [ -f "$HOME/.config/terawang/admin.json" ] || echo "Akun belum ada: $VENV/bin/python -m terawang_admin.sandi admin superadmin"
     exit 0
   fi
   sleep 1

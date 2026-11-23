@@ -19,23 +19,26 @@
         <span><span class="judul">TERA<span>WANG</span></span><span class="sub">Panel admin pipeline data</span></span>
       </a>
       <div class="kop-kanan" id="kop-kanan" hidden>
-        <span class="chip">Masuk sebagai <b id="nama-pengguna"></b></span>
+        <span class="chip"><b id="nama-pengguna"></b> · <span id="peran-pengguna"></span></span>
+        <a class="tombol tombol-kop" href="/">Dasbor</a>
+        <button class="tombol tombol-kop" id="tombol-sandi" type="button">Ganti sandi</button>
         <button class="tombol tombol-kop" id="tombol-keluar" type="button">Keluar</button>
       </div>
     </div>
     <nav class="wrap tab" id="tab" hidden aria-label="Bagian admin">
-      <button type="button" data-tab="pipeline" aria-selected="true">Pipeline</button>
-      <button type="button" data-tab="unggah">Unggah manual</button>
-      <button type="button" data-tab="konfigurasi">Konfigurasi &amp; secret</button>
-      <button type="button" data-tab="jejak">Jejak admin</button>
+      <button type="button" data-tab="pipeline" data-hak="pipeline" aria-selected="true">Pipeline</button>
+      <button type="button" data-tab="unggah" data-hak="unggah">Unggah manual</button>
+      <button type="button" data-tab="konfigurasi" data-hak="konfigurasi">Konfigurasi &amp; secret</button>
+      <button type="button" data-tab="akun" data-hak="akun">Akun &amp; peran</button>
+      <button type="button" data-tab="jejak" data-hak="jejak">Jejak admin</button>
     </nav>
   </header>
 
   <main class="wrap">
     <section id="layar-masuk" class="masuk" hidden>
       <form id="form-masuk" class="panel kartu-masuk">
-        <h2>Masuk admin</h2>
-        <p class="redup">Halaman ini memuat pengaturan dan secret pipeline. Hanya untuk tim TERAWANG.</p>
+        <h2>Masuk TERAWANG</h2>
+        <p class="redup">Untuk akun dinas, perusahaan, dan tim TERAWANG. Pengunjung umum bisa langsung membuka <a href="/">dasbor</a> tanpa masuk.</p>
         <label>Nama pengguna<input name="pengguna" autocomplete="username" required /></label>
         <label>Sandi<input name="sandi" type="password" autocomplete="current-password" required /></label>
         <p class="pesan-galat" id="galat-masuk" role="alert"></p>
@@ -43,12 +46,31 @@
       </form>
     </section>
 
+    <section id="layar-tanpa-akses" class="masuk" hidden>
+      <div class="panel kartu-masuk">
+        <h2>Sudah masuk</h2>
+        <p class="redup">Akun <b id="nama-tanpa-akses"></b> (<span id="peran-tanpa-akses"></span>) tidak punya akses ke panel admin, tapi bisa melihat dasbor lengkap termasuk rekomendasi SPHP.</p>
+        <a class="tombol utama" href="/">Buka dasbor</a>
+      </div>
+    </section>
+
+    <dialog id="dialog-sandi" class="dialog">
+      <form id="form-sandi" method="dialog" class="kartu-masuk">
+        <h3>Ganti sandi</h3>
+        <label>Sandi lama<input name="lama" type="password" autocomplete="current-password" required /></label>
+        <label>Sandi baru (min. 10 karakter)<input name="baru" type="password" autocomplete="new-password" minlength="10" required /></label>
+        <label>Ulangi sandi baru<input name="ulang" type="password" autocomplete="new-password" minlength="10" required /></label>
+        <p class="pesan-galat" id="galat-sandi" role="alert"></p>
+        <div class="aksi"><button class="tombol utama" type="submit" value="simpan">Simpan</button><button class="tombol" type="button" id="batal-sandi">Batal</button></div>
+      </form>
+    </dialog>
+
     <section id="bagian-pipeline" class="bagian" hidden>
       <div class="baris-judul">
         <div><h2>Pemantauan pipeline</h2><p class="redup" id="info-perbarui">Memuat…</p></div>
         <div class="aksi">
-          <select id="pilih-job" aria-label="Job"></select>
-          <button class="tombol" id="tombol-jalankan" type="button">Jalankan sekarang</button>
+          <select id="pilih-job" aria-label="Job" data-hak="jalankan"></select>
+          <button class="tombol" id="tombol-jalankan" type="button" data-hak="jalankan">Jalankan sekarang</button>
           <button class="tombol" id="tombol-segarkan" type="button">Segarkan</button>
           <a class="tombol" href="https://dagster.terawang.tech" target="_blank" rel="noopener">Buka Dagster ↗</a>
         </div>
@@ -92,6 +114,22 @@
           <p class="redup">Secret tidak pernah ditampilkan utuh, hanya 4 karakter terakhir. Mengisi kolom secret = mengganti nilainya. Setelah menyimpan, muat ulang layanan supaya nilai baru dipakai. Setiap perubahan disimpan cadangannya (5 terakhir) dan dicatat di jejak.</p></div>
       </div>
       <div id="daftar-konfigurasi"></div>
+    </section>
+
+    <section id="bagian-akun" class="bagian" hidden>
+      <div class="baris-judul"><div><h2>Akun &amp; peran</h2>
+        <p class="redup">Guest tidak perlu akun. Mengubah peran, mengatur ulang sandi, atau menonaktifkan akun langsung mengeluarkan sesi akun itu.</p></div></div>
+      <div class="panel" id="daftar-peran"></div>
+      <div class="panel">
+        <h3>Daftar akun</h3>
+        <div class="tabel-gulir"><table class="tabel" id="tabel-akun"><thead><tr><th>Nama</th><th>Peran</th><th>Status</th><th>Terakhir masuk</th><th></th></tr></thead><tbody></tbody></table></div>
+        <form id="form-akun" class="tambah-var">
+          <input name="nama" placeholder="nama pengguna (mis. dinas.ngawi)" required pattern="[a-z0-9][a-z0-9._\-]{2,39}" autocomplete="off" />
+          <select name="peran" id="pilih-peran-baru" required></select>
+          <input name="sandi" type="password" placeholder="sandi awal (min. 10)" minlength="10" required autocomplete="new-password" />
+          <button class="tombol utama" type="submit">Buat akun</button>
+        </form>
+      </div>
     </section>
 
     <section id="bagian-jejak" class="bagian" hidden>

@@ -1,8 +1,15 @@
-"""Akun admin tunggal: sandi di-hash scrypt, sesi = cookie bertanda tangan HMAC.
+"""Akun dan peran (role). Sandi di-hash scrypt, sesi = cookie bertanda tangan HMAC.
 
 Berkas akun (pengaturan.BERKAS_AKUN, mode 600):
-  {"pengguna": "admin", "hash": "scrypt$16384$8$1$<garam hex>$<hash hex>", "rahasia": "<hex>", "versi": 1}
-`versi` naik setiap sandi diganti, sehingga semua sesi lama otomatis tidak berlaku.
+  {"rahasia": "<hex>", "pengguna": {"<nama>": {"hash": "scrypt$...", "peran": "superadmin", "versi": 1, "aktif": true, "dibuat": <epoch>}}}
+`versi` per pengguna naik setiap sandi/peran diganti atau akun dinonaktifkan, sehingga sesi lama pengguna itu tidak berlaku lagi.
+Format lama (satu akun: {"pengguna": "admin", "hash", "rahasia", "versi"}) dibaca sebagai superadmin.
+
+Peran:
+  guest       tanpa login: dasbor umum
+  perusahaan  dasbor lengkap termasuk SPHP, tanpa admin (hilirisasi)
+  dinas       dasbor lengkap termasuk SPHP + admin: pantau pipeline, unggah manual, jalankan job
+  superadmin  semua + konfigurasi/secret, kelola akun, jejak admin
 """
 from __future__ import annotations
 
@@ -11,6 +18,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import threading
 import time
@@ -18,14 +26,40 @@ from collections import defaultdict, deque
 
 from . import pengaturan
 
-NAMA_COOKIE = "tw_admin"
+NAMA_COOKIE = "tw_sesi"
 UMUR_SESI = 12 * 3600
 BATAS_GAGAL = 5
 JENDELA_GAGAL = 15 * 60
+NAMA_SAH = re.compile(r"^[a-z0-9][a-z0-9._-]{2,39}$")
+
+PERAN = ("perusahaan", "dinas", "superadmin")
+LABEL_PERAN = {"perusahaan": "Perusahaan (hilirisasi)", "dinas": "Dinas", "superadmin": "Superadmin"}
+HAK: dict[str, set[str]] = {
+    # dasbor
+    "dasbor_sphp": {"perusahaan", "dinas", "superadmin"},
+    # admin
+    "pipeline": {"dinas", "superadmin"},
+    "jalankan": {"dinas", "superadmin"},
+    "unggah": {"dinas", "superadmin"},
+    "konfigurasi": {"superadmin"},
+    "akun": {"superadmin"},
+    "jejak": {"superadmin"},
+}
 
 _kunci = threading.Lock()
+_kunci_berkas = threading.Lock()
 _gagal: dict[str, deque] = defaultdict(deque)
 
+
+def hak_peran(peran: str) -> list[str]:
+    return sorted(h for h, p in HAK.items() if peran in p)
+
+
+def boleh(peran: str | None, hak: str) -> bool:
+    return bool(peran) and peran in HAK.get(hak, set())
+
+
+# ---------- sandi ----------
 
 def hash_sandi(sandi: str) -> str:
     garam = secrets.token_bytes(16)
@@ -45,24 +79,108 @@ def cocok_sandi(sandi: str, tersimpan: str) -> bool:
         return False
 
 
-def baca_akun() -> dict | None:
+_HASH_PALSU = hash_sandi(secrets.token_hex(8))  # dipakai saat nama tidak ada, supaya waktu respons sama
+
+
+def periksa_sandi_baru(sandi: str) -> str | None:
+    if len(sandi) < 10:
+        return "Sandi minimal 10 karakter."
+    if len(sandi) > 200:
+        return "Sandi terlalu panjang."
+    return None
+
+
+# ---------- berkas akun ----------
+
+def _baca() -> dict:
     try:
-        return json.loads(pengaturan.BERKAS_AKUN.read_text())
+        data = json.loads(pengaturan.BERKAS_AKUN.read_text())
     except (OSError, ValueError):
-        return None
+        return {"rahasia": None, "pengguna": {}}
+    if isinstance(data.get("pengguna"), str):  # format lama: satu akun
+        data = {"rahasia": data["rahasia"], "pengguna": {data["pengguna"]: {
+            "hash": data["hash"], "peran": "superadmin", "versi": int(data.get("versi", 1)), "aktif": True, "dibuat": None}}}
+    return data
 
 
-def simpan_akun(pengguna: str, sandi: str) -> None:
-    lama = baca_akun() or {}
-    akun = {"pengguna": pengguna, "hash": hash_sandi(sandi), "rahasia": lama.get("rahasia") or secrets.token_hex(32),
-            "versi": int(lama.get("versi", 0)) + 1}
+def _tulis(data: dict) -> None:
     pengaturan.BERKAS_AKUN.parent.mkdir(parents=True, exist_ok=True)
     tmp = pengaturan.BERKAS_AKUN.with_suffix(".tmp")
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f:
-        json.dump(akun, f)
+        json.dump(data, f, indent=1)
     os.replace(tmp, pengaturan.BERKAS_AKUN)
 
+
+def ada_akun() -> bool:
+    return bool(_baca()["pengguna"])
+
+
+def daftar() -> list[dict]:
+    return [{"nama": n, "peran": a["peran"], "aktif": a.get("aktif", True), "dibuat": a.get("dibuat"),
+             "terakhirMasuk": a.get("terakhir_masuk")} for n, a in sorted(_baca()["pengguna"].items())]
+
+
+class GalatAkun(ValueError):
+    pass
+
+
+def simpan(nama: str, *, sandi: str | None = None, peran: str | None = None, aktif: bool | None = None, baru: bool = False) -> None:
+    """Buat atau ubah akun. Mengubah sandi/peran/aktif menaikkan versi (sesi lama pengguna itu keluar)."""
+    nama = nama.strip().lower()
+    with _kunci_berkas:
+        data = _baca()
+        data["rahasia"] = data.get("rahasia") or secrets.token_hex(32)
+        semua = data["pengguna"]
+        if baru:
+            if not NAMA_SAH.match(nama):
+                raise GalatAkun("Nama pengguna 3-40 karakter: huruf kecil, angka, titik, minus, garis bawah.")
+            if nama in semua:
+                raise GalatAkun("Nama pengguna sudah dipakai.")
+            if not sandi or not peran:
+                raise GalatAkun("Akun baru butuh sandi dan peran.")
+            semua[nama] = {"hash": "", "peran": peran, "versi": 0, "aktif": True, "dibuat": time.time()}
+        elif nama not in semua:
+            raise GalatAkun("Akun tidak ada.")
+        a = semua[nama]
+        if peran is not None:
+            if peran not in PERAN:
+                raise GalatAkun("Peran tidak dikenal.")
+            a["peran"] = peran
+        if sandi is not None:
+            salah = periksa_sandi_baru(sandi)
+            if salah:
+                raise GalatAkun(salah)
+            a["hash"] = hash_sandi(sandi)
+        if aktif is not None:
+            a["aktif"] = bool(aktif)
+        # jangan sampai tidak ada superadmin aktif
+        if not any(x["peran"] == "superadmin" and x.get("aktif", True) for x in semua.values()):
+            raise GalatAkun("Harus tetap ada minimal satu superadmin aktif.")
+        a["versi"] = int(a.get("versi", 0)) + 1
+        _tulis(data)
+
+
+def hapus(nama: str) -> None:
+    with _kunci_berkas:
+        data = _baca()
+        if nama not in data["pengguna"]:
+            raise GalatAkun("Akun tidak ada.")
+        del data["pengguna"][nama]
+        if not any(x["peran"] == "superadmin" and x.get("aktif", True) for x in data["pengguna"].values()):
+            raise GalatAkun("Harus tetap ada minimal satu superadmin aktif.")
+        _tulis(data)
+
+
+def _catat_masuk(nama: str) -> None:
+    with _kunci_berkas:
+        data = _baca()
+        if nama in data["pengguna"]:
+            data["pengguna"][nama]["terakhir_masuk"] = time.time()
+            _tulis(data)
+
+
+# ---------- sesi ----------
 
 def _b64(b: bytes) -> str:
     return base64.urlsafe_b64encode(b).decode().rstrip("=")
@@ -72,29 +190,36 @@ def _unb64(s: str) -> bytes:
     return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
 
 
-def buat_token(akun: dict) -> str:
-    isi = _b64(json.dumps({"u": akun["pengguna"], "v": akun["versi"], "exp": int(time.time()) + UMUR_SESI}).encode())
-    tanda = _b64(hmac.new(bytes.fromhex(akun["rahasia"]), isi.encode(), hashlib.sha256).digest())
-    return f"{isi}.{tanda}"
+def _tanda(rahasia: str, isi: str) -> str:
+    return _b64(hmac.new(bytes.fromhex(rahasia), isi.encode(), hashlib.sha256).digest())
 
 
-def periksa_token(token: str | None) -> str | None:
-    """Kembalikan nama pengguna kalau token sah dan belum kedaluwarsa."""
-    akun = baca_akun()
-    if not token or not akun or "." not in token:
+def buat_token(nama: str) -> str:
+    data = _baca()
+    a = data["pengguna"][nama]
+    isi = _b64(json.dumps({"u": nama, "v": a["versi"], "exp": int(time.time()) + UMUR_SESI}).encode())
+    return f"{isi}.{_tanda(data['rahasia'], isi)}"
+
+
+def periksa_token(token: str | None) -> tuple[str, str] | None:
+    """(nama, peran) kalau token sah, akun aktif, dan belum kedaluwarsa."""
+    data = _baca()
+    if not token or not data.get("rahasia") or "." not in token:
         return None
     isi, tanda = token.rsplit(".", 1)
-    benar = _b64(hmac.new(bytes.fromhex(akun["rahasia"]), isi.encode(), hashlib.sha256).digest())
-    if not hmac.compare_digest(benar, tanda):
+    if not hmac.compare_digest(_tanda(data["rahasia"], isi), tanda):
         return None
     try:
-        data = json.loads(_unb64(isi))
+        t = json.loads(_unb64(isi))
     except ValueError:
         return None
-    if data.get("v") != akun["versi"] or data.get("u") != akun["pengguna"] or data.get("exp", 0) < time.time():
+    a = data["pengguna"].get(t.get("u"))
+    if not a or not a.get("aktif", True) or t.get("v") != a["versi"] or t.get("exp", 0) < time.time():
         return None
-    return data["u"]
+    return t["u"], a["peran"]
 
+
+# ---------- login & penguncian ----------
 
 def terkunci(ip: str) -> int:
     """Detik sisa penguncian untuk IP ini (0 = boleh mencoba)."""
@@ -116,10 +241,18 @@ def bersihkan_gagal(ip: str) -> None:
         _gagal.pop(ip, None)
 
 
-def login(pengguna: str, sandi: str) -> dict | None:
-    akun = baca_akun()
-    if not akun:
+def login(nama: str, sandi: str) -> tuple[str, str] | None:
+    nama = nama.strip().lower()
+    a = _baca()["pengguna"].get(nama)
+    ok = cocok_sandi(sandi, a["hash"] if a else _HASH_PALSU)
+    if not a or not ok or not a.get("aktif", True):
         return None
-    ok_pengguna = hmac.compare_digest(pengguna.encode(), akun["pengguna"].encode())
-    ok_sandi = cocok_sandi(sandi, akun["hash"])  # selalu dihitung supaya waktu respons sama
-    return akun if ok_pengguna and ok_sandi else None
+    _catat_masuk(nama)
+    return nama, a["peran"]
+
+
+def ganti_sandi_sendiri(nama: str, lama: str, baru: str) -> None:
+    a = _baca()["pengguna"].get(nama)
+    if not a or not cocok_sandi(lama, a["hash"]):
+        raise GalatAkun("Sandi lama salah.")
+    simpan(nama, sandi=baru)
