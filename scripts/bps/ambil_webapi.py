@@ -124,10 +124,16 @@ def periksa_koreksi(m, tahunan, prov, nama_kolom, tahun, repo_nilai, laporan) ->
     if m.isna().any().any():
         kosong = [(k, b) for k in m.index for b in m.columns if pd.isna(m.loc[k, b])]
         raise SystemExit(f"{nama_kolom} {tahun}: sel kosong {kosong[:5]}")
+    # Toleransi pembulatan: data 2 desimal (2022 ke atas) 0,10 per baris dan 0,30 per kolom; data bilangan bulat (2019-2021)
+    # boleh meleset 0,5 per sel tak-nol, karena Tahunan dan Jawa Timur dibulatkan dari angka yang belum dibulatkan.
+    bulat = bool(((m - m.round(0)).abs() < 1e-9).all().all())
+    tol_b = (0.5 * (m != 0).sum(axis=1) + 0.01) if bulat else pd.Series(TOL_BARIS, index=m.index)
+    tol_k = (0.5 * (m != 0).sum(axis=0) + 0.01) if bulat else pd.Series(TOL_KOLOM, index=m.columns)
+
     def selisih():
         db = (tahunan - m.sum(axis=1)) if tahunan.notna().all() else pd.Series(0.0, index=m.index)
         dk = (prov - m.sum(axis=0)) if prov.notna().all() else pd.Series(0.0, index=m.columns)
-        return db[db.abs() > TOL_BARIS], dk[dk.abs() > TOL_KOLOM]
+        return db[db.abs() > tol_b], dk[dk.abs() > tol_k]
 
     def koreksi(k, b, delta):
         asli, baru = m.loc[k, b], round(m.loc[k, b] + delta, 2)
@@ -136,28 +142,38 @@ def periksa_koreksi(m, tahunan, prov, nama_kolom, tahun, repo_nilai, laporan) ->
                              f"dan total provinsi bulan itu)")
         laporan["koreksi"].append({"kolom": nama_kolom, "tahun": tahun, "wilayah": k, "bulan": int(b), "sumber": asli, "jadi": baru})
 
+    def boleh(k, b, delta):  # koreksi tidak boleh menghasilkan nilai negatif
+        return m.loc[k, b] + delta >= 0
+
     # 1) satu sel salah di baris itu: selisih baris = selisih satu kolom
     d_baris, d_kolom = selisih()
     for k in d_baris.index:
-        cocok = [b for b in d_kolom.index if abs(d_kolom[b] - d_baris[k]) <= TOL_KOLOM]
+        cocok = [b for b in d_kolom.index if abs(d_kolom[b] - d_baris[k]) <= tol_k[b] and boleh(k, b, d_baris[k])]
         if len(cocok) == 1:
             koreksi(k, cocok[0], d_baris[k])
     # 2) satu baris tersisa dengan beberapa sel salah: jumlah selisih kolom yang tersisa = selisih baris
     d_baris, d_kolom = selisih()
-    if len(d_baris) == 1 and len(d_kolom) and abs(d_kolom.sum() - d_baris.iloc[0]) <= TOL_KOLOM:
+    if len(d_baris) == 1 and len(d_kolom) and abs(d_kolom.sum() - d_baris.iloc[0]) <= tol_k[d_kolom.index].sum() \
+            and all(boleh(d_baris.index[0], b, d_kolom[b]) for b in d_kolom.index):
         for b in d_kolom.index:
             koreksi(d_baris.index[0], b, d_kolom[b])
     d_baris, d_kolom = selisih()
+    # 3) semua bulan cocok dengan total Jawa Timur, hanya Tahunan wilayah yang meleset: yang salah ketik angka Tahunan di sumber
+    #    (mis. Kota Batu 2025: 51.279 untuk 512,79). Nilai bulanan dipakai apa adanya dan dicatat.
+    if prov.notna().all() and d_kolom.empty:
+        for k in d_baris.index:
+            laporan.setdefault("tahunan_sumber_salah", []).append({"kolom": nama_kolom, "tahun": tahun, "wilayah": k,
+                                                                     "tahunan_sumber": float(tahunan[k]), "jumlah_bulan": round(float(m.loc[k].sum()), 2)})
+        d_baris = d_baris.iloc[0:0]
     for k in d_baris.index:
-        if True:
-            laporan["tak_terjelaskan"].append({"kolom": nama_kolom, "tahun": tahun, "wilayah": k, "selisih_tahunan": round(float(d_baris[k]), 2)})
-            if repo_nilai is None:
-                raise SystemExit(f"{nama_kolom} {tahun} {k}: jumlah 12 bulan beda {d_baris[k]:.2f} dari tahunan, tidak bisa dikoreksi")
-            for b in m.columns:  # pakai CSV repo untuk baris ini
-                rv = repo_nilai.get((k, b))
-                if rv is not None and abs(rv - m.loc[k, b]) > 0.005:
-                    catatan.loc[k, b] = f"{nama_kolom} memakai CSV repo (WebAPI {m.loc[k, b]:.2f} tidak lolos pemeriksaan)"
-                    m.loc[k, b] = rv
+        laporan["tak_terjelaskan"].append({"kolom": nama_kolom, "tahun": tahun, "wilayah": k, "selisih_tahunan": round(float(d_baris[k]), 2)})
+        if repo_nilai is None:
+            raise SystemExit(f"{nama_kolom} {tahun} {k}: jumlah 12 bulan beda {d_baris[k]:.2f} dari tahunan, tidak bisa dikoreksi")
+        for b in m.columns:  # pakai CSV repo untuk baris ini
+            rv = repo_nilai.get((k, b))
+            if rv is not None and abs(rv - m.loc[k, b]) > 0.005:
+                catatan.loc[k, b] = f"{nama_kolom} memakai CSV repo (WebAPI {m.loc[k, b]:.2f} tidak lolos pemeriksaan)"
+                m.loc[k, b] = rv
     return m, catatan
 
 
