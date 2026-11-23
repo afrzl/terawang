@@ -129,3 +129,13 @@ Perbarui file ini setiap selesai satu tugas. Format catatan: tanggal, apa yang d
 - h=7 hari: GBM sedikit lebih baik pada peristiwa naik >=1/2/3% (Brier +1..+3,5%, sebagian CI di luar 0; 2026 naik>=3% -0,9%); melewati HET +3,3% (CI batas nol).
 - h=28 hari: campuran (2025 +3..+5%; 2026 -4..-14%); melewati HET GBM LEBIH BURUK (Brier -39%, signifikan; AUC 0,67 vs 0,85).
 - Kesimpulan: ML punya nilai kecil pada horizon pendek (<=7 hari), tidak pada horizon panjang. Belum diubah di produksi.
+
+## 2026-11-21 · K3a diubah ke asal harian
+- `k3_harga_operasional.py` ditulis ulang: asal harga hari terakhir, horizon 7/14/21/28 hari, sebaran galat jendela 365 hari, ambang WASPADA per horizon dikalibrasi (maks F1, backtest sejak 22 Agu 2025). Medium: 0,15/0,20/0,25/0,30 (F1 0,14-0,21). Premium: 0,10-0,25 (F1 0,06-0,14, sangat banyak alarm palsu karena premium sudah dekat/di atas HET).
+- Tersimpan model_run 7 (304 baris); model_run 6 dihapus. Medium 17 Nov: 4 kab WASPADA di semua horizon (Jombang, Probolinggo, Tuban, Mojokerto); premium 4 SIAGA.
+- Catatan: F1 rendah; peringatan dini kejadian baru tetap sulit (precision ~15-25%).
+
+## 2026-11-21 · K3b rekomendasi SPHP
+- `scripts/k3/k3b_sphp.py`: LP stokastik (S=150) Bulog cabang -> kab untuk Nov-Jan, dari stok K2 + P(harga>HET) K3a. Tersimpan model_run 8, 46 rute (`app.rekomendasi_sphp`, DUMMY karena anggaran/stok Bulog 2026 diasumsikan). Dokumen: `ai-notes/metodologi-k3b-sphp.md`.
+- Eksplorasi: greedy terdekat, LP deterministik, rata-per-konsumsi, LP stokastik S=10/40/100, sumber kab surplus, sensitivitas anggaran/beta/gamma/h/lambda, fase waktu (hold). Pada tonase sama LP stokastik 20,7% vs 12,3% greedy. Temuan: tanpa biaya simpan rencana menumpuk di Nov (artefak), diperbaiki hold + Nov 30%.
+- Keterbatasan utama: evaluasi melingkar (skenario dari K2).
