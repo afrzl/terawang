@@ -17,7 +17,9 @@ JOB = {
 
 Q_RINGKASAN = """
 query {
-  assetNodes { assetKey { path } groupName description computeKind jobNames }
+  assetNodes { assetKey { path } groupName description computeKind jobNames
+    assetChecksOrError { __typename ... on AssetChecks { checks { name description
+      executionForLatestMaterialization { status runId timestamp evaluation { severity description } } } } } }
   runsOrError(limit: 60) {
     __typename
     ... on Runs { results { runId status jobName startTime endTime tags { key value }
@@ -71,6 +73,18 @@ def graphql(query: str, variabel: dict | None = None, batas_waktu: float = 20) -
     return hasil["data"]
 
 
+def _cek(aset: dict) -> list[dict]:
+    """Asset check (mis. konektor sumber gagal = peringatan, aset tetap jalan memakai data cadangan)."""
+    hasil = []
+    co = aset.get("assetChecksOrError") or {}
+    for c in co.get("checks", []) if co.get("__typename") == "AssetChecks" else []:
+        e = c.get("executionForLatestMaterialization") or {}
+        ev = e.get("evaluation") or {}
+        hasil.append({"nama": c["name"], "ket": c.get("description"), "status": e.get("status"), "keparahan": ev.get("severity"),
+                      "pesan": ev.get("description"), "runId": e.get("runId"), "waktu": e.get("timestamp")})
+    return hasil
+
+
 def ringkasan() -> dict:
     d = graphql(Q_RINGKASAN)
     runs_or = d["runsOrError"]
@@ -101,6 +115,7 @@ def ringkasan() -> dict:
             "nama": nama, "grup": a["groupName"], "ket": a["description"], "jenis": a.get("computeKind"),
             "status": status, "antre": bool(m.get("unstartedRunIds")), "runId": lk["runId"] if lk else None, "mulai": lk["startTime"] if lk else None,
             "selesai": lk["endTime"] if lk else None,
+            "cek": _cek(a),
             "materialisasi": float(lm["timestamp"]) / 1000 if lm.get("timestamp") else None, "runMaterialisasi": lm.get("runId"),
         })
 
