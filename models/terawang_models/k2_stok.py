@@ -20,7 +20,7 @@ def estimasi_stok(akar: str | Path, hari_ini: dt.date, produksi: pd.DataFrame, e
     """produksi = keluaran k1_produksi.prediksi_produksi. Kembalikan dict: skenario (baris app.estimasi_stok, kolom kab),
     rinci (cakupan, sd, peluang per kab-bulan), konsumsi (ton/bulan per kab), hari_ke_defisit, jangkar."""
     prod = {(int(t), int(b)): g.set_index("kab").produksi_beras_ton for (t, b), g in produksi.groupby(["tahun", "bulan"])}
-    sd = {(int(t), int(b)): float(g.sd_relatif.iloc[0]) for (t, b), g in produksi.groupby(["tahun", "bulan"])}
+    sd = {(int(t), int(b)): g.set_index("kab").sd_relatif.astype(float) for (t, b), g in produksi.groupby(["tahun", "bulan"])}
     with di_repo(akar, env):
         ko = modul("k2_operasional")
         h = ko.hitung(hari_ini, prod=prod, sd_prod=sd)

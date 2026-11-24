@@ -31,14 +31,14 @@ from scipy.stats import norm
 sys.path.insert(0, "scripts/k1")
 sys.path.insert(0, "scripts/k2")
 import model_stok as ms  # noqa: E402
-from k1_prakiraan import prakiraan  # noqa: E402
+from k1_prakiraan import GALAT_CSV, daftar_kota, prakiraan  # noqa: E402
 
 SIGMA_X, SIGMA_C = 0.20, 0.05
-SIGMA_P_MODEL, SIGMA_P_K1 = 0.15, 0.30
-HARI_INI = dt.date(2026, 11, 19)
+SIGMA_P_MODEL, SIGMA_P_K1 = 0.15, 0.30  # SIGMA_P_K1 hanya cadangan bila data/satelit/k1_galat_empiris.csv tidak ada
+HARI_INI = dt.date.today()
 AMBANG_CUKUP, AMBANG_DEFISIT, AMBANG_SURPLUS = 1.0, 0.75, 1.5
 JANGKAR_MIN, SD_JANGKAR = 1.0, 0.4  # ASUMSI: cakupan terendah Jatim 1,0 bulan (SCBN Juni 2022 nasional); sd 0,4 bulan
-TAHUN_LATIH = list(range(2019, 2026))
+TAHUN_LATIH = None  # None = semua tahun BPS bulanan yang lengkap (k1_prakiraan.tahun_final)
 
 
 def bulan_horizon(hari_ini):
@@ -68,8 +68,25 @@ def produksi(kab, hari_ini=HARI_INI):
         rasio = r26 if (ty == 2026 and tm <= 9) else (b25.beras / b25.luas).where(b25.luas > 0, r26)  # cadangan bila tak ada panen Okt-Des 2025
         prod[(ty, tm)] = luas * rasio
         luas_d[(ty, tm)] = luas
-        sd_prod[(ty, tm)] = SIGMA_P_K1 if lead[(ty, tm)] > 0 else SIGMA_P_MODEL
+        # Jan-Sep 2026 sudah diskalakan ke total BPS: tinggal galat pola bulanan. Bulan lain: galat empiris uji bergulir K1 per jenis wilayah.
+        sd_prod[(ty, tm)] = pd.Series(SIGMA_P_MODEL, index=kab) if (ty == 2026 and tm <= 9) else sd_empiris(kab, lead[(ty, tm)])
     return prod, sd_prod, luas_d
+
+
+def sd_empiris(kab, lead_bulan):
+    """sd relatif produksi per kab untuk jarak prakiraan 0/1/2 bulan, dari k1_galat_empiris.csv (cadangan: konstanta lama)."""
+    try:
+        G = pd.read_csv(GALAT_CSV).set_index(["lead", "jenis"]).sd_relatif
+    except FileNotFoundError:
+        return pd.Series(SIGMA_P_K1 if lead_bulan > 0 else SIGMA_P_MODEL, index=kab)
+    kota, h = daftar_kota(), min(int(lead_bulan), 2)
+    return pd.Series([G[(h, "KOTA" if k in kota else "KABUPATEN")] for k in kab], index=kab)
+
+
+def sd_ambil(sd_prod, b, k):
+    """sd_prod[b] boleh angka (format lama) atau Series per kab."""
+    v = sd_prod[b]
+    return float(v[k]) if isinstance(v, pd.Series) else float(v)
 
 
 def hitung(hari_ini=HARI_INI, prod=None, sd_prod=None):
@@ -103,7 +120,7 @@ def hitung(hari_ini=HARI_INI, prod=None, sd_prod=None):
         Pk = np.array([prod[b][k] for b in BULAN])
         Xk = theta[k] * np.maximum(Pk - C[k], 0)
         U[k] = np.cumsum(Pk - C[k] + masuk[k] - keluar[k] - Xk)
-        Q[k] = np.cumsum((SIGMA_X * Xk) ** 2 + (SIGMA_C * C[k]) ** 2 + (np.array([sd_prod[b] for b in BULAN]) * Pk) ** 2)
+        Q[k] = np.cumsum((SIGMA_X * Xk) ** 2 + (SIGMA_C * C[k]) ** 2 + (np.array([sd_ambil(sd_prod, b, k) for b in BULAN]) * Pk) ** 2)
     tot = sum(U[k] for k in kab) / C.sum()
     a_jangkar = JANGKAR_MIN - tot[:BULAN.index(ini) + 1].min()
 

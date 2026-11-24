@@ -12,7 +12,7 @@ import pandas as pd
 
 from .danang import di_repo, modul
 
-VERSI = "k1-gabungan-nowcast2-2026.11"
+VERSI = "k1-gabungan-nowcast2-2026.11b"  # b: bobot kota/kab terpisah, pita galat empiris, cadangan tanpa citra
 JENIS_DATA = "MODEL"
 Z80 = 1.2816  # pita P10-P90
 LEAD_HARI = (0, 28, 56)
@@ -41,6 +41,7 @@ def prediksi_produksi(akar: str | Path, hari_ini: dt.date, env: dict[str, str]) 
     for (th, bl), p in prod.items():
         for k in kab:
             v = float(p[k])
-            baris.append((k, th, bl, v, float(luas[(th, bl)][k]), sd[(th, bl)], max(v * (1 - Z80 * sd[(th, bl)]), 0.0), v * (1 + Z80 * sd[(th, bl)]), lead[(th, bl)]))
+            s = ko.sd_ambil(sd, (th, bl), k)
+            baris.append((k, th, bl, v, float(luas[(th, bl)][k]), s, max(v * (1 - Z80 * s), 0.0), v * (1 + Z80 * s), lead[(th, bl)]))
     return pd.DataFrame(baris, columns=["kab", "tahun", "bulan", "produksi_beras_ton", "luas_panen_ha", "sd_relatif",
                                         "batas_bawah_ton", "batas_atas_ton", "jarak_bulan"])
