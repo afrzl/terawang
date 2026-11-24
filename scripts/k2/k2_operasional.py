@@ -38,7 +38,6 @@ SIGMA_X, SIGMA_C = 0.20, 0.05
 SIGMA_P_MODEL, SIGMA_P_K1 = 0.15, 0.30  # SIGMA_P_K1 hanya cadangan bila data/satelit/k1_galat_empiris.csv tidak ada
 HARI_INI = dt.date.today()
 AMBANG_CUKUP, AMBANG_DEFISIT, AMBANG_SURPLUS = 1.0, 0.75, 1.5
-P_WASPADA = 0.3  # USULAN: penanda waspada bila peluang defisit >= 30% (perlu disepakati pengguna)
 JANGKAR_MIN, SD_JANGKAR = 1.0, 0.4  # ASUMSI: cakupan terendah Jatim 1,0 bulan (SCBN Juni 2022 nasional); sd 0,4 bulan
 TAHUN_LATIH = None  # None = semua tahun BPS bulanan yang lengkap (k1_prakiraan.tahun_final)
 
@@ -175,9 +174,10 @@ def hitung(hari_ini=HARI_INI, prod=None, sd_prod=None):
     hit_p10 = hitung_mundur(R, "cak_p10", BULAN, ini, hari_ini)
     R["hari_ke_defisit"] = R.kab.map(hit)
     R["hari_ke_defisit_p10"] = R.kab.map(hit_p10)
-    # Status memakai nilai tengah (peluang >= 50% setara nilai tengah di bawah ambang). Penanda WASPADA terpisah: belum DEFISIT,
-    # tetapi peluang defisit >= P_WASPADA. Ambang ini usulan; status di app.estimasi_stok tidak berubah.
-    R["waspada"] = (R.status != "DEFISIT") & (R.p_defisit >= P_WASPADA)
+    # Catatan (uji 24 Nov 2026): status dari peluang >= 50% identik dengan status dari nilai tengah. Penanda "waspada" berbasis
+    # peluang sengaja TIDAK dipakai: pita ketidakpastian tanpa pengamatan stok terlalu lebar (sd cakupan median ±1,3 bulan) dan
+    # membesar sebanding produksi, sehingga penanda itu menyorot kab lumbung, bukan kab yang stoknya menipis. hari_ke_defisit_p10
+    # disimpan untuk diagnosis saja.
     return {"R": R, "C": C, "prod": prod, "sd_prod": sd_prod, "theta": theta, "a_jangkar": a_jangkar, "hit": hit, "hit_p10": hit_p10,
             "bulan": BULAN, "ini": ini, "ids": w.id.to_dict()}
 
