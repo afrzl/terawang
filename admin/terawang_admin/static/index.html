@@ -12,33 +12,44 @@
   <script src="/admin/static/admin.js" defer></script>
 </head>
 <body>
-  <header class="kop">
-    <div class="wrap kop-isi">
-      <a class="brand" href="/" title="Kembali ke dasbor">
-        <span class="logo" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B9E39A" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg></span>
-        <span><span class="judul">TERA<span>WANG</span></span><span class="sub">Panel admin pipeline data</span></span>
-      </a>
-      <div class="kop-kanan" id="kop-kanan" hidden>
-        <span class="chip"><b id="nama-pengguna"></b> · <span id="peran-pengguna"></span></span>
-        <a class="tombol tombol-kop" href="/">Dasbor</a>
-        <button class="tombol tombol-kop" id="tombol-sandi" type="button">Ganti sandi</button>
-        <button class="tombol tombol-kop" id="tombol-keluar" type="button">Keluar</button>
+  <div class="kerangka" id="kerangka">
+  <aside class="sisi" id="sisi" hidden aria-label="Menu admin">
+    <a class="brand" href="/" title="Kembali ke dasbor">
+      <span class="logo" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B9E39A" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg></span>
+      <span><span class="judul">TERA<span>WANG</span></span><span class="sub">Panel admin</span></span>
+    </a>
+    <nav class="menu" id="menu">
+      <div class="judul-grup">Pemantauan</div>
+      <a href="#pipeline" data-hal="pipeline" data-hak="pipeline"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg><span>Ringkasan pipeline</span></a>
+      <div class="judul-grup" data-hak="pipeline">Sumber data</div>
+      <div id="menu-sumber" data-hak="pipeline"></div>
+      <div class="judul-grup" data-hak="konfigurasi">Pengaturan</div>
+      <a href="#konfigurasi" data-hal="konfigurasi" data-hak="konfigurasi"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/></svg><span>Konfigurasi &amp; secret</span></a>
+      <a href="#akun" data-hal="akun" data-hak="akun"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M17 11a3 3 0 0 0 0-6M22 21c0-3-2-5-4-5.5"/></svg><span>Akun &amp; peran</span></a>
+      <a href="#jejak" data-hal="jejak" data-hak="jejak"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7"/></svg><span>Jejak admin</span></a>
+    </nav>
+    <div class="sisi-bawah">
+      <div class="pengguna"><b id="nama-pengguna"></b><span id="peran-pengguna"></span></div>
+      <div class="aksi">
+        <a class="tombol tombol-sisi" href="/">Dasbor</a>
+        <button class="tombol tombol-sisi" id="tombol-sandi" type="button">Ganti sandi</button>
+        <button class="tombol tombol-sisi" id="tombol-keluar" type="button">Keluar</button>
       </div>
     </div>
-    <nav class="wrap tab" id="tab" hidden aria-label="Bagian admin">
-      <button type="button" data-tab="pipeline" data-hak="pipeline" aria-selected="true">Pipeline</button>
-      <button type="button" data-tab="riwayat" data-hak="pipeline">Riwayat data</button>
-      <button type="button" data-tab="unggah" data-hak="unggah">Unggah manual</button>
-      <button type="button" data-tab="konfigurasi" data-hak="konfigurasi">Konfigurasi &amp; secret</button>
-      <button type="button" data-tab="akun" data-hak="akun">Akun &amp; peran</button>
-      <button type="button" data-tab="jejak" data-hak="jejak">Jejak admin</button>
-    </nav>
+  </aside>
+  <div class="tirai" id="tirai" hidden></div>
+
+  <div class="isi">
+  <header class="bilah-atas" id="bilah-atas" hidden>
+    <button class="tombol-menu" id="tombol-menu" type="button" aria-label="Buka menu" aria-controls="sisi" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    <span class="judul-halaman" id="judul-halaman">Admin</span>
   </header>
 
-  <main class="wrap">
+  <main class="konten">
     <section id="layar-masuk" class="masuk" hidden>
       <form id="form-masuk" class="panel kartu-masuk">
-        <h2>Masuk TERAWANG</h2>
+        <div class="brand brand-masuk"><span class="logo" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B9E39A" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg></span><span class="judul">TERA<span>WANG</span></span></div>
+        <h2>Masuk</h2>
         <p class="redup">Untuk akun dinas, perusahaan, dan tim TERAWANG. Pengunjung umum bisa langsung membuka <a href="/">dasbor</a> tanpa masuk.</p>
         <label>Nama pengguna<input name="pengguna" autocomplete="username" required /></label>
         <label>Sandi<input name="sandi" type="password" autocomplete="current-password" required /></label>
@@ -82,11 +93,11 @@
         <div class="panel">
           <h3>Status per aset</h3>
           <p class="redup kecil">Status = hasil langkah aset itu di run terakhir yang menjalankannya. Aset bronze yang gagal bisa diganti dengan unggah manual.</p>
-          <div class="tabel-gulir"><table class="tabel" id="tabel-aset"><thead><tr><th>Aset</th><th>Status</th><th>Terakhir jalan</th><th>Data terakhir</th><th></th></tr></thead><tbody></tbody></table></div>
+          <div class="tabel-gulir"><table class="tabel kartu-hp" id="tabel-aset"><thead><tr><th>Aset</th><th>Status</th><th>Terakhir jalan</th><th>Data terakhir</th><th></th></tr></thead><tbody></tbody></table></div>
         </div>
         <div class="panel">
           <h3>Run terakhir</h3>
-          <div class="tabel-gulir"><table class="tabel" id="tabel-run"><thead><tr><th>Job</th><th>Status</th><th>Mulai</th><th>Durasi</th><th>Pemicu</th></tr></thead><tbody></tbody></table></div>
+          <div class="tabel-gulir"><table class="tabel kartu-hp" id="tabel-run"><thead><tr><th>Job</th><th>Status</th><th>Mulai</th><th>Durasi</th><th>Pemicu</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
       <div class="panel" id="panel-log" hidden>
@@ -101,25 +112,29 @@
       </div>
     </section>
 
-    <section id="bagian-riwayat" class="bagian" hidden>
+    <section id="bagian-sumber" class="bagian" hidden>
       <div class="baris-judul">
-        <div><h2>Riwayat data</h2>
-          <p class="redup">Setiap kali data diperbarui: kapan, lewat apa (otomatis, unggahan manual, atau berkas repo), siapa/apa pemicunya, apakah isinya berubah, dan bila gagal, penyebabnya.</p></div>
-        <div class="aksi">
-          <select id="filter-riwayat" aria-label="Aset"></select>
-          <label class="centang"><input type="checkbox" id="hanya-berubah" /> Sembunyikan yang tidak mengubah data</label>
-          <button class="tombol" id="segarkan-riwayat" type="button">Segarkan</button>
+        <div><p class="remah">Sumber data</p><h2 id="judul-sumber"></h2><p class="redup" id="ket-sumber"></p></div>
+        <div class="aksi"><button class="tombol" id="segarkan-sumber" type="button">Segarkan</button></div>
+      </div>
+      <div class="kartu-aset" id="status-sumber"></div>
+      <div class="sub-tab" role="tablist" id="sub-tab-sumber">
+        <button type="button" role="tab" data-sub="riwayat" aria-selected="true">Riwayat pembaruan</button>
+        <button type="button" role="tab" data-sub="unggah" aria-selected="false">Unggah manual</button>
+      </div>
+      <div id="sub-riwayat">
+        <div class="panel">
+          <div class="baris-judul">
+            <p class="redup kecil">Setiap pembaruan data: kapan, lewat apa (otomatis, unggahan manual, atau berkas repo), pemicunya, apakah isinya berubah, dan bila gagal, penyebabnya.</p>
+            <label class="centang"><input type="checkbox" id="hanya-berubah" /> Sembunyikan yang tidak mengubah data</label>
+          </div>
+          <div class="tabel-gulir tinggi"><table class="tabel kartu-hp" id="tabel-riwayat"><thead><tr><th>Waktu</th><th>Kejadian</th><th>Rincian</th><th>Pemicu</th><th></th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
-      <div class="panel"><div class="tabel-gulir tinggi"><table class="tabel" id="tabel-riwayat"><thead><tr><th>Waktu</th><th>Aset</th><th>Kejadian</th><th>Rincian</th><th>Pemicu</th><th></th></tr></thead><tbody></tbody></table></div></div>
-    </section>
-
-    <section id="bagian-unggah" class="bagian" hidden>
-      <div class="baris-judul">
-        <div><h2>Unggah manual data sumber</h2>
-          <p class="redup">Dipakai kalau pengambilan otomatis gagal. Aset bronze memakai unggahan ini bila sumber otomatis gagal atau mode sumber = <code>manual</code>. Nama berkas dan baris kolom harus sama persis dengan berkas acuan. Folder di server: <code id="folder-manual"></code></p></div>
+      <div id="sub-unggah" hidden>
+        <p class="redup">Dipakai kalau pengambilan otomatis gagal. Nama berkas dan baris kolom harus sama persis dengan berkas acuan. Folder di server: <code id="folder-manual"></code></p>
+        <div id="unggah-sumber"></div>
       </div>
-      <div id="daftar-sumber"></div>
     </section>
 
     <section id="bagian-konfigurasi" class="bagian" hidden>
@@ -136,7 +151,7 @@
       <div class="panel" id="daftar-peran"></div>
       <div class="panel">
         <h3>Daftar akun</h3>
-        <div class="tabel-gulir"><table class="tabel" id="tabel-akun"><thead><tr><th>Nama</th><th>Peran</th><th>Status</th><th>Terakhir masuk</th><th></th></tr></thead><tbody></tbody></table></div>
+        <div class="tabel-gulir"><table class="tabel kartu-hp" id="tabel-akun"><thead><tr><th>Nama</th><th>Peran</th><th>Status</th><th>Terakhir masuk</th><th></th></tr></thead><tbody></tbody></table></div>
         <form id="form-akun" class="tambah-var">
           <input name="nama" placeholder="nama pengguna (mis. dinas.ngawi)" required pattern="[a-z0-9][a-z0-9._\-]{2,39}" autocomplete="off" />
           <select name="peran" id="pilih-peran-baru" required></select>
@@ -148,9 +163,11 @@
 
     <section id="bagian-jejak" class="bagian" hidden>
       <div class="baris-judul"><div><h2>Jejak admin</h2><p class="redup">Login, perubahan konfigurasi, unggahan, dan job yang dijalankan dari halaman ini. Nilai secret tidak dicatat.</p></div></div>
-      <div class="panel"><div class="tabel-gulir"><table class="tabel" id="tabel-jejak"><thead><tr><th>Waktu</th><th>Tindakan</th><th>Pengguna</th><th>Rincian</th><th>IP</th></tr></thead><tbody></tbody></table></div></div>
+      <div class="panel"><div class="tabel-gulir"><table class="tabel kartu-hp" id="tabel-jejak"><thead><tr><th>Waktu</th><th>Tindakan</th><th>Pengguna</th><th>Rincian</th><th>IP</th></tr></thead><tbody></tbody></table></div></div>
     </section>
   </main>
+  </div>
+  </div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 </body>
 </html>

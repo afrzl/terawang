@@ -1,11 +1,12 @@
 # Halaman admin TERAWANG
 
-`https://terawang.tech/admin` — wajib login. Bagian yang tampil tergantung peran (lihat tabel Peran):
+`https://terawang.tech/admin` — wajib login. Tata letak panel dengan menu samping (laci di HP); bagian yang tampil tergantung peran (lihat tabel Peran):
 
-1. **Pipeline**: status tiap aset Dagster (hasil langkahnya di run terakhir), run terakhir, dan log per run. Aset/run gagal
+1. **Ringkasan pipeline**: status tiap aset Dagster (hasil langkahnya di run terakhir), run terakhir, dan log per run. Aset/run gagal
    disorot merah, galat dan penyebabnya ditampilkan di atas. Bisa memasukkan job (`pipeline_penuh`, `pipeline_harga_harian`,
    `pipeline_citra`) ke antrean; daemon yang menjalankannya. Data dibaca dari GraphQL Dagster (webserver read-only tetap melayani query).
-2. **Unggah manual**: fallback saat konektor otomatis gagal. Berkas disimpan di `TERAWANG_MANUAL_DIR/<sumber>/`
+2. **Sumber data** (satu halaman per sumber: BPS, Bulog, Harga beras, Jarak, Citra satelit): status aset sumber itu, riwayat
+   pembaruannya (`GET /admin/api/riwayat?sumber=<id>`), dan unggah manual. Unggah manual adalah fallback saat konektor otomatis gagal. Berkas disimpan di `TERAWANG_MANUAL_DIR/<sumber>/`
    (`~/.local/share/terawang/manual`, sumber = `bps`, `bulog`, `harga`, `jarak`). Nama berkas harus sama persis dengan berkas acuan di
    `data/` repo dan baris header harus sama; format `.csv`/`.csv.gz` UTF-8. Versi lama dipindah ke `_arsip/<waktu>/`, setiap unggahan
    dicatat di `_log.jsonl`. Aset bronze memakai unggahan bila sumber otomatis gagal atau mode sumber = `manual`.
@@ -13,7 +14,7 @@
    (hanya 4 karakter terakhir), key BPS dan OpenAI bisa diuji. Cadangan 5 versi terakhir (`.env.bak-*`). Tombol muat ulang Dagster /
    nyalakan ulang bot supaya nilai baru terbaca (muat ulang Dagster ditolak bila ada run berjalan).
 
-Semua tindakan dicatat di `~/.local/share/terawang/admin/jejak.jsonl` (tab Jejak), tanpa nilai secret.
+Semua tindakan dicatat di `~/.local/share/terawang/admin/jejak.jsonl` (halaman Jejak admin), tanpa nilai secret.
 
 ## Peran
 | Peran | Dasbor | SPHP | Pipeline, unggah manual, jalankan job | Konfigurasi/secret, akun, jejak |
@@ -24,7 +25,7 @@ Semua tindakan dicatat di `~/.local/share/terawang/admin/jejak.jsonl` (tab Jejak
 | superadmin | ya | ya | ya | ya |
 
 Hak per peran ada di `akun.HAK`. Dasbor membaca peran lewat `GET /admin/api/saya` (tanpa login = guest).
-Akun dikelola superadmin di tab **Akun & peran**; akun pertama dibuat di server: `.venv-pipeline/bin/python -m terawang_admin.sandi NAMA superadmin`.
+Akun dikelola superadmin di halaman **Akun & peran**; akun pertama dibuat di server: `.venv-pipeline/bin/python -m terawang_admin.sandi NAMA superadmin`.
 
 ## Keamanan
 - Sandi di-hash scrypt di `~/.config/terawang/admin.json` (mode 600). Ganti sandi/peran atau nonaktifkan akun = sesi lama akun itu keluar.
