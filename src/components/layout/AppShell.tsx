@@ -1,12 +1,13 @@
 import { useEffect, useRef } from "react"
 import { NavLink, Outlet, useLocation } from "react-router-dom"
-import { User } from "lucide-react"
+import { LogIn, LogOut, Settings, UserRound } from "lucide-react"
 import { KopPattern } from "@/components/layout/KopPattern"
 import { ThemeToggle } from "@/components/layout/ThemeToggle"
 import { navItems } from "@/components/layout/nav"
 import { FilterPanel } from "@/components/layout/FilterPanel"
 import { useFilter } from "@/lib/filter"
 import { useSelection } from "@/lib/selection"
+import { tautanMasuk, useSesi } from "@/lib/sesi"
 
 
 function Logo() {
@@ -17,6 +18,37 @@ function Logo() {
       <path d="M16 12v14" stroke="#163E66" strokeWidth="1.6" />
       <circle cx="27" cy="9" r="2.2" fill="#fff" />
     </svg>
+  )
+}
+
+/** Akun di bilah atas: tombol Masuk bagi guest; nama, peran, tautan Admin, dan Keluar bagi yang sudah masuk. */
+function Akun() {
+  const { sesi, siap, boleh, keluar } = useSesi()
+  const { pathname } = useLocation()
+  if (!siap) return null
+  if (!sesi.pengguna)
+    return (
+      <a className="chip chip-akun" href={tautanMasuk(pathname)}>
+        <LogIn size={13} />
+        <b>Masuk</b>
+      </a>
+    )
+  return (
+    <span className="akun-grup">
+      <span className="chip" title={`Masuk sebagai ${sesi.pengguna}`}>
+        <UserRound size={13} />
+        <b>{sesi.pengguna}</b> {sesi.labelPeran}
+      </span>
+      {boleh("pipeline") && (
+        <a className="chip chip-akun" href="/admin/">
+          <Settings size={13} />
+          Admin
+        </a>
+      )}
+      <button type="button" className="chip chip-akun" onClick={keluar} aria-label="Keluar">
+        <LogOut size={13} />
+      </button>
+    </span>
   )
 }
 
@@ -58,9 +90,7 @@ export function AppShell() {
           </nav>
           <div className="meta">
             <ThemeToggle />
-            <button type="button" className="icon-btn" aria-label="Akun" title="Akun">
-              <User size={15} />
-            </button>
+            <Akun />
           </div>
         </div>
       </header>

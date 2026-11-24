@@ -9,6 +9,8 @@ import { HET, HET_PREMIUM, byName, flowsBulan, risk } from "@/lib/data"
 import { covBulan, hargaAt, makeSpec, pAtasHet, produksiBeras, statusHargaAt } from "@/lib/petaLayers"
 import { NOW, dfmt, nf, rp, sum } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
+import { useSesi } from "@/lib/sesi"
+import { Terkunci } from "@/components/ui/Terkunci"
 import { useWilayah } from "@/lib/filter"
 import { usePeta } from "@/lib/peta"
 import { REGIONS } from "@/lib/arus"
@@ -16,7 +18,14 @@ import { BULAN_KINI, bulanLabel, useFilter } from "@/lib/filter"
 
 export default function Ringkasan() {
   const wil = useWilayah()
-  const { layer, kom, hor, setHor, arus, dim } = usePeta()
+  const { layer, kom, hor, setHor, arus, dim, setLayer, setArus } = usePeta()
+  const { siap, boleh } = useSesi()
+  // Pilihan SPHP yang tersimpan dibatalkan bila pengguna tidak berhak melihatnya.
+  useEffect(() => {
+    if (!siap || boleh("dasbor_sphp")) return
+    if (layer === "sphp") setLayer("statusHarga")
+    if (arus === "sphp") setArus("off")
+  }, [siap, boleh, layer, arus, setLayer, setArus])
   const { mulai, akhir } = useFilter()
   const { select } = useSelection()
   // Panel kanan menampilkan daftar perhatian sampai pengguna memilih satu wilayah.
@@ -330,6 +339,7 @@ function KabCard({ onBack }: { onBack: () => void }) {
           ))}
         </div>
       </div>
+      <Terkunci judul="Rekomendasi SPHP" ringkas>
       <div className={"rek " + peran.toLowerCase()}>
         <div className="rek-top">
           <span className="rek-t">Rekomendasi SPHP</span>
@@ -373,6 +383,7 @@ function KabCard({ onBack }: { onBack: () => void }) {
           </div>
         )}
       </div>
+      </Terkunci>
     </aside>
   )
 }

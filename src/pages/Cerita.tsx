@@ -4,6 +4,7 @@ import { MapLegend, PetaJatim, type MapArc } from "@/components/charts/PetaJatim
 import { CountUp } from "@/components/ui/CountUp"
 import { REGIONS, TRADE, TRADE_TOTAL, regionOf } from "@/lib/arus"
 import { FLOWS, WILAYAH, type LayerKey } from "@/lib/data"
+import { useSesi } from "@/lib/sesi"
 import { nf, sum } from "@/lib/format"
 
 interface Step {
@@ -112,6 +113,19 @@ const STEPS: Step[] = [
   },
 ]
 
+/** Versi langkah "Tindakan" untuk pengunjung tanpa login: tanpa angka dan rute SPHP. */
+const STEP_AKSI_UMUM: Step = {
+  ...STEPS[STEPS.length - 1],
+  text: (
+    <>
+      Wilayah Siaga dipasangkan dengan gudang surplus terdekat untuk penyaluran beras SPHP; rinciannya tersedia untuk akun dinas dan perusahaan
+      mitra. Warga bisa mengecek harga dan lokasi SPHP lewat WhatsApp tanpa membuka dasbor.
+    </>
+  ),
+  stat: { v: WILAYAH.filter((k) => k.hs === "siaga").length, fmt: (v) => nf(v), unit: "wilayah Siaga diprioritaskan" },
+  flows: false,
+}
+
 export default function Cerita() {
   const [active, setActive] = useState(0)
   const refs = useRef<(HTMLElement | null)[]>([])
@@ -127,7 +141,9 @@ export default function Cerita() {
     return () => io.disconnect()
   }, [])
 
-  const st = STEPS[active]
+  const sphp = useSesi().boleh("dasbor_sphp")
+  const steps = sphp ? STEPS : STEPS.map((x) => (x.key === "aksi" ? STEP_AKSI_UMUM : x))
+  const st = steps[active]
 
   return (
     <section className="story">
@@ -195,14 +211,14 @@ export default function Cerita() {
               <MapLegend layer={st.layer} />
             )}
             <div className="story-dots" aria-hidden="true">
-              {STEPS.map((s, i) => (
+              {steps.map((s, i) => (
                 <span key={s.key} className={i === active ? "on" : i < active ? "done" : undefined} />
               ))}
             </div>
           </div>
         </div>
         <div className="story-steps">
-          {STEPS.map((s, i) => (
+          {steps.map((s, i) => (
             <article
               key={s.key}
               id={`langkah-${i + 1}`}

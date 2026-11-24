@@ -7,6 +7,7 @@ import { SSTAT, STATUS, WILAYAH } from "@/lib/data"
 import { SPEC_GROUPS, SPEC_LABEL, isHarga, statusHargaAt, type Komoditas } from "@/lib/petaLayers"
 import { usePeta, type ArusMode, type Basemap, type CitraMode } from "@/lib/peta"
 import { useSelection } from "@/lib/selection"
+import { useSesi } from "@/lib/sesi"
 import { useLocation } from "react-router-dom"
 import { BULAN_KINI, HS_ALL, N_BULAN, SS_ALL, bulanLabel, useFilter } from "@/lib/filter"
 
@@ -66,6 +67,7 @@ function Waktu() {
 /** Pengaturan lapisan peta: visualisasi, peta dasar, lapisan GEE, citra, opasitas. */
 function PetaSet({ lapisan }: { lapisan: boolean }) {
   const p = usePeta()
+  const sphp = useSesi().boleh("dasbor_sphp")
   const { sel } = useSelection()
   const ck = p.citra.find((c) => c.lokasi.toLowerCase() === sel.toLowerCase())
   return (
@@ -77,7 +79,7 @@ function PetaSet({ lapisan }: { lapisan: boolean }) {
             <span>Visualisasi</span>
             <Select
               label="Visualisasi"
-              options={SPEC_GROUPS.flatMap((g) => g.keys.map((k) => ({ value: k, label: SPEC_LABEL[k], grup: g.grup })))}
+              options={SPEC_GROUPS.flatMap((g) => g.keys.filter((k) => sphp || k !== "sphp").map((k) => ({ value: k, label: SPEC_LABEL[k], grup: g.grup })))}
               value={p.layer}
               onChange={p.setLayer}
             />
@@ -88,7 +90,7 @@ function PetaSet({ lapisan }: { lapisan: boolean }) {
               label="Arus beras"
               options={[
                 { value: "off", label: "Tidak ada" },
-                { value: "sphp", label: "Rekomendasi SPHP" },
+                ...(sphp ? [{ value: "sphp" as ArusMode, label: "Rekomendasi SPHP" }] : []),
                 { value: "dagang", label: "Perdagangan antarwilayah" },
               ]}
               value={p.arus}

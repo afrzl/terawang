@@ -14,6 +14,8 @@ import { FLOWS, HET, HIST, LAYERS, LAYER_KEYS, SIAGA, byName, fcDates, risk, typ
 import { bacaPeta } from "@/lib/bacaan"
 import { dfmt, nf, rp, short, sum } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
+import { useSesi } from "@/lib/sesi"
+import { Terkunci } from "@/components/ui/Terkunci"
 import { weekLabel } from "@/lib/weeks"
 import { useWilayah } from "@/lib/filter"
 
@@ -29,8 +31,9 @@ function initialLayer(): LayerKey {
   return "harga"
 }
 
-function suggestedAction(k: Wilayah) {
+function suggestedAction(k: Wilayah, sphp = true) {
   const fl = FLOWS.filter((f) => f.to === k)
+  if (fl.length && !sphp) return "Prioritas penyaluran SPHP"
   if (fl.length) {
     const asal = fl.length > 3 ? `${fl.length} gudang (${fl.slice(0, 2).map((f) => short(f.from.n)).join(", ")}, …)` : fl.map((f) => short(f.from.n)).join(", ")
     return `SPHP ${nf(sum(fl, (f) => f.ton))} ton dari ${asal}`
@@ -49,14 +52,14 @@ function valueAt(layer: LayerKey, k: Wilayah, w: number) {
 const HS: Record<string, number> = { aman: 0, waspada: 1, siaga: 2 }
 const SS: Record<string, number> = { surplus: -1, cukup: 0, tipis: 1, defisit: 2 }
 
-const watchColumns: Column<Wilayah>[] = [
+const watchColumns = (sphp: boolean): Column<Wilayah>[] => [
   { head: "Wilayah", cell: (k) => <b>{k.n}</b>, sort: (k) => k.n },
   { head: "Harga kini", right: true, num: true, cell: (k) => rp(k.pNow), sort: (k) => k.pNow },
   { head: "Prakiraan +4 pkn", right: true, num: true, cell: (k) => rp(k.p4), sort: (k) => k.p4 },
   { head: "Status harga", cell: (k) => <HargaPill s={k.hs} />, sort: (k) => HS[k.hs] * 1e5 + k.p4 },
   { head: "Stok +4 pkn", right: true, num: true, cell: (k) => `${nf(k.covP[3], 2)} bln`, sort: (k) => k.covP[3] },
   { head: "Status stok", cell: (k) => <StokPill s={k.ss} />, sort: (k) => SS[k.ss] * 100 - k.covP[3] },
-  { head: "Tindakan yang disarankan", cell: suggestedAction, sort: (k) => sum(FLOWS.filter((f) => f.to === k), (f) => f.ton) },
+  { head: "Tindakan yang disarankan", cell: (k) => suggestedAction(k, sphp), sort: (k) => sum(FLOWS.filter((f) => f.to === k), (f) => f.ton) },
 ]
 
 export default function RingkasanLama() {
@@ -95,6 +98,7 @@ export default function RingkasanLama() {
   const nW = wil.filter((k) => k.hs === "waspada").length
   const flows = FLOWS.filter((f) => wil.includes(f.to))
   const tonS = sum(flows, (f) => f.ton)
+  const sphp = useSesi().boleh("dasbor_sphp")
   const ciPct = (Math.sqrt(sum(wil, (k) => k.ci * k.ci)) / estT) * 100
   const watch = wil.slice()
     .sort((a, b) => risk(b) - risk(a))
@@ -222,7 +226,7 @@ export default function RingkasanLama() {
       </div>
 
       <Panel title="Daftar perhatian pekan ini" note="Urut dari risiko tertinggi. Klik baris untuk memilih wilayah.">
-        <DataTable rows={watch} columns={watchColumns} rowKey={(k) => k.n} rowName={(k) => k.n} />
+        <DataTable rows={watch} columns={watchColumns(sphp)} rowKey={(k) => k.n} rowName={(k) => k.n} />
       </Panel>
     </section>
   )
@@ -233,9 +237,19 @@ function KabCard() {
   const k = byName[sel]
   const fl = FLOWS.filter((f) => f.to === k)
   const out = FLOWS.filter((f) => f.from === k)
+  const sphp = useSesi().boleh("dasbor_sphp")
 
   let rec: React.ReactNode
-  if (fl.length) {
+  if ((fl.length || out.length) && !sphp) {
+    rec = (
+      <>
+        <b>Rekomendasi:</b> {fl.length ? "wilayah ini masuk prioritas penyaluran SPHP." : "cabang di wilayah ini direkomendasikan memasok SPHP."}{" "}
+        <Terkunci judul="Rincian SPHP" ringkas>
+          {null}
+        </Terkunci>
+      </>
+    )
+  } else if (fl.length) {
     const asal =
       fl.length > 3
         ? `${fl.length} gudang wilayah surplus, terdekat ${fl

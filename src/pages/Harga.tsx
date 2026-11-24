@@ -11,6 +11,8 @@ import { HET, HET_PREMIUM, HIST, SIAGA_KALI, STATUS, WILAYAH, fcDates, flowsBula
 import { dfmt, nf, rp, sum } from "@/lib/format"
 import { bulanLabel, useFilter, useWilayah } from "@/lib/filter"
 import { covBulan, statusHargaAt, type Komoditas } from "@/lib/petaLayers"
+import { useSesi } from "@/lib/sesi"
+import { Terkunci } from "@/components/ui/Terkunci"
 
 
 const flowColumns: Column<Flow>[] = [
@@ -26,6 +28,7 @@ export default function Harga() {
   const { mulai, akhir, jenisHarga } = useFilter()
   const flows = flowsBulan(mulai, akhir).filter((f) => wil.includes(f.to))
   const jenis = jenisHarga
+  const sphp = useSesi().boleh("dasbor_sphp")
   const ganda = jenis.length > 1
   const popT = sum(wil, (k) => k.pop) || 1
   const ringkas = (kom: Komoditas) => ({
@@ -66,7 +69,9 @@ export default function Harga() {
       <KpiStrip
         items={[
           ...kpiHarga,
-          { k: "Rekomendasi SPHP", v: `${nf(sum(flows, (f) => f.ton))} ton`, t: `${flows.length} rute, ${periode}` },
+          sphp
+            ? { k: "Rekomendasi SPHP", v: `${nf(sum(flows, (f) => f.ton))} ton`, t: `${flows.length} rute, ${periode}` }
+            : { k: "Rekomendasi SPHP", v: "Terbatas", t: "untuk akun dinas dan perusahaan" },
           { k: "Uji peluang melewati HET", v: "AUC 0,98", t: "0,88–0,92 di bawah HET" },
         ]}
       />
@@ -81,6 +86,7 @@ export default function Harga() {
       </div>
       <div className="grid-2">
         <Panel title="Peta rekomendasi SPHP">
+          <Terkunci judul="Rekomendasi penyaluran SPHP">
           <div className="map">
             <PetaJatim layer="stokK2" getValue={(k) => covBulan(k, akhir)} valueLabel="Cakupan stok" flows flowList={flows} muted labels={false} />
           </div>
@@ -116,9 +122,12 @@ export default function Harga() {
               </>
             }
           />
+          </Terkunci>
         </Panel>
         <Panel title="Rute rekomendasi SPHP">
+          <Terkunci judul="Rute rekomendasi SPHP">
           <DataTable rows={flows} columns={flowColumns} rowKey={(f, i) => `${f.bulan}-${f.to.n}-${f.from.n}-${i}`} rowName={(f) => f.to.n} pageSize={10} />
+          </Terkunci>
         </Panel>
       </div>
       <PanelPeta jenis={jenis} />
