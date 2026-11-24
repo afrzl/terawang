@@ -1,0 +1,15 @@
+// TERAWANG: skema basis data (PostgreSQL, satu database, tiga schema).
+//   ref    dimensi bersama
+//   silver data sumber terbersih (masukan)
+//   app    sistem TERAWANG (operasional)
+// Aturan: setiap baris fakta punya `jenis_data` (ASLI | MODEL | DUMMY). Satuan dasar: ha, ton, kg, rupiah per kg. Wilayah memakai kode BPS.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["ref", "silver", "app"]
+}

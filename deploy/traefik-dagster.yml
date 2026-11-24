@@ -1,0 +1,23 @@
+# Router Traefik untuk UI Dagster. Salin ke /opt/traefik/dynamic/dagster.yml (milik root).
+# Publik tanpa login: webserver dijalankan dengan --read-only (DAGSTER_READ_ONLY=1 di deploy-pipeline.sh),
+# jadi pengunjung hanya bisa melihat grafik, run, dan metadata; tidak bisa menjalankan pipeline.
+# Kalau butuh tombol Materialize dari UI, jalankan dengan DAGSTER_READ_ONLY=0 DAN aktifkan basic auth di bawah.
+http:
+  routers:
+    dagster-ui:
+      rule: "Host(`dagster.terawang.tech`)"
+      entryPoints: [websecure]
+      service: dagster-ui
+      # middlewares: [dagster-auth]
+      tls:
+        certResolver: le  # samakan dengan terawang.yml
+  # middlewares:
+  #   dagster-auth:
+  #     basicAuth:
+  #       users:
+  #         - "GANTI_DENGAN_HASH"   # htpasswd -nbB <user> <sandi>
+  services:
+    dagster-ui:
+      loadBalancer:
+        servers:
+          - url: "http://172.19.0.1:3070"

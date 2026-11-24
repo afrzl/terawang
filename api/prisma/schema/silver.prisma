@@ -1,0 +1,395 @@
+// Lapisan SILVER: data sumber yang sudah dibersihkan dan dibakukan (BPS, Bulog, SISKAPERBAPO, satelit, jarak). Masukan bagi sistem.
+// Lapisan BRONZE (berkas dan payload mentah) belum ada; diisi pipeline Airflow nanti.
+
+enum StatusAngka {
+  TETAP
+  SEMENTARA
+  POTENSI
+
+  @@schema("silver")
+}
+
+enum Granularitas {
+  BULANAN
+  PERIODE
+  TAHUNAN
+
+  @@schema("silver")
+}
+
+enum JenisAngkaPenduduk {
+  HASIL_SENSUS
+  PROYEKSI
+
+  @@schema("silver")
+}
+
+enum PutaranSusenas {
+  MARET
+  SEPTEMBER
+
+  @@schema("silver")
+}
+
+enum SatuanKonsumsi {
+  KG_KAPITA_MINGGU
+  KG_KAPITA_BULAN
+
+  @@schema("silver")
+}
+
+enum KlasifikasiDaerah {
+  TOTAL
+  KOTA
+  DESA
+
+  @@schema("silver")
+}
+
+enum SaluranPengadaan {
+  KUD
+  NON_KUD_KTNA
+  SATGAS_UPGB_DRAYING
+
+  @@schema("silver")
+}
+
+// Catatan setiap pemuatan data (idempoten, dipakai pipeline terjadwal nanti).
+model IngestRun {
+  id              Int       @id @default(autoincrement())
+  sumber_id       Int
+  nama_berkas     String?
+  checksum_sha256 String?
+  jumlah_baris    Int       @default(0)
+  status          StatusRun @default(SELESAI)
+  catatan         String?
+  dibuat_pada     DateTime  @default(now())
+
+  sumber Sumber @relation(fields: [sumber_id], references: [id])
+
+  @@index([sumber_id])
+  @@map("ingest_run")
+  @@schema("silver")
+}
+
+model Penduduk {
+  id          Int                @id @default(autoincrement())
+  wilayah_id  Int
+  tahun       Int
+  jenis_angka JenisAngkaPenduduk
+  jumlah_jiwa Int
+  jenis_data  JenisData          @default(ASLI)
+  sumber_id   Int
+
+  wilayah Wilayah @relation(fields: [wilayah_id], references: [id])
+  sumber  Sumber  @relation(fields: [sumber_id], references: [id])
+
+  @@unique([wilayah_id, tahun, jenis_angka])
+  @@map("penduduk")
+  @@schema("silver")
+}
+
+// Nilai apa adanya dari sumber. Kabupaten: kg per kapita per MINGGU (Susenas Maret). Provinsi: kg per kapita per BULAN (Susenas September).
+// Konversi minggu ke bulan: kalikan 30/7 (faktor BPS).
+model KonsumsiBeras {
+  id                        Int               @id @default(autoincrement())
+  wilayah_id                Int
+  tahun                     Int
+  putaran                   PutaranSusenas
+  klasifikasi               KlasifikasiDaerah @default(TOTAL)
+  satuan                    SatuanKonsumsi
+  kg_per_kapita             Float
+  nilai_rp_per_kapita_bulan Float?
+  jenis_data                JenisData         @default(ASLI)
+  sumber_id                 Int
+
+  wilayah Wilayah @relation(fields: [wilayah_id], references: [id])
+  sumber  Sumber  @relation(fields: [sumber_id], references: [id])
+
+  @@unique([wilayah_id, tahun, putaran, klasifikasi])
+  @@map("konsumsi_beras")
+  @@schema("silver")
+}
+
+// Satu tabel untuk semua granularitas: satu bulan, rentang bulan (Jan-Sep, Okt-Des), atau setahun.
+// Kolom yang tidak tersedia di suatu sumber dikosongkan (NULL).
+model ProduksiPadi {
+  id                 Int          @id @default(autoincrement())
+  wilayah_id         Int
+  granularitas       Granularitas
+  tahun              Int
+  bulan_awal         Int // 1..12
+  bulan_akhir        Int // 1..12
+  status_angka       StatusAngka
+  luas_panen_ha      Float?
+  produksi_gkp_ton   Float?
+  produksi_gkg_ton   Float?
+  produksi_beras_ton Float?
+  jenis_data         JenisData    @default(ASLI)
+  sumber_id          Int
+  catatan            String?
+  koreksi            Json? // nilai asli di sumber untuk sel yang dikoreksi (salah ketik)
+
+  wilayah Wilayah @relation(fields: [wilayah_id], references: [id])
+  sumber  Sumber  @relation(fields: [sumber_id], references: [id])
+
+  @@unique([wilayah_id, tahun, bulan_awal, bulan_akhir, sumber_id])
+  @@index([wilayah_id, tahun])
+  @@map("produksi_padi")
+  @@schema("silver")
+}
+
+// Hasil olahan citra satelit (Google Earth Engine) pada satu tanggal acuan. Aturan ambang belum divalidasi lapangan.
+// Proyeksi panen memakai produktivitas konstan 5,6 t/ha (placeholder, bukan model).
+model SatelitWilayah {
+  id                           Int       @id @default(autoincrement())
+  wilayah_id                   Int
+  tanggal_acuan                DateTime  @db.Date
+  luas_sawah_proksi_ha         Float // proksi ESA WorldCover cropland
+  indeks_pertanaman            Float
+  fase_bera_pct                Float
+  fase_olah_pct                Float
+  fase_vegetatif_pct           Float
+  fase_generatif_pct           Float
+  fase_siap_panen_pct          Float
+  petak_tertinggal_pct         Float
+  proyeksi_panen_ribu_ton      Float // 3 bulan ke depan, tahun ini
+  proyeksi_panen_lalu_ribu_ton Float // periode sama tahun lalu
+  cakupan_s2                   Float
+  vh_db                        Json // profil Sentinel-1 VH tahun ini, 15 akuisisi
+  vh_rata3tahun_db             Json
+  jenis_data                   JenisData @default(MODEL)
+  sumber_id                    Int
+  catatan                      String?
+
+  wilayah Wilayah @relation(fields: [wilayah_id], references: [id])
+  sumber  Sumber  @relation(fields: [sumber_id], references: [id])
+
+  @@unique([wilayah_id, tanggal_acuan])
+  @@map("satelit_wilayah")
+  @@schema("silver")
+}
+
+model KantorWilayahBulog {
+  id                  Int    @id @default(autoincrement())
+  nama                String @unique // contoh: Jawa Timur, Yogyakarta, DKI Jakarta
+  wilayah_provinsi_id Int? // pemetaan ke provinsi bila satu-satu (wilayah kerja kanwil tidak selalu sama dengan provinsi)
+
+  provinsi     Wilayah?            @relation(fields: [wilayah_provinsi_id], references: [id])
+  cabang       KantorCabangBulog[]
+  stok_bulanan StokBulogBulanan[]
+  stok_tahunan StokBulogKanwil[]
+
+  @@map("kantor_wilayah_bulog")
+  @@schema("silver")
+}
+
+model KantorCabangBulog {
+  id        Int    @id @default(autoincrement())
+  kanwil_id Int
+  nama      String @unique // contoh: Surabaya Utara, Madura
+
+  kanwil             KantorWilayahBulog       @relation(fields: [kanwil_id], references: [id])
+  cakupan            CakupanCabangBulog[]
+  pengadaan          PengadaanBulog[]
+  harga_penggilingan HargaPenggilinganBulog[]
+
+  @@map("kantor_cabang_bulog")
+  @@schema("silver")
+}
+
+// Wilayah kerja cabang (kabupaten yang dilayani). Belum tersedia di publikasi: diisi setelah ada dari Bulog.
+model CakupanCabangBulog {
+  cabang_id  Int
+  wilayah_id Int
+  sumber_id  Int?
+  catatan    String?
+
+  cabang  KantorCabangBulog @relation(fields: [cabang_id], references: [id])
+  wilayah Wilayah           @relation(fields: [wilayah_id], references: [id])
+  sumber  Sumber?           @relation(fields: [sumber_id], references: [id])
+
+  @@id([cabang_id, wilayah_id])
+  @@map("cakupan_cabang_bulog")
+  @@schema("silver")
+}
+
+// Stok beras Bulog (hanya Bulog, bukan total stok) per bulan, kg.
+model StokBulogBulanan {
+  kanwil_id              Int
+  tahun                  Int
+  bulan                  Int // 1..12
+  persediaan_awal_kg     Float
+  pemasukan_kg           Float
+  persediaan_dikuasai_kg Float
+  pengeluaran_kg         Float
+  persediaan_akhir_kg    Float
+  jenis_data             JenisData @default(ASLI)
+  sumber_id              Int
+
+  kanwil KantorWilayahBulog @relation(fields: [kanwil_id], references: [id])
+  sumber Sumber             @relation(fields: [sumber_id], references: [id])
+
+  @@id([kanwil_id, tahun, bulan])
+  @@map("stok_bulog_bulanan")
+  @@schema("silver")
+}
+
+// Persediaan beras per kantor wilayah Bulog, tahunan (Tabel 10.1.7). Tanggal acuan tidak dijelaskan di sumber.
+model StokBulogKanwil {
+  kanwil_id  Int
+  tahun      Int
+  stok_kg    Float
+  jenis_data JenisData @default(ASLI)
+  sumber_id  Int
+
+  kanwil KantorWilayahBulog @relation(fields: [kanwil_id], references: [id])
+  sumber Sumber             @relation(fields: [sumber_id], references: [id])
+
+  @@id([kanwil_id, tahun])
+  @@map("stok_bulog_kanwil")
+  @@schema("silver")
+}
+
+model PengadaanBulog {
+  cabang_id  Int
+  tahun      Int
+  saluran    SaluranPengadaan
+  volume_kg  Float
+  jenis_data JenisData        @default(ASLI)
+  sumber_id  Int
+
+  cabang KantorCabangBulog @relation(fields: [cabang_id], references: [id])
+  sumber Sumber            @relation(fields: [sumber_id], references: [id])
+
+  @@id([cabang_id, tahun, saluran])
+  @@map("pengadaan_bulog")
+  @@schema("silver")
+}
+
+// Catatan: harga 2025 di sumber persis 2024 x 1,02 di semua cabang (bukan pengamatan independen).
+model HargaPenggilinganBulog {
+  cabang_id   Int
+  tahun       Int
+  harga_rp_kg Float
+  jenis_data  JenisData @default(ASLI)
+  sumber_id   Int
+  catatan     String?
+
+  cabang KantorCabangBulog @relation(fields: [cabang_id], references: [id])
+  sumber Sumber            @relation(fields: [sumber_id], references: [id])
+
+  @@id([cabang_id, tahun])
+  @@map("harga_penggilingan_bulog")
+  @@schema("silver")
+}
+
+// Harga dasar gabah dan harga pembelian pemerintah, 1999-2025.
+model HargaPembelianPemerintah {
+  tahun                   Int
+  keterangan              String    @default("") // "Wil I", "Wil II", "Wil III" (1999) atau "GKP" (2003 dan seterusnya)
+  harga_dasar_gabah_rp_kg Int
+  gabah_kud_rp_kg         Int
+  gabah_non_kud_rp_kg     Int
+  beras_kud_rp_kg         Int
+  beras_non_kud_rp_kg     Int
+  jenis_data              JenisData @default(ASLI)
+  sumber_id               Int
+
+  sumber Sumber @relation(fields: [sumber_id], references: [id])
+
+  @@id([tahun, keterangan])
+  @@map("harga_pembelian_pemerintah")
+  @@schema("silver")
+}
+
+model Pasar {
+  id         Int    @id @default(autoincrement())
+  wilayah_id Int
+  nama       String
+
+  wilayah Wilayah            @relation(fields: [wilayah_id], references: [id])
+  harga   HargaPasarHarian[]
+
+  @@unique([wilayah_id, nama])
+  @@map("pasar")
+  @@schema("silver")
+}
+
+// Mentah per pasar per hari, apa adanya dari sumber (NULL = tidak ada data hari itu).
+model HargaPasarHarian {
+  pasar_id     Int
+  komoditas_id Int
+  tanggal      DateTime  @db.Date
+  harga_rp_kg  Int?
+  jenis_data   JenisData @default(ASLI)
+  sumber_id    Int
+
+  pasar     Pasar     @relation(fields: [pasar_id], references: [id])
+  komoditas Komoditas @relation(fields: [komoditas_id], references: [id])
+  sumber    Sumber    @relation(fields: [sumber_id], references: [id])
+
+  @@id([pasar_id, komoditas_id, tanggal])
+  @@index([komoditas_id, tanggal])
+  @@map("harga_pasar_harian")
+  @@schema("silver")
+}
+
+// Turunan: rata-rata pasar yang terisi per kab/kota. Harga pasar < Rp5.000/kg dianggap salah ketik dan dikecualikan.
+model HargaKabkotaHarian {
+  wilayah_id         Int
+  komoditas_id       Int
+  tanggal            DateTime  @db.Date
+  harga_rata2_rp_kg  Float?
+  pasar_bernilai     Int
+  pasar_total        Int
+  pasar_dikecualikan Int       @default(0)
+  jenis_data         JenisData @default(MODEL)
+  sumber_id          Int
+
+  wilayah   Wilayah   @relation(fields: [wilayah_id], references: [id])
+  komoditas Komoditas @relation(fields: [komoditas_id], references: [id])
+  sumber    Sumber    @relation(fields: [sumber_id], references: [id])
+
+  @@id([wilayah_id, komoditas_id, tanggal])
+  @@index([komoditas_id, tanggal])
+  @@map("harga_kabkota_harian")
+  @@schema("silver")
+}
+
+// Angka rata-rata provinsi yang dipublikasikan sumber (pembanding).
+model HargaProvinsiHarian {
+  wilayah_id   Int
+  komoditas_id Int
+  tanggal      DateTime  @db.Date
+  harga_rp_kg  Int?
+  jenis_data   JenisData @default(ASLI)
+  sumber_id    Int
+
+  wilayah   Wilayah   @relation(fields: [wilayah_id], references: [id])
+  komoditas Komoditas @relation(fields: [komoditas_id], references: [id])
+  sumber    Sumber    @relation(fields: [sumber_id], references: [id])
+
+  @@id([wilayah_id, komoditas_id, tanggal])
+  @@map("harga_provinsi_harian")
+  @@schema("silver")
+}
+
+// Matriks jarak antar kab/kota Jatim (antar titik pusat wilayah). Tidak persis simetris untuk jarak jalan (jalan satu arah).
+model JarakAntarWilayah {
+  dari_id              Int
+  ke_id                Int
+  jarak_garis_lurus_km Float
+  jarak_jalan_km       Float
+  waktu_tempuh_jam     Float // perkiraan arus bebas mobil
+  jenis_data           JenisData @default(MODEL)
+  sumber_id            Int
+
+  dari   Wilayah @relation("JarakDari", fields: [dari_id], references: [id])
+  ke     Wilayah @relation("JarakKe", fields: [ke_id], references: [id])
+  sumber Sumber  @relation(fields: [sumber_id], references: [id])
+
+  @@id([dari_id, ke_id])
+  @@map("jarak_antar_wilayah")
+  @@schema("silver")
+}
