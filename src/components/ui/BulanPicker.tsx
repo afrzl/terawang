@@ -1,16 +1,17 @@
 import { useEffect, useId, useRef, useState } from "react"
 import { CalendarDays, Check, ChevronDown } from "lucide-react"
-import { BULAN_KINI, N_BULAN, bulanLabel, useFilter } from "@/lib/filter"
+import { BULAN_KINI, N_BULAN, bulanLabel } from "@/lib/filter"
 
 const status = (i: number) => (i < BULAN_KINI ? "Riwayat" : "Estimasi")
 const warna = (i: number) => (i < BULAN_KINI ? "var(--ink-3)" : "var(--warn)")
 
 /** Pilihan bulan (Jan 2026 – Jan 2027) dengan penanda riwayat dan estimasi. */
-export function BulanPicker() {
-  const { bulan, setBulan } = useFilter()
+export function BulanPicker({ bulan, setBulan, label }: { bulan: number; setBulan: (i: number) => void; label: string }) {
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(bulan)
   const rootRef = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const listId = useId()
 
@@ -53,7 +54,12 @@ export function BulanPicker() {
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}
+        aria-label={label}
+        ref={btnRef}
         onClick={() => {
+          const r = btnRef.current?.getBoundingClientRect()
+          // Posisi tetap agar daftar tidak terpotong area sidebar yang bergulir.
+          if (r) setPos({ left: r.left, top: Math.max(8, Math.min(r.bottom + 4, window.innerHeight - 360)) })
           setActive(bulan)
           setOpen((o) => !o)
         }}
@@ -67,7 +73,7 @@ export function BulanPicker() {
         <ChevronDown size={15} className="picker-chev" />
       </button>
       {open && (
-        <div className="picker-pop bp-pop" role="dialog" aria-label="Pilih bulan" onKeyDown={onKey}>
+        <div className="picker-pop bp-pop" role="dialog" aria-label={label} onKeyDown={onKey} style={pos ? { position: "fixed", left: pos.left, top: pos.top, right: "auto", width: 264 } : undefined}>
           <div className="picker-list" role="listbox" id={listId} ref={listRef}>
             {Array.from({ length: N_BULAN }, (_, k) => N_BULAN - 1 - k).map((i) => (
               <div

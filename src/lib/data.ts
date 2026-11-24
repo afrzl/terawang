@@ -1,3 +1,5 @@
+import { JARAK_JALAN_KM, NAMA_JARAK } from "./jarak"
+import { K3B_RUTE } from "./k3b"
 import geoJson from "./jatim.json"
 import geeJson from "./gee_wilayah.json"
 import { DAY, NOW, clamp, hash, nf, rng, rp } from "./format"
@@ -33,10 +35,34 @@ export interface GeoShape {
 }
 export const GEO = geoJson as unknown as Record<string, GeoShape>
 
-/** Harga Eceran Tertinggi beras medium (Rp/kg). */
+/** Harga Eceran Tertinggi beras medium (Rp/kg), berlaku sejak 22 Agu 2025. Sumber: pemberitaan Kepbadan 299/2025, belum diverifikasi ke teks resmi (lihat metodologi K3a). */
 export const HET = 13500
-/** Ambang Siaga: HET + 3%. */
-export const SIAGA = 13900
+/** HET beras premium (Rp/kg), berlaku sejak 22 Agu 2025. */
+export const HET_PREMIUM = 14900
+/** Pengali HET untuk status Siaga di K3a (P(harga > 1,05·HET)). */
+export const SIAGA_KALI = 1.05
+/** Harga Siaga: HET × 1,05. */
+export const SIAGA = Math.round(HET * SIAGA_KALI)
+/** Ambang peluang WASPADA per horizon 7, 14, 21, 28 hari, dikalibrasi pada F1 maksimum di K3a. */
+export const AMBANG_WASPADA = { medium: [0.15, 0.2, 0.25, 0.3], premium: [0.1, 0.1, 0.1, 0.25] }
+
+const erfKu = (x: number) => {
+  const t = 1 / (1 + 0.3275911 * Math.abs(x))
+  const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x)
+  return x >= 0 ? y : -y
+}
+/** Peluang harga melewati `x` bila prakiraan bermedian `m` dan P90 `hi`. Pendekatan normal dari P10 dan P90; K3a menghitungnya dari sebaran galat empiris. */
+export function peluangDi(m: number, hi: number, x: number) {
+  const sd = Math.max(1e-6, (hi - m) / 1.2816)
+  return 0.5 * (1 - erfKu((x - m) / sd / Math.SQRT2))
+}
+/** Status harga menurut aturan K3a: SIAGA bila P(> 1,05·HET) ≥ max(ambang, 0,5); WASPADA bila P(> HET) ≥ ambang horizon; selain itu AMAN. `hor` = 1..4 pekan. */
+export function statusDari(m: number, hi: number, het: number, hor: number, kom: "medium" | "premium"): "aman" | "waspada" | "siaga" {
+  const amb = AMBANG_WASPADA[kom][Math.max(0, Math.min(3, hor - 1))]
+  if (peluangDi(m, hi, het * SIAGA_KALI) >= Math.max(amb, 0.5)) return "siaga"
+  if (peluangDi(m, hi, het) >= amb) return "waspada"
+  return "aman"
+}
 
 export type HargaStatus = "aman" | "waspada" | "siaga"
 export type StokStatus = "surplus" | "cukup" | "tipis" | "defisit"
@@ -170,7 +196,7 @@ function simulate([n, pop0, prod0, pb]: [string, number, number, number]): Wilay
   })
   const prem = pNow + 1450 + R() * 250
   const p4 = fc[3].m
-  const hs: HargaStatus = p4 > SIAGA ? "siaga" : p4 >= HET ? "waspada" : "aman"
+  const hs: HargaStatus = statusDari(p4, fc[3].hi, HET, 4, "medium")
   const ss: StokStatus = covP[3] < 0.75 ? "defisit" : covP[3] < 1 ? "tipis" : covP[3] < 1.5 ? "cukup" : "surplus"
   // Profil Sentinel-1 VH: 15 akuisisi tiap 12 hari mulai 1 Jun. shift = geser (akuisisi) titik VH terendah
   // musim ini terhadap rata-rata 2023–25 → positif berarti tanam lebih lambat.
@@ -190,7 +216,12 @@ export const WILAYAH_SORTED = WILAYAH.map((k) => k.n).sort((a, b) => a.localeCom
 
 /* ---------- SPHP: pasangkan wilayah rawan dengan gudang surplus terdekat ---------- */
 const KM = (111 / 230) * 1.3
+const IDX_JARAK = Object.fromEntries(NAMA_JARAK.map((n, i) => [n, i]))
+/** Jarak jalan (km) antar dua wilayah: rata-rata dua arah dari matriks OSRM. Bila nama tidak ada di matriks, dipakai perkiraan dari koordinat. */
 export function dist(a: string, b: string) {
+  const i = IDX_JARAK[a]
+  const j = IDX_JARAK[b]
+  if (i !== undefined && j !== undefined) return (JARAK_JALAN_KM[i][j] + JARAK_JALAN_KM[j][i]) / 2
   const A = GEO[a].c
   const B = GEO[b].c
   return Math.hypot(A[0] - B[0], A[1] - B[1]) * KM
@@ -201,40 +232,30 @@ export interface Flow {
   from: Wilayah
   ton: number
   km: number
-  /** Prioritas 1 (paling mendesak) s.d. 3. */
-  pri: 1 | 2 | 3
+  /** Indeks bulan (0 = Jan 2026): 10 = Nov 2026, 11 = Des 2026, 12 = Jan 2027. */
+  bulan: number
 }
 
-function planFlows(): Flow[] {
-  const sources = WILAYAH.filter((k) => k.cov > 2.2 && k.hs === "aman").map((k) => ({
-    k,
-    cap: Math.round(((k.cov - 2) * k.C * 1000 * 0.12) / 10) * 10,
-  }))
-  const needs = WILAYAH.filter((k) => k.ss === "defisit" || k.ss === "tipis" || k.hs === "siaga")
-    .map((k) => {
-      const need = Math.max((1.05 - k.covP[3]) * k.C * 1000, k.hs === "siaga" ? k.C * 1000 * 0.12 : 0)
-      return { k, need: Math.round(need / 10) * 10 }
-    })
-    .filter((x) => x.need > 0)
-    .sort((a, b) => Number(b.k.hs === "siaga") - Number(a.k.hs === "siaga") || b.need - a.need)
-  const flows: Flow[] = []
-  for (const d of needs) {
-    let rem = d.need
-    const order = sources.slice().sort((a, b) => dist(a.k.n, d.k.n) - dist(b.k.n, d.k.n))
-    for (const s of order) {
-      if (rem <= 0) break
-      if (s.cap <= 0) continue
-      const v = Math.min(rem, s.cap)
-      s.cap -= v
-      rem -= v
-      const pri = d.k.hs === "siaga" && (d.k.ss === "defisit" || d.k.ss === "tipis") ? 1 : d.k.hs === "siaga" || d.k.ss === "defisit" ? 2 : 3
-      flows.push({ to: d.k, from: s.k, ton: v, km: dist(s.k.n, d.k.n), pri })
-    }
+/** Rute SPHP dari K3b, semua bulan. Rute dengan asal sama dengan tujuan (0 km) berarti kiriman ke kabupaten lokasi cabang itu sendiri. */
+export const FLOWS: Flow[] = K3B_RUTE.map((r) => ({ from: byName[r.dari], to: byName[r.ke], ton: Math.round(r.ton), km: r.km, bulan: r.bulan })).sort(
+  (a, b) => a.bulan - b.bulan || b.ton - a.ton,
+)
+
+/** Rute SPHP pada bulan `a` sampai `b` (termasuk). */
+export const flowsBulan = (a: number, b: number) => FLOWS.filter((f) => f.bulan >= Math.min(a, b) && f.bulan <= Math.max(a, b))
+
+/** Gabungkan rute yang pasangan asal-tujuannya sama (antar bulan) dan buang kiriman ke lokasi cabang sendiri. Untuk digambar di peta. */
+export function gabungRute(flows: Flow[]): { from: Wilayah; to: Wilayah; ton: number; km: number }[] {
+  const m = new Map<string, { from: Wilayah; to: Wilayah; ton: number; km: number }>()
+  for (const f of flows) {
+    if (f.from === f.to) continue
+    const key = f.from.n + "|" + f.to.n
+    const cur = m.get(key)
+    if (cur) cur.ton += f.ton
+    else m.set(key, { from: f.from, to: f.to, ton: f.ton, km: f.km })
   }
-  return flows.sort((a, b) => a.pri - b.pri || b.ton - a.ton)
+  return [...m.values()].sort((a, b) => b.ton - a.ton)
 }
-
-export const FLOWS = planFlows()
 
 /* ---------- status & lapisan peta ---------- */
 export const STATUS: Record<HargaStatus, { lab: string; g: string; c: string }> = {
@@ -249,7 +270,7 @@ export const SSTAT: Record<StokStatus, { lab: string; g: string }> = {
   defisit: { lab: "Defisit", g: "◆" },
 }
 
-export type LayerKey = "fase" | "produksi" | "stok" | "harga"
+export type LayerKey = "fase" | "produksi" | "stok" | "stokK2" | "harga"
 type Bin = [number, number, string, string]
 
 export interface Layer {
@@ -284,11 +305,19 @@ export const LAYERS: Record<LayerKey, Layer> = {
     bins: [[0, 0.75, "--d1", "< 0,75 defisit"], [0.75, 1, "--d2", "0,75–1"], [1, 1.5, "--d3", "1–1,5"], [1.5, 2.5, "--d4", "1,5–2,5"], [2.5, 99, "--d5", "≥ 2,5 surplus"]],
     fmt: (v) => nf(v, 2) + " bln",
   },
+  /** Cakupan stok non-Bulog menurut ambang status K2 (defisit < 0,75, tipis 0,75–1, cukup 1–1,5, surplus ≥ 1,5). Nilai diberikan lewat `getValue` per bulan. */
+  stokK2: {
+    title: "Cakupan stok non-Bulog",
+    label: "Cakupan stok",
+    val: (k) => k.cov,
+    bins: [[0, 0.75, "--d1", "< 0,75 defisit"], [0.75, 1, "--d2", "0,75–1 tipis"], [1, 1.5, "--d3", "1–1,5 cukup"], [1.5, 99, "--d5", "≥ 1,5 surplus"]],
+    fmt: (v) => nf(v, 2) + " bln",
+  },
   harga: {
-    title: "Status prakiraan harga 4 pekan terhadap HET Rp13.500/kg",
-    label: "Status harga",
+    title: "Prakiraan harga 4 pekan terhadap HET Rp13.500/kg",
+    label: "Harga prakiraan",
     val: (k) => k.p4,
-    bins: [[0, HET, "--ok-map", "Aman · di bawah HET"], [HET, SIAGA + 0.0001, "--warn", "Waspada · HET s.d. +3%"], [SIAGA + 0.0001, 1e9, "--crit", "Siaga · > HET +3%"]],
+    bins: [[0, HET, "--ok-map", "Di bawah HET"], [HET, SIAGA + 0.0001, "--warn", "HET sampai HET +5%"], [SIAGA + 0.0001, 1e9, "--crit", "Di atas HET +5%"]],
     fmt: (v) => rp(v) + "/kg",
   },
 }

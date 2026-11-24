@@ -1,75 +1,144 @@
 import { ArrowLeftRight } from "lucide-react"
+import { useState } from "react"
 import { ChordArus } from "@/components/charts/ChordArus"
 import { MapLegend, PetaJatim } from "@/components/charts/PetaJatim"
+import { ChordKab } from "@/components/charts/ChordKab"
+import { MatriksArus } from "@/components/charts/MatriksArus"
 import { SankeyArus } from "@/components/charts/SankeyArus"
-import { Bacaan } from "@/components/ui/Bacaan"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
-import { REGIONS, TRADE, inflow, neraca, outflow, regionOf, regionStats } from "@/lib/arus"
-import { bacaChord, bacaNeracaKawasan, bacaPetaArus, bacaSankey } from "@/lib/bacaan"
-import { byName } from "@/lib/data"
+import { REGIONS, neracaBulan, regionOf, regionStatsFor, tradeFor, matrixOf, type Trade } from "@/lib/arus"
+import { byName, type Wilayah } from "@/lib/data"
 import { nf, scale, short } from "@/lib/format"
-import { useFilter } from "@/lib/filter"
+import { bulanLabel, useFilter } from "@/lib/filter"
+import { covBulan } from "@/lib/petaLayers"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
 
 export default function ArusBeras() {
-  const { lolos, W } = useFilter()
-  const trade = TRADE.filter((t) => lolos(t.from) || lolos(t.to))
+  return (
+    <section className="view">
+      <ViewHeader icon={ArrowLeftRight} title="Estimasi Arus Perdagangan" />
+      <Perdagangan />
+    </section>
+  )
+}
+
+function Perdagangan() {
+  const { lolos, W, akhir } = useFilter()
+  const [mode, setMode] = useState<"sankey" | "matriks" | "chord">("sankey")
+  const semua = tradeFor(akhir)
+  const trade = semua.filter((t) => lolos(t.from) || lolos(t.to))
   const total = trade.reduce((a, t) => a + t.ton, 0) || 1
   const antar = trade.filter((t) => regionOf[t.from.n] !== regionOf[t.to.n]).reduce((a, t) => a + t.ton, 0)
   const kmAvg = trade.reduce((a, t) => a + t.ton * t.km, 0) / total
-  const nSur = W.filter((k) => neraca(k) > 0).length
+  const nSur = W.filter((k) => neracaBulan(k, akhir) > 0).length
 
   return (
-    <section className="view">
-      <ViewHeader icon={ArrowLeftRight} title="Arus beras" />
+    <>
       <KpiStrip
         items={[
-          { k: "Arus beras antarwilayah", v: `${nf(total / 1000, 1)} rb ton`, t: "per bulan, taksiran Okt 2026" },
-          { k: "Lintas kawasan", v: `${nf((antar / total) * 100, 0)}%`, t: `${nf(antar / 1000, 1)} rb ton keluar dari kawasan asal` },
-          { k: "Wilayah surplus", v: `${nSur} dari 38`, t: "produksi Okt > konsumsi" },
-          { k: "Jarak tempuh rata-rata", v: `${nf(kmAvg)} km`, t: "tertimbang volume" },
+          { k: "Arus antarwilayah", v: `${nf(total / 1000, 1)} rb ton`, t: "estimasi per bulan" },
+          { k: "Lintas kawasan", v: `${nf((antar / total) * 100, 0)}%`, t: `${nf(antar / 1000, 1)} rb ton` },
+          { k: "Wilayah surplus", v: `${nSur} dari ${W.length}`, t: "produksi > konsumsi" },
+          { k: "Jarak tempuh rata-rata", v: `${nf(kmAvg)} km`, t: "per ton beras" },
         ]}
       />
       <div className="grid-21">
-        <Panel title="Peta arus utama" note="25 jalur terbesar; garis bergerak dari asal ke tujuan, warna = kawasan asal">
+        <Panel title="Peta arus utama" className="panel-flex">
           <div className="map">
             <PetaJatim
-              layer="stok"
+              layer="stokK2"
+              getValue={(k) => covBulan(k, akhir)}
+              valueLabel="Cakupan stok"
               muted
               labels={false}
               arcs={trade.slice(0, 25).map((t) => ({ from: t.from.n, to: t.to.n, ton: t.ton, color: regionOf[t.from.n].color }))}
             />
           </div>
-          <MapLegend layer="stok" />
+          <MapLegend layer="stokK2" title={`Cakupan stok non-Bulog, akhir ${bulanLabel(akhir)}`} />
           <RegionLegend />
-          <Bacaan>{bacaPetaArus()}</Bacaan>
         </Panel>
-        <Corridors />
+        <Corridors trade={trade} />
       </div>
-      <Panel title="Dari lumbung ke meja makan" note="Kabupaten asal → kawasan tujuan → kabupaten/kota tujuan, ton beras per bulan. Arahkan kursor untuk menyorot jalur.">
-        <div className="pb chart">
-          <SankeyArus />
-        </div>
-        <RegionLegend />
-        <Bacaan>{bacaSankey()}</Bacaan>
+      <Panel
+        title="Aliran beras antar kabupaten"
+        actions={
+          <div className="seg seg-s" role="group" aria-label="Tampilan aliran">
+            <button type="button" aria-pressed={mode === "sankey"} onClick={() => setMode("sankey")}>
+              Sankey
+            </button>
+            <button type="button" aria-pressed={mode === "matriks"} onClick={() => setMode("matriks")}>
+              Matriks
+            </button>
+            <button type="button" aria-pressed={mode === "chord"} onClick={() => setMode("chord")}>
+              Chord
+            </button>
+          </div>
+        }
+      >
+        {mode === "sankey" ? (
+          <>
+            <div className="pb chart">
+              <SankeyArus trade={semua} />
+            </div>
+            <RegionLegend />
+          </>
+        ) : mode === "matriks" ? (
+          <MatriksArus trade={trade} />
+        ) : (
+          <>
+            <div className="pb chart" style={{ maxWidth: 760, margin: "0 auto" }}>
+              <ChordKab trade={trade} />
+            </div>
+            <RegionLegend />
+          </>
+        )}
       </Panel>
       <div className="grid-2">
-        <Panel title="Saling pasok antarkawasan" note="Lebar pita = volume; pita yang kembali ke kawasan sendiri = arus di dalam kawasan">
-          <div className="pb chart" style={{ maxWidth: 560, margin: "0 auto" }}>
-            <ChordArus />
+        <Panel title="Aliran beras antarkawasan">
+          <div className="pb chart" style={{ maxWidth: 680, margin: "0 auto" }}>
+            <ChordArus matrix={matrixOf(semua)} />
           </div>
-          <Bacaan>{bacaChord()}</Bacaan>
         </Panel>
-        <Panel title="Neraca kawasan" note="Produksi beras Oktober dikurangi konsumsi, ribu ton">
+        <Panel title={`Neraca kawasan ${bulanLabel(akhir)}`}>
           <div className="pb chart">
-            <RegionBalance />
+            <RegionBalance bulan={akhir} trade={semua} />
           </div>
-          <Bacaan>{bacaNeracaKawasan()}</Bacaan>
         </Panel>
       </div>
-    </section>
+    </>
+  )
+}
+
+function Insight({ k, trade, out, inn }: { k: Wilayah; trade: Trade[]; out: number; inn: number }) {
+  const peran = out > 0 ? "Pengirim" : inn > 0 ? "Penerima" : "Seimbang"
+  const rute = out > 0 ? trade.filter((t) => t.from === k) : trade.filter((t) => t.to === k)
+  const utama = rute.slice().sort((a, b) => b.ton - a.ton)[0]
+  return (
+    <div className="ins">
+      <div className="ins-h">
+        <b>{k.n}</b>
+        <span className={`ins-tag ${peran.toLowerCase()}`}>{peran}</span>
+      </div>
+      {peran === "Seimbang" ? (
+        <p className="ins-t">Produksi dan konsumsi hampir seimbang, arus keluar masuk kecil.</p>
+      ) : (
+        <>
+          <div className="ins-v">
+            {nf(peran === "Pengirim" ? out : inn)} <small>ton per bulan</small>
+          </div>
+          <p className="ins-t">
+            {peran === "Pengirim" ? `Dikirim ke ${rute.length} wilayah` : `Diterima dari ${rute.length} wilayah surplus`}
+            {utama && (
+              <>
+                , terbesar {peran === "Pengirim" ? "ke" : "dari"} <b>{peran === "Pengirim" ? utama.to.n : utama.from.n}</b> ({nf(utama.ton)} ton)
+              </>
+            )}
+          </p>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -86,9 +155,9 @@ function RegionLegend() {
   )
 }
 
-function RegionBalance() {
+function RegionBalance({ bulan, trade }: { bulan: number; trade: Trade[] }) {
   const { show, hide } = useTooltip()
-  const st = regionStats()
+  const st = regionStatsFor(bulan, trade)
     .map((s) => ({ ...s, net: s.prod - s.kons }))
     .sort((a, b) => b.net - a.net)
   const W = 520
@@ -151,38 +220,34 @@ function RegionBalance() {
   )
 }
 
-function Corridors() {
+function Corridors({ trade }: { trade: Trade[] }) {
   const { sel, select } = useSelection()
-  const { lolos } = useFilter()
   const k = byName[sel]
-  const top = TRADE.filter((t) => lolos(t.from) || lolos(t.to)).slice(0, 10)
+  const top = trade.slice(0, 10)
   const mx = top[0]?.ton ?? 1
-  const out = outflow(k.n)
-  const inn = inflow(k.n)
+  const out = trade.filter((t) => t.from.n === k.n).reduce((a, t) => a + t.ton, 0)
+  const inn = trade.filter((t) => t.to.n === k.n).reduce((a, t) => a + t.ton, 0)
   return (
-    <Panel title="Koridor terbesar" note="Ton beras per bulan">
+    <Panel title="Jalur terbesar">
       <div className="corr">
         {top.map((t) => (
           <div key={t.from.n + t.to.n} className="corr-row" onClick={() => select(t.to.n)}>
             <div>
               <div className="nm">
-                {short(t.from.n)} → {short(t.to.n)}
+                <span className="rt">
+                  <b>{short(t.from.n)}</b>
+                  <em>ke</em>
+                  <b>{short(t.to.n)}</b>
+                </span>
                 <small>{nf(t.km)} km</small>
               </div>
               <div className="bar" style={{ width: `${(t.ton / mx) * 100}%`, background: regionOf[t.from.n].color }} />
             </div>
-            <div className="v">{nf(t.ton)} t</div>
+            <div className="v">{nf(t.ton)} ton</div>
           </div>
         ))}
       </div>
-      <div className="rec">
-        <b>{k.n}:</b>{" "}
-        {out > 0
-          ? `mengirim sekitar ${nf(out)} ton beras per bulan ke ${TRADE.filter((t) => t.from === k).length} wilayah.`
-          : inn > 0
-            ? `menerima sekitar ${nf(inn)} ton beras per bulan dari ${TRADE.filter((t) => t.to === k).length} wilayah surplus, terbesar dari ${TRADE.find((t) => t.to === k)?.from.n}.`
-            : "arus keluar-masuk kecil; produksi dan konsumsi hampir seimbang."}
-      </div>
+      <Insight k={k} trade={trade} out={out} inn={inn} />
     </Panel>
   )
 }

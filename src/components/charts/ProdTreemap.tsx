@@ -1,6 +1,7 @@
 import { REGIONS } from "@/lib/arus"
-import { WILAYAH, byName } from "@/lib/data"
+import { WILAYAH, byName, type Wilayah } from "@/lib/data"
 import { useFilter } from "@/lib/filter"
+import { faktorBeras } from "@/lib/petaLayers"
 import { nf, short, sum } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
@@ -10,13 +11,15 @@ const W = 720
 const H = 460
 const HEAD = 18
 
-/** Treemap proyeksi panen Nov–Jan per kabupaten/kota, dikelompokkan per kawasan. */
+/** Treemap produksi per periode terpilih per kabupaten/kota, dikelompokkan per kawasan. */
 export function ProdTreemap() {
   const { sel, select } = useSelection()
   const { show, hide } = useTooltip()
-  const { lolos } = useFilter()
-  const total = sum(WILAYAH.filter(lolos), (k) => k.est)
-  const groups = REGIONS.map((r) => ({ r, v: sum(r.members.filter((m) => lolos(byName[m])), (m) => byName[m].est) })).filter((g) => g.v > 0)
+  const { lolos, mulai, akhir } = useFilter()
+  const por = faktorBeras(mulai, akhir)
+  const est = (k: Wilayah) => k.est * por
+  const total = sum(WILAYAH.filter(lolos), (k) => est(k))
+  const groups = REGIONS.map((r) => ({ r, v: sum(r.members.filter((m) => lolos(byName[m])), (m) => est(byName[m])) })).filter((g) => g.v > 0)
   const outer = squarify(groups, (g) => g.v, { x: 0, y: 0, w: W, h: H })
 
   return (
@@ -24,8 +27,8 @@ export function ProdTreemap() {
       {outer.map((o) => {
         const g = o.item
         const mem = g.r.members.filter((m) => lolos(byName[m]))
-        const inner = squarify(mem, (m) => byName[m].est, { x: o.x + 1.5, y: o.y + HEAD, w: o.w - 3, h: o.h - HEAD - 1.5 })
-        const mx = Math.max(...mem.map((m) => byName[m].est))
+        const inner = squarify(mem, (m) => est(byName[m]), { x: o.x + 1.5, y: o.y + HEAD, w: o.w - 3, h: o.h - HEAD - 1.5 })
+        const mx = Math.max(...mem.map((m) => est(byName[m])))
         return (
           <g key={g.r.key}>
             <rect x={o.x} y={o.y} width={o.w} height={o.h} fill={g.r.color} opacity={0.16} />
@@ -47,11 +50,11 @@ export function ProdTreemap() {
                       <>
                         <b>{k.n}</b> · {g.r.short}
                         <br />
-                        Proyeksi panen <span className="m">{nf(k.est, 1)} rb ton GKG</span>
+                        Produksi <span className="m">{nf(est(k), 1)} rb ton beras</span>
                         <br />
-                        Porsi <span className="m">{nf((k.est / total) * 100, 1)}%</span>
+                        Porsi <span className="m">{nf((est(k) / total) * 100, 1)}%</span>
                         <br />
-                        vs 2025 <span className="m">{nf(k.yoy * 100, 1)}%</span>
+                        YoY <span className="m">{nf(k.yoy * 100, 1)}%</span>
                       </>,
                       e,
                     )
@@ -66,7 +69,7 @@ export function ProdTreemap() {
                     height={Math.max(0, t.h - 1.5)}
                     rx={2}
                     fill={g.r.color}
-                    opacity={0.5 + 0.5 * (k.est / mx)}
+                    opacity={0.5 + 0.5 * (est(k) / mx)}
                     className={isSel ? "tm-sel" : undefined}
                   />
                   {showN && (
@@ -76,7 +79,7 @@ export function ProdTreemap() {
                   )}
                   {showV && (
                     <text x={t.x + 6} y={t.y + 28} className="tm-v">
-                      {nf(k.est, 0)} rb t · {nf(k.yoy * 100, 0)}%
+                      {nf(est(k), 0)} rb t · {nf(k.yoy * 100, 0)}%
                     </text>
                   )}
                 </g>

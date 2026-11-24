@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useState } from "react
 import { useLocation } from "react-router-dom"
 import { REGIONS, type RegionKey } from "@/lib/arus"
 import { WILAYAH, byName, type HargaStatus, type StokStatus, type Wilayah } from "@/lib/data"
+import { statusHargaAt, type Komoditas } from "@/lib/petaLayers"
 
 export const HS_ALL: HargaStatus[] = ["aman", "waspada", "siaga"]
 export const SS_ALL: StokStatus[] = ["surplus", "cukup", "tipis", "defisit"]
@@ -19,13 +20,18 @@ export interface Tersedia {
   wilayah: boolean
   hs: boolean
   ss: boolean
+  /** Pengaturan lapisan peta ikut tampil di sidebar. */
+  peta?: boolean
+  /** Pilihan jenis beras (medium atau premium) tampil di sidebar. */
+  jenis?: boolean
 }
 const RUTE: Record<string, Tersedia> = {
-  "/": { waktu: true, wilayah: true, hs: true, ss: true },
+  "/": { waktu: true, wilayah: true, hs: true, ss: true, peta: true },
+  "/ringkasan": { waktu: true, wilayah: true, hs: true, ss: true, peta: true },
   "/produksi": { waktu: true, wilayah: true, hs: false, ss: false },
   "/stok": { waktu: true, wilayah: true, hs: false, ss: true },
-  "/arus": { waktu: false, wilayah: true, hs: false, ss: true },
-  "/harga": { waktu: true, wilayah: true, hs: true, ss: false },
+  "/arus": { waktu: true, wilayah: true, hs: false, ss: true },
+  "/harga": { waktu: true, wilayah: true, hs: true, ss: false, jenis: true },
 }
 const TIDAK: Tersedia = { waktu: false, wilayah: false, hs: false, ss: false }
 
@@ -42,8 +48,24 @@ interface FilterContextValue extends FilterState {
   /** Indeks bulan terpilih (0 = Jan 2026). */
   bulan: number
   setBulan: (i: number) => void
+  /** Mode rentang: dari `bulan` sampai `bulan2` (termasuk). Bila mati, hanya `bulan`. */
+  rentang: boolean
+  setRentang: (r: boolean) => void
+  bulan2: number
+  setBulan2: (i: number) => void
+  /** Atur rentang sekaligus (otomatis menyalakan mode rentang). */
+  setRange: (a: number, b: number) => void
+  /** Bulan awal dan akhir yang berlaku (sama bila bukan mode rentang). */
+  mulai: number
+  akhir: number
   panel: Panel
   setPanel: (p: Panel) => void
+  /** Jenis beras untuk status dan harga. */
+  kom: Komoditas
+  setKom: (k: Komoditas) => void
+  /** Jenis beras yang ditampilkan di halaman Harga (satu atau keduanya). */
+  jenisHarga: Komoditas[]
+  setJenisHarga: (k: Komoditas[]) => void
   tersedia: Tersedia
   toggleWilayah: (n: string) => void
   setWilayah: (n: string[]) => void
@@ -91,7 +113,45 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
   const tersedia = RUTE[pathname] ?? TIDAK
   const [st, setSt] = useState<FilterState>(muat)
   const [bulan, setBulanState] = useState(BULAN_KINI)
-  const setBulan = useCallback((i: number) => setBulanState(Math.min(N_BULAN - 1, Math.max(0, i))), [])
+  const [bulan2, setBulan2State] = useState(BULAN_KINI)
+  const [rentang, setRentangState] = useState(false)
+  const [kom, setKom] = useState<Komoditas>("medium")
+  const [jenisHarga, setJenisHargaState] = useState<Komoditas[]>(["medium", "premium"])
+  const setJenisHarga = useCallback((j: Komoditas[]) => setJenisHargaState(j.length ? (["medium", "premium"] as Komoditas[]).filter((x) => j.includes(x)) : ["medium", "premium"]), [])
+  const klem = (i: number) => Math.min(N_BULAN - 1, Math.max(0, i))
+  const setBulan = useCallback(
+    (i: number) => {
+      const v = klem(i)
+      setBulanState(v)
+      setBulan2State((b) => Math.max(b, v))
+    },
+    [],
+  )
+  const setBulan2 = useCallback((i: number) => {
+    const v = klem(i)
+    setBulan2State(v)
+    setBulanState((b) => Math.min(b, v))
+  }, [])
+  const setRange = useCallback((a: number, b: number) => {
+    const x = klem(Math.min(a, b))
+    const y = klem(Math.max(a, b))
+    setBulanState(x)
+    setBulan2State(y)
+    setRentangState(true)
+  }, [])
+  const setRentang = useCallback(
+    (r: boolean) => {
+      setRentangState(r)
+      if (r) {
+        // Awal rentang: 3 bulan berakhir di bulan terpilih.
+        setBulan2State(bulan)
+        setBulanState(klem(bulan - 2))
+      } else {
+        setBulanState(bulan2)
+      }
+    },
+    [bulan, bulan2],
+  )
   const [panel, setPanelState] = useState<Panel>(() => {
     try {
       const p = localStorage.getItem(KEY_PANEL)
@@ -122,14 +182,25 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<FilterContextValue>(() => {
     const lolos = (k: Wilayah) =>
       (!tersedia.wilayah || st.wilayah.includes(k.n)) &&
-      (!tersedia.hs || st.hs.includes(k.hs)) &&
+      (!tersedia.hs || (pathname === "/harga" ? jenisHarga : [kom]).some((j) => st.hs.includes(statusHargaAt(k, 4, j)))) &&
       (!tersedia.ss || st.ss.includes(k.ss))
     return {
       ...st,
       bulan,
       setBulan,
+      rentang,
+      setRentang,
+      bulan2,
+      setBulan2,
+      setRange,
+      mulai: bulan,
+      akhir: rentang ? bulan2 : bulan,
       panel,
       setPanel,
+      kom,
+      setKom,
+      jenisHarga,
+      setJenisHarga,
       tersedia,
       toggleWilayah: (n) => simpan({ ...st, wilayah: toggle(st.wilayah, n) }),
       setWilayah: (n) => simpan({ ...st, wilayah: n }),
@@ -144,7 +215,9 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
       setSs: (n) => simpan({ ...st, ss: n }),
       reset: () => {
         simpan(kosong)
-        setBulan(BULAN_KINI)
+        setRentangState(false)
+        setBulanState(BULAN_KINI)
+        setBulan2State(BULAN_KINI)
       },
       aktif:
         (tersedia.wilayah && st.wilayah.length < WILAYAH.length ? 1 : 0) +
@@ -153,7 +226,7 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
       lolos,
       W: WILAYAH.filter(lolos),
     }
-  }, [st, simpan, tersedia, panel, setPanel, bulan, setBulan])
+  }, [st, simpan, tersedia, pathname, jenisHarga, setJenisHarga, panel, setPanel, kom, bulan, setBulan, rentang, setRentang, bulan2, setBulan2, setRange])
 
   return <FilterContext.Provider value={value}>{children}</FilterContext.Provider>
 }

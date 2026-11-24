@@ -66,8 +66,8 @@ export function AppShell() {
       </header>
       <div className="body">
         <FilterPanel />
-        <div className="scroll" ref={scrollRef}>
-          <main className="wrap">
+        <div className={"scroll" + (pathname === "/" ? " full" : "")} ref={scrollRef}>
+          <main className={pathname === "/" ? "full" : "wrap"}>
             {W.length ? (
               <Outlet />
             ) : (
@@ -79,13 +79,13 @@ export function AppShell() {
               </div>
             )}
           </main>
+          {pathname !== "/" && (
           <footer>
-            <div className="wrap">
-              TERAWANG · Tim Makmur Jaya, Politeknik Statistika STIS · PLAY IT! Hackathon DeepTech 2026. Semua angka di prototipe ini
-              adalah data simulasi yang dibangkitkan untuk peragaan, bukan data resmi. Batas wilayah: GADM; Kota Blitar ditandai titik,
-              pulau kecil (Bawean, Masalembu) tidak digambar.
+            <div className="wrap" style={{ textAlign: "center" }}>
+              TERAWANG by Makmur Jaya, Politeknik Statistika STIS 2026
             </div>
           </footer>
+          )}
         </div>
       </div>
     </div>

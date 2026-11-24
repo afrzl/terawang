@@ -17,7 +17,7 @@ function getInitialTheme(): Theme {
   } catch {
     /* penyimpanan tidak tersedia */
   }
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+  return "light"
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -27,7 +27,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.dataset.theme = theme
   }, [theme])
 
-  // Simpan hanya pilihan eksplisit pengguna, supaya tanpa pilihan tetap mengikuti tema sistem.
+  // Simpan hanya pilihan eksplisit pengguna, supaya tanpa pilihan tema bawaannya terang.
   const toggleTheme = () =>
     setTheme((t) => {
       const next = t === "dark" ? "light" : "dark"

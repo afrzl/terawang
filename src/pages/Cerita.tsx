@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Link } from "react-router-dom"
-import { ArrowRight, ChevronDown, MessageCircle } from "lucide-react"
+import { ChevronDown } from "lucide-react"
 import { MapLegend, PetaJatim, type MapArc } from "@/components/charts/PetaJatim"
 import { CountUp } from "@/components/ui/CountUp"
 import { REGIONS, TRADE, TRADE_TOTAL, regionOf } from "@/lib/arus"
@@ -32,7 +31,7 @@ const tonS = sum(FLOWS, (f) => f.ton)
 const STEPS: Step[] = [
   {
     key: "sawah",
-    k: "01 · Sawah",
+    k: "01 Sawah",
     title: "Hujan datang terlambat",
     text: (
       <>
@@ -45,7 +44,7 @@ const STEPS: Step[] = [
   },
   {
     key: "panen",
-    k: "02 · Panen",
+    k: "02 Panen",
     title: "Panen Nov–Jan menyusut",
     text: (
       <>
@@ -58,7 +57,7 @@ const STEPS: Step[] = [
   },
   {
     key: "stok",
-    k: "03 · Stok",
+    k: "03 Stok",
     title: "Stok kota dan Madura menipis",
     text: (
       <>
@@ -71,7 +70,7 @@ const STEPS: Step[] = [
   },
   {
     key: "arus",
-    k: "04 · Arus",
+    k: "04 Arus",
     title: "Beras berpindah ke yang kekurangan",
     text: (
       <>
@@ -86,7 +85,7 @@ const STEPS: Step[] = [
   },
   {
     key: "harga",
-    k: "05 · Pasar",
+    k: "05 Pasar",
     title: "Harga merambat ke HET",
     text: (
       <>
@@ -94,17 +93,17 @@ const STEPS: Step[] = [
         lainnya mendekati HET (Waspada).
       </>
     ),
-    stat: { v: nS, fmt: (v) => nf(v), unit: `wilayah Siaga · ${nW} Waspada` },
+    stat: { v: nS, fmt: (v) => nf(v), unit: `wilayah Siaga, ${nW} Waspada` },
     layer: "harga",
   },
   {
     key: "aksi",
-    k: "06 · Tindakan",
+    k: "06 Tindakan",
     title: "Bertindak sebelum harga naik",
     text: (
       <>
-        Wilayah Siaga dipasangkan dengan gudang surplus terdekat untuk penyaluran beras SPHP, {nf(tonS)} ton dalam {FLOWS.length} rute. Warga bisa
-        mengecek harga dan lokasi SPHP lewat WhatsApp tanpa membuka dasbor.
+        Bulog menyalurkan beras SPHP dari cabangnya ke kabupaten yang stoknya kurang, {nf(tonS)} ton dalam {FLOWS.length} rute. Rute dan jumlah
+        per wilayah bisa dilihat di Peta Ringkasan, pada lapisan penyaluran SPHP.
       </>
     ),
     stat: { v: tonS, fmt: (v) => nf(v), unit: "ton SPHP direkomendasikan" },
@@ -134,7 +133,10 @@ export default function Cerita() {
     <section className="story">
       <header className="story-hero">
         <div className="story-hero-txt">
-          <div className="story-kicker">Laporan pekanan · Pekan 44, 1 November 2026</div>
+          <div className="story-kicker">
+            <span>Laporan pekanan</span>
+            <span>Pekan 44, 1 November 2026</span>
+          </div>
           <h1>Dari sawah ke pasar</h1>
           <p className="story-dek">
             Hujan yang datang terlambat memundurkan tanam di sawah. Dampaknya merambat pelan: panen menyusut, stok di kota menipis, lalu harga mulai
@@ -220,17 +222,6 @@ export default function Cerita() {
         </div>
       </div>
 
-      <footer className="story-end">
-        <h2>Semua angka ini diperbarui tiap pekan.</h2>
-        <div className="story-cta">
-          <Link to="/" className="btn primary">
-            Buka ringkasan pekan ini <ArrowRight size={16} />
-          </Link>
-          <Link to="/whatsapp" className="btn">
-            <MessageCircle size={16} /> Lihat kanal warga
-          </Link>
-        </div>
-      </footer>
     </section>
   )
 }

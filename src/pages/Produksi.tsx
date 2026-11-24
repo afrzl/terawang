@@ -1,16 +1,16 @@
+import { useMemo, useState } from "react"
 import { Sprout } from "lucide-react"
 import { LineChart } from "@/components/charts/LineChart"
 import { ProdTreemap } from "@/components/charts/ProdTreemap"
-import { SatCompare } from "@/components/charts/SatCompare"
-import { Bacaan } from "@/components/ui/Bacaan"
+import { SatCompare, useCitraIndeks } from "@/components/charts/SatCompare"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
-import { bacaFase, bacaKalender, bacaProyeksi, bacaRadar, bacaTreemap, kalenderPanen } from "@/lib/bacaan"
-import { PHASES, byName } from "@/lib/data"
-import { dfmt, nf, scale, short, sum, ticks } from "@/lib/format"
+import { PHASES, byName, type Wilayah } from "@/lib/data"
+import { dfmt, hash, nf, rng, scale, short, sum, ticks } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
-import { useWilayah } from "@/lib/filter"
+import { BULAN_NAMA, N_BULAN, bulanLabel, useFilter, useWilayah } from "@/lib/filter"
+import { PRODUKTIVITAS, faktorBeras, luasPanen } from "@/lib/petaLayers"
 
 const STEPS = ["--s1", "--s2", "--s3", "--s4", "--s5"]
 const PHASE_COLORS = ["--s0", "--s1", "--s2", "--s4", "--s5"]
@@ -19,71 +19,80 @@ const MT = 8
 
 export default function Produksi() {
   const wil = useWilayah()
-  const estT = sum(wil, (k) => k.est)
-  const prevT = sum(wil, (k) => k.prev)
-  const lagHa = sum(wil, (k) => (k.ha * k.lag) / 100)
+  const indeks = useCitraIndeks()
+  const [cw, setCw] = useState<string | null>(null)
+  // Wilayah panel citra mengikuti filter sidebar. Bila banyak, dipilih yang sudah paling banyak tertanam; pintasan di panel bisa menggantinya.
+  const nama = wil.map((k) => k.n)
+  const tertanam = (n: string) => indeks.find((m) => m.lokasi === n)?.stat.tertanam_sesudah_pct ?? -1
+  const citraWil = cw && nama.includes(cw) ? cw : [...nama].sort((a, b) => tertanam(b) - tertanam(a))[0]
+  const { mulai, akhir } = useFilter()
+  const por = faktorBeras(mulai, akhir)
+  const prodT = sum(wil, (k) => k.est) * por // ribu ton beras
+  const prevT = sum(wil, (k) => k.prev) * por
+  const luasRb = (prodT * 1000) / PRODUKTIVITAS / 1000 // ribu ha
+  const turun = wil.filter((k) => k.yoy < 0).length
+  const yoy = prevT ? (prodT / prevT - 1) * 100 : 0
 
   return (
     <section className="view">
-      <ViewHeader icon={Sprout} title="Produksi pra-panen" />
+      <ViewHeader icon={Sprout} title="Produksi" />
       <KpiStrip
         items={[
           {
-            k: "Proyeksi panen Nov–Jan",
-            v: `${nf(estT / 1000, 2)} jt ton`,
+            k: "Produksi beras",
+            v: prodT >= 1000 ? `${nf(prodT / 1000, 2)} jt ton` : `${nf(prodT, 0)} rb ton`,
             t: (
               <>
-                GKG · <span className="delta-dn">{nf((estT / prevT - 1) * 100, 1)}%</span> vs 2025
+                <span className={yoy < 0 ? "delta-dn" : "delta-up"}>{nf(yoy, 1)}%</span> YoY
               </>
             ),
           },
-          { k: "Sawah terpetakan", v: `${nf(sum(wil, (k) => k.ha) / 1e6, 2)} jt ha`, t: "Sentinel-1 VH, akurasi peta 91,4%" },
-          { k: "Petak tertinggal", v: `${nf(lagHa / 1000, 1)} rb ha`, t: "peringatan dini hama/kekeringan" },
-          { k: "Uji balik MT I 2025", v: "MAPE 8,7%", t: "terhadap angka BPS · target ≤ 10%" },
+          { k: "Luas panen", v: luasRb >= 1000 ? `${nf(luasRb / 1000, 2)} jt ha` : `${nf(luasRb, 0)} rb ha`, t: `${nf(PRODUKTIVITAS, 1)} ton beras/ha` },
+          { k: "Galat prakiraan", v: "±14%", t: "3 bulan ke depan per kabupaten · ±29% per bulan" },
+          { k: "Wilayah YoY turun", v: `${turun} dari ${wil.length}`, t: "produksi di bawah periode sama 2025" },
         ]}
       />
       <div className="grid-2">
-        <SatPanel />
-        <Panel title="Sumbangan tiap wilayah pada panen Nov–Jan" note="Luas kotak = proyeksi ribu ton GKG; dikelompokkan per kawasan; klik untuk memilih">
+        <Panel title="Sumbangan tiap wilayah">
           <div className="pb chart">
             <ProdTreemap />
           </div>
-          <Bacaan>{bacaTreemap()}</Bacaan>
         </Panel>
-      </div>
-      <div className="grid-21">
-        <Panel title="Kalender panen 12 pekan ke depan" note="Perkiraan luas panen per pekan, ribu ha">
-          <div className="pb chart">
-            <HarvestCalendar />
-          </div>
-          <Bacaan>{bacaKalender()}</Bacaan>
-        </Panel>
-        <RadarProfile />
-      </div>
-      <div className="grid-2">
-        <Panel title="Proyeksi panen Nov 2026 – Jan 2027" note="Ribu ton GKG, garis = selang 90%, titik = periode sama 2025">
+        <Panel title="Produksi per wilayah">
           <div className="pb chart">
             <EstimateBars />
           </div>
-          <Bacaan>{bacaProyeksi()}</Bacaan>
         </Panel>
-        <Panel title="Fase tumbuh per wilayah" note="% luas sawah, citra 30 Okt 2026">
+      </div>
+      <div className="grid-21">
+        <Panel title="Kalender panen">
+          <div className="pb chart">
+            <HarvestCalendar />
+          </div>
+        </Panel>
+        <Panel title="Fase tumbuh per wilayah">
           <div className="pb chart">
             <PhaseBars />
           </div>
-          <Bacaan>{bacaFase()}</Bacaan>
         </Panel>
+      </div>
+      <h2 className="sub-h">
+        Citra pendukung <span>Sentinel-1/2 · data simulasi</span>
+      </h2>
+      <div className="grid-2">
+        <SatPanel wilayah={citraWil} onPilih={setCw} kandidat={nama} />
+        <ProfilSatelit wilayah={citraWil} />
       </div>
     </section>
   )
 }
 
-function SatPanel() {
-  const { sel } = useSelection()
+function SatPanel({ wilayah, onPilih, kandidat }: { wilayah?: string; onPilih: (n: string) => void; kandidat: string[] }) {
+  if (!wilayah) return <Panel title="Sebelum dan sesudah tanam"><div className="pb"><div className="method">Tidak ada wilayah dipilih.</div></div></Panel>
   return (
-    <Panel title={`Sebelum dan sesudah tanam · ${sel}`} note="Geser garis putih untuk membandingkan">
+    <Panel title={`Sebelum dan sesudah tanam · ${wilayah}`}>
       <div className="pb">
-        <SatCompare />
+        <SatCompare wilayah={wilayah} onPilih={onPilih} kandidat={kandidat} />
       </div>
     </Panel>
   )
@@ -92,24 +101,29 @@ function SatPanel() {
 function HarvestCalendar() {
   const { sel, select } = useSelection()
   const { show, hide } = useTooltip()
-  const { top, weeks, cal } = kalenderPanen()
+  const wil = useWilayah()
+  const { mulai, akhir } = useFilter()
+  const top = wil
+    .filter((k) => !k.isKota)
+    .sort((a, b) => b.est - a.est)
+    .slice(0, 14)
+  const bulan = [...Array(N_BULAN)].map((_, i) => i)
+  const cal = top.map((k) => bulan.map((i) => luasPanen(k, i) / 1000))
   const W = 720
   const rowH = 21
   const m = { l: 96, t: 22, r: 8 }
   const H = m.t + top.length * rowH + 8
-  const cw = (W - m.l - m.r) / 12
-  const mx = Math.max(...cal.flat())
+  const cw = (W - m.l - m.r) / N_BULAN
+  const mx = Math.max(1e-6, ...cal.flat())
 
   return (
     <>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Kalender panen">
-        {weeks.map((d, i) =>
-          i % 2 === 0 ? (
-            <text key={i} x={m.l + i * cw + cw / 2} y={14} textAnchor="middle">
-              {dfmt(d)}
-            </text>
-          ) : null,
-        )}
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Kalender panen per bulan">
+        {bulan.map((i) => (
+          <text key={i} x={m.l + i * cw + cw / 2} y={14} textAnchor="middle" className={i >= mulai && i <= akhir ? "lab-b" : undefined}>
+            {i === 12 ? "Jan 27" : BULAN_NAMA[i % 12]}
+          </text>
+        ))}
         {top.map((k, r) => (
           <g key={k.n}>
             <text x={m.l - 8} y={m.t + r * rowH + 14} textAnchor="end" className={k.n === sel ? "lab-b" : "lab"}>
@@ -132,9 +146,9 @@ function HarvestCalendar() {
                       <>
                         <b>{k.n}</b>
                         <br />
-                        Pekan {dfmt(weeks[i])}
+                        {bulanLabel(i)}
                         <br />
-                        Perkiraan luas panen <span className="m">{nf(v * 1000)} ha</span>
+                        Luas panen <span className="m">{nf(v * 1000)} ha</span>
                       </>,
                       e,
                     )
@@ -146,9 +160,10 @@ function HarvestCalendar() {
             })}
           </g>
         ))}
+        <rect x={m.l + mulai * cw} y={m.t - 2} width={(akhir - mulai + 1) * cw} height={top.length * rowH + 4} fill="none" stroke="var(--accent)" strokeWidth={1.5} pointerEvents="none" />
       </svg>
       <div className="legend" style={{ padding: "8px 0 0" }}>
-        <span className="ttl">Luas panen per pekan</span>
+        <span className="ttl">Luas panen per bulan</span>
         {STEPS.map((c, i) => (
           <span key={c}>
             <span className="sw" style={{ background: `var(${c})` }} />
@@ -160,39 +175,81 @@ function HarvestCalendar() {
   )
 }
 
-function RadarProfile() {
-  const { sel } = useSelection()
-  const k = byName[sel]
-  const N = 15
+type Sinyal = "evi" | "lswi" | "vh"
+const SINYAL: [Sinyal, string][] = [
+  ["evi", "EVI"],
+  ["lswi", "LSWI"],
+  ["vh", "VH"],
+]
+const NPOS = 15
+
+/** DUMMY: deret EVI dan LSWI per 12 hari (Jun–Nov). Bentuknya mengikuti metodologi: LSWI naik saat sawah digenangi, lalu EVI naik setelah tanam. Ganti dengan s2_titik_12harian_kabkota. */
+function deretSpektral(k: Wilayah) {
+  const R = rng(hash(k.n + "spektral"))
+  const berdiri = (k.ph[2] + k.ph[3]) / 100
+  const t0 = 9.5 + (1 - berdiri) * 5 + R() * 0.8
+  const bentuk = (t0x: number) => {
+    const evi: number[] = []
+    const lswi: number[] = []
+    for (let i = 0; i < NPOS; i++) {
+      const naik = 1 / (1 + Math.exp(-(i - t0x - 1.5) / 1.3))
+      const air = Math.exp(-Math.pow((i - t0x + 0.5) / 1.4, 2))
+      evi.push(0.2 + 0.42 * naik + (R() - 0.5) * 0.02)
+      lswi.push(0.08 + 0.3 * air + 0.1 * naik + (R() - 0.5) * 0.02)
+    }
+    return { evi, lswi }
+  }
+  return { ini: bentuk(t0), rata: bentuk(t0 - 1 + R() * 0.8) }
+}
+
+function ProfilSatelit({ wilayah }: { wilayah?: string }) {
+  if (!wilayah) return <Panel title="Profil sinyal satelit"><div className="pb"><div className="method">Tidak ada wilayah dipilih.</div></div></Panel>
+  return <ProfilIsi wilayah={wilayah} />
+}
+
+function ProfilIsi({ wilayah }: { wilayah: string }) {
+  const k = byName[wilayah]
+  const [sin, setSin] = useState<Sinyal>("evi")
+  const N = NPOS
   const dates = [...Array(N)].map((_, i) => new Date(2026, 5, 1 + i * 12))
-  // Buang null di ujung agar label garis menempel pada akuisisi terakhir yang ada.
   const trim = (xs: (number | null)[]) => {
     const out = xs.slice(0, N)
     while (out.length && out[out.length - 1] == null) out.pop()
     return out
   }
-  const cur = trim(k.vh)
-  const avg = trim(k.vhAvg)
+  const sp = useMemo(() => deretSpektral(k), [k])
+  const sampai = trim(k.vh).length
+  const cur: (number | null)[] = sin === "vh" ? trim(k.vh) : sp.ini[sin].slice(0, sampai)
+  const avg: (number | null)[] = sin === "vh" ? trim(k.vhAvg) : sp.rata[sin].slice(0, sampai)
   const vals = [...cur, ...avg].filter((v): v is number => v != null)
-  const lo = vals.length ? Math.floor(Math.min(...vals) - 0.5) : -24
-  const hi = vals.length ? Math.ceil(Math.max(...vals) + 0.5) : -12
+  const desimal = sin === "vh" ? 1 : 2
+  const lo = sin === "vh" ? Math.floor(Math.min(...vals) - 0.5) : Math.max(0, Math.floor((Math.min(...vals) - 0.03) * 10) / 10)
+  const hi = sin === "vh" ? Math.ceil(Math.max(...vals) + 0.5) : Math.ceil((Math.max(...vals) + 0.03) * 10) / 10
+  const satuan = sin === "vh" ? " dB" : ""
   const lastCur = cur[cur.length - 1] ?? 0
   const lastAvg = avg[avg.length - 1] ?? 0
   const avgAbove = lastAvg > lastCur
-  const fmt = (v: number | null | undefined) => (v == null ? "belum ada citra" : `${nf(v, 1)} dB`)
+  const fmt = (v: number | null | undefined) => (v == null ? "belum ada citra" : `${nf(v, desimal)}${satuan}`)
 
   return (
-    <Panel title={`Profil radar VH · ${k.n}`} note="Rata-rata piksel sawah, dB · Sentinel-1 via Google Earth Engine">
+    <Panel title={`Profil sinyal satelit · ${k.n}`}>
       <div className="pb chart">
+        <div className="seg" style={{ marginBottom: 8 }} role="group" aria-label="Jenis sinyal">
+          {SINYAL.map(([v, t]) => (
+            <button key={v} type="button" aria-pressed={sin === v} onClick={() => setSin(v)}>
+              {t}
+            </button>
+          ))}
+        </div>
         {vals.length ? (
           <LineChart
             xDates={dates}
             yDom={[lo, hi]}
-            yFmt={(v) => nf(v, Number.isInteger(v) ? 0 : 1)}
+            yFmt={(v) => nf(v, sin === "vh" ? (Number.isInteger(v) ? 0 : 1) : 2)}
             W={480}
             H={250}
             series={[
-              { vals: avg, color: "var(--ink-3)", dash: "4 3", label: "rata-rata 2023–25", ly: avgAbove ? -4 : 12 },
+              { vals: avg, color: "var(--ink-3)", dash: "4 3", label: "rata-rata riwayat", ly: avgAbove ? -4 : 12 },
               { vals: cur, color: "var(--s4)", w: 2.4, label: "musim ini", ly: avgAbove ? 12 : -4 },
             ]}
             tip={(i) => (
@@ -201,24 +258,26 @@ function RadarProfile() {
                 <br />
                 Musim ini <span className="m">{fmt(cur[i])}</span>
                 <br />
-                Rata-rata 2023–25 <span className="m">{fmt(avg[i])}</span>
+                Rata-rata riwayat <span className="m">{fmt(avg[i])}</span>
               </>
             )}
           />
         ) : (
-          <div className="method">Belum ada profil Sentinel-1 untuk wilayah ini.</div>
+          <div className="method">Belum ada deret satelit untuk wilayah ini.</div>
         )}
       </div>
-      <Bacaan>{bacaRadar(k)}</Bacaan>
     </Panel>
   )
 }
 
 function EstimateBars() {
-  const wil = useWilayah()
+  const wil = useWilayah().map((k) => k)
+  const { mulai, akhir } = useFilter()
+  const por = faktorBeras(mulai, akhir)
   const { sel, select } = useSelection()
   const { show, hide } = useTooltip()
   const est = wil.filter((k) => !k.isKota)
+    .map((k) => ({ ...k, est: k.est * por, ci: k.ci * por, prev: k.prev * por }))
     .sort((a, b) => b.est - a.est)
     .slice(0, 16)
   const W = 560
