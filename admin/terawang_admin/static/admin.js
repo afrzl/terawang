@@ -261,6 +261,77 @@ function gambarLog() {
 
 pemuat.pipeline = () => muatPipeline();
 
+// ---------- riwayat data ----------
+let riwayatData = null;
+const JENIS = {
+  baru: ["Data baru", "ok"], sama: ["Tidak berubah", ""], pertama: ["Data pertama", "ok"], gagal: ["Gagal", "gagal"],
+  unggah: ["Unggah manual", "jalan"], tarik: ["Unggahan ditarik", "waspada"], konfigurasi: ["Ubah konfigurasi", "waspada"],
+};
+function teksMd(v) { return String(v ?? "").replace(/[`*]/g, "").replace(/^- /gm, "").trim(); }
+
+async function muatRiwayat() {
+  const pilih = $("#filter-riwayat");
+  const q = pilih.value ? (pilih.value.startsWith("grup:") ? `?grup=${encodeURIComponent(pilih.value.slice(5))}` : `?aset=${encodeURIComponent(pilih.value)}`) : "";
+  $("#tabel-riwayat tbody").replaceChildren(el("tr", {}, el("td", { colspan: 6, class: "redup" }, "Memuat…")));
+  try {
+    riwayatData = await api("/riwayat" + q);
+    if (pilih.options.length <= 1) {
+      const nilai = pilih.value;
+      pilih.replaceChildren(el("option", { value: "" }, "Semua sumber (bronze)"), el("option", { value: "grup:semua" }, "Semua aset"),
+        ...riwayatData.aset.map((a) => el("option", { value: a.nama }, `${a.grup} · ${a.nama}`)));
+      pilih.value = nilai;
+    }
+    gambarRiwayat();
+  } catch (e) {
+    $("#tabel-riwayat tbody").replaceChildren(el("tr", {}, el("td", { colspan: 6, class: "pesan-galat" }, e.message)));
+  }
+}
+
+function gambarRiwayat() {
+  if (!riwayatData) return;
+  const hanya = $("#hanya-berubah").checked;
+  const baris = [];
+  for (const k of riwayatData.kejadian) {
+    let jenis = k.jenis;
+    if (jenis === "materialisasi") jenis = k.berubah === null ? "pertama" : k.berubah ? "baru" : "sama";
+    if (hanya && jenis === "sama") continue;
+    const [label, kelas] = JENIS[jenis] || [jenis, ""];
+    const rinci = el("div", { class: "rincian" });
+    const cekGagal = (k.cek || []).filter((c) => c.status === "FAILED" || c.status === "EXECUTION_FAILED");
+    if (k.jenis === "materialisasi") {
+      const m = k.meta || {};
+      const bagian = [];
+      if (m.mode) bagian.push(`mode ${m.mode}`);
+      if (m.otomatis && m.otomatis !== "tidak dipakai") bagian.push(`otomatis: ${m.otomatis}`);
+      const manual = teksMd(m.unggahan_manual_dipakai);
+      if (manual && manual !== "tidak ada") bagian.push(`unggahan manual dipakai: ${manual.replace(/\n/g, ", ")}`);
+      if (m.jumlah_berkas != null) bagian.push(`${m.jumlah_berkas} berkas`);
+      if (m.ukuran_mb != null) bagian.push(`${m.ukuran_mb} MB`);
+      if (m.jendela_terakhir) bagian.push(`jendela terakhir ${m.jendela_terakhir}`);
+      rinci.append(bagian.join(" · ") || (m.sumber ? `sumber ${m.sumber}` : ""));
+      if (k.versi) rinci.append(" · ", el("code", { title: "versi data (checksum)" }, k.versi.slice(0, 10)));
+    } else if (k.jenis === "unggah") {
+      rinci.append(el("code", {}, k.nama), ` · ${k.baris ?? "?"} baris, ${ukuran(k.ukuran)}`, k.catatan ? ` · "${k.catatan}"` : "");
+    } else if (k.jenis === "tarik") {
+      rinci.append(el("code", {}, k.nama), " dipindah ke arsip");
+    } else if (k.jenis === "konfigurasi") {
+      rinci.append(el("code", {}, k.kunci), k.hapus ? " dihapus" : k.nilai != null ? ` = ${k.nilai}` : " diganti (secret)");
+    } else if (k.jenis === "gagal") {
+      rinci.append(el("span", { class: "galat" }, `Langkah gagal di ${k.job}. Buka log untuk penyebabnya.`));
+    }
+    for (const c of cekGagal) rinci.append(el("div", { class: c.keparahan === "ERROR" ? "galat" : "waspada" }, `⚠ ${c.nama}: ${c.pesan || "tidak lolos"}`));
+    baris.push(el("tr", { class: jenis === "gagal" ? "gagal" : cekGagal.length ? "waspada" : "" },
+      el("td", { class: "waktu" }, waktu(k.waktu)),
+      el("td", { class: "nama-aset" }, k.aset),
+      el("td", {}, el("span", { class: "lencana " + kelas }, label)),
+      el("td", {}, rinci),
+      el("td", { class: "ket" }, k.pemicu || "–"),
+      el("td", {}, k.runId ? el("button", { class: "tombol kecil", type: "button", onclick: () => { pilihTab("pipeline"); setTimeout(() => bukaLog(k.runId), 200); } }, "Log") : null)));
+  }
+  $("#tabel-riwayat tbody").replaceChildren(...(baris.length ? baris : [el("tr", {}, el("td", { colspan: 6, class: "redup" }, "Belum ada riwayat."))]));
+}
+pemuat.riwayat = muatRiwayat;
+
 // ---------- unggah manual ----------
 async function muatSumber() {
   const wadah = $("#daftar-sumber");
@@ -467,6 +538,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("#tombol-segarkan").addEventListener("click", (e) => sibuk(e.currentTarget, () => muatPipeline()));
   $("#tutup-log").addEventListener("click", () => { $("#panel-log").hidden = true; runTerbuka = null; });
   $("#hanya-galat").addEventListener("change", gambarLog);
+  $("#hanya-berubah").addEventListener("change", gambarRiwayat);
+  $("#filter-riwayat").append(el("option", { value: "" }, "Semua sumber (bronze)"));
+  $("#filter-riwayat").addEventListener("change", muatRiwayat);
+  $("#segarkan-riwayat").addEventListener("click", (e) => sibuk(e.currentTarget, muatRiwayat));
   $("#tombol-jalankan").addEventListener("click", async (e) => {
     const job = $("#pilih-job").value;
     if (!job || !confirm(`Jalankan ${job} sekarang?\n${dataPipeline?.job[job] || ""}`)) return;

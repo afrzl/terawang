@@ -182,6 +182,44 @@ async def luncurkan(req: Request):
     return JSONResponse({"pesan": pesan})
 
 
+@perlu_login("pipeline")
+async def riwayat(req: Request):
+    """Riwayat pembaruan data: materialisasi Dagster (data baru/tidak berubah, sumber yang dipakai, hasil cek konektor),
+    kegagalan, unggahan/penarikan manual, dan perubahan konfigurasi sumber. Terbaru dulu."""
+    aset_q = req.query_params.get("aset", "")
+    grup_q = req.query_params.get("grup", "bronze")
+
+    def kumpulkan():
+        semua = dagster.daftar_aset()
+        if aset_q:
+            pilih = [a["nama"] for a in semua if a["nama"] == aset_q]
+        else:
+            pilih = [a["nama"] for a in semua if grup_q in ("", "semua") or a["grup"] == grup_q]
+        runs = dagster.run_untuk_riwayat()
+        kejadian = []
+        for nama in pilih[:40]:
+            kejadian += dagster.riwayat_aset(nama, 40, runs)
+        # unggahan manual
+        for sid, info in sumber.SUMBER.items():
+            for aset in info["aset"]:
+                if aset in pilih:
+                    for r in sumber.riwayat(sid, 100):
+                        kejadian.append({"waktu": r["waktu"], "aset": aset, "jenis": "tarik" if r.get("tindakan") == "tarik" else "unggah",
+                                         "pemicu": r.get("pengguna"), "nama": r.get("nama"), "baris": r.get("baris"), "ukuran": r.get("ukuran"),
+                                         "catatan": r.get("catatan")})
+        # perubahan konfigurasi sumber (tanpa nilai secret; jejak memang tidak menyimpannya)
+        env_ke_aset = {info["env"]: a for info in sumber.SUMBER.values() if info["env"] for a in info["aset"]}
+        env_ke_aset.update({"BPS_WEBAPI_KEY": "bronze_bps", "TERAWANG_SUMBER_CITRA": "bronze_citra", "GEE_PROJECT": "bronze_citra"})
+        for j in jejak.baca(2000):
+            if j.get("tindakan") == "ubah_konfigurasi" and j.get("berkas") == "pipeline" and env_ke_aset.get(j.get("kunci")) in pilih:
+                kejadian.append({"waktu": j["waktu"], "aset": env_ke_aset[j["kunci"]], "jenis": "konfigurasi", "pemicu": j.get("pengguna"),
+                                 "kunci": j.get("kunci"), "nilai": j.get("nilai"), "hapus": j.get("hapus")})
+        kejadian.sort(key=lambda k: k["waktu"] or 0, reverse=True)
+        return {"kejadian": kejadian[:500], "aset": semua, "dipilih": pilih}
+
+    return JSONResponse(await run_in_threadpool(kumpulkan))
+
+
 # ---------- konfigurasi ----------
 
 def _berkas_env(nama: str) -> Path:
@@ -351,6 +389,7 @@ routes = [
     Route(f"{API}/akun/{{nama}}", hapus_akun, methods=["DELETE"]),
     Route(f"{API}/pipeline", pipeline),
     Route(f"{API}/run/{{run_id}}/log", log_run),
+    Route(f"{API}/riwayat", riwayat),
     Route(f"{API}/jalankan", luncurkan, methods=["POST"]),
     Route(f"{API}/konfigurasi", konfigurasi),
     Route(f"{API}/konfigurasi", ubah_konfigurasi, methods=["PUT"]),

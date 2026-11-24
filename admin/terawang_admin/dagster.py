@@ -125,7 +125,7 @@ def ringkasan() -> dict:
         gagal = [s["stepKey"] for s in r["stepStats"] if s["status"] == "FAILURE"]
         daftar_run.append({
             "runId": r["runId"], "status": r["status"], "job": r["jobName"], "mulai": r["startTime"], "selesai": r["endTime"],
-            "pemicu": tag.get("dagster/schedule_name") or tag.get("dagster/sensor_name") or tag.get("diluncurkan_oleh") and f"admin ({tag['diluncurkan_oleh']})" or "manual",
+            "pemicu": pemicu_run(tag),
             "alasanGagal": tag.get("dagster/failure_reason"), "langkahGagal": gagal, "jumlahLangkah": len(r["stepStats"]),
         })
     daemon = [{"jenis": x["daemonType"], "sehat": x["healthy"], "wajib": x["required"], "detak": x["lastHeartbeatTime"]}
@@ -200,3 +200,95 @@ def mulai_ulang_bot() -> str:
     if hasil.returncode != 0:
         raise GalatDagster("Gagal menyalakan ulang bot:\n" + (hasil.stdout + hasil.stderr)[-1500:])
     return "Container terawang-bot dibuat ulang dengan .env baru."
+
+
+# ---------- riwayat data ----------
+
+Q_ASET_RIWAYAT = """
+query($k: AssetKeyInput!, $n: Int!) {
+  assetOrError(assetKey: $k) { __typename ... on Asset {
+    definition { groupName description assetChecksOrError { ... on AssetChecks { checks { name } } } }
+    assetMaterializations(limit: $n) { timestamp runId tags { key value }
+      metadataEntries { label __typename ... on TextMetadataEntry { text } ... on MarkdownMetadataEntry { mdStr }
+        ... on IntMetadataEntry { intValue } ... on FloatMetadataEntry { floatValue } } } } }
+}"""
+
+Q_CEK_RIWAYAT = """
+query($k: AssetKeyInput!, $c: String!, $n: Int!) {
+  assetCheckExecutions(assetKey: $k, checkName: $c, limit: $n) { runId status timestamp evaluation { severity description } }
+}"""
+
+Q_RUN_RIWAYAT = """
+query($n: Int!) { runsOrError(limit: $n) { __typename ... on Runs { results { runId status jobName startTime endTime tags { key value }
+  stepStats { stepKey status startTime endTime } } } } }"""
+
+# metadata yang diringkas di riwayat (selain itu diabaikan supaya ringkas)
+METADATA_RIWAYAT = ("sumber", "mode", "otomatis", "unggahan_manual_dipakai", "jumlah_berkas", "ukuran_mb", "checksum", "baris",
+                    "jumlah_baris", "jendela_terakhir", "galat_otomatis")
+
+
+def _nilai_meta(m: dict):
+    for k in ("text", "mdStr", "intValue", "floatValue"):
+        if m.get(k) is not None:
+            return m[k]
+    return None
+
+
+def pemicu_run(tags: dict) -> str:
+    if tags.get("diluncurkan_oleh"):
+        return f"admin ({tags['diluncurkan_oleh']})"
+    if tags.get("dagster/schedule_name"):
+        return f"jadwal {tags['dagster/schedule_name']}"
+    if tags.get("dagster/sensor_name"):
+        return f"sensor {tags['dagster/sensor_name']}"
+    return "manual"
+
+
+def daftar_aset() -> list[dict]:
+    d = graphql("query { assetNodes { assetKey { path } groupName } }")
+    return [{"nama": "/".join(a["assetKey"]["path"]), "grup": a["groupName"]} for a in d["assetNodes"]]
+
+
+def riwayat_aset(nama: str, batas: int = 40, runs: dict | None = None) -> list[dict]:
+    """Kejadian per aset: setiap materialisasi (data baru / tidak berubah, sumber yang dipakai, hasil cek) dan setiap kegagalan."""
+    kunci = {"path": nama.split("/")}
+    d = graphql(Q_ASET_RIWAYAT, {"k": kunci, "n": batas})["assetOrError"]
+    if d["__typename"] != "Asset":
+        return []
+    cek_nama = [c["name"] for c in ((d.get("definition") or {}).get("assetChecksOrError") or {}).get("checks", [])]
+    cek_per_run: dict[str, list] = {}
+    for c in cek_nama:
+        for e in graphql(Q_CEK_RIWAYAT, {"k": kunci, "c": c, "n": batas})["assetCheckExecutions"]:
+            ev = e.get("evaluation") or {}
+            cek_per_run.setdefault(e["runId"], []).append({"nama": c, "status": e["status"], "keparahan": ev.get("severity"),
+                                                            "pesan": ev.get("description")})
+    runs = runs or {}
+    hasil = []
+    mats = d["assetMaterializations"]
+    for i, m in enumerate(mats):
+        tag = {t["key"]: t["value"] for t in m["tags"]}
+        versi = tag.get("dagster/data_version")
+        sebelum = {t["key"]: t["value"] for t in mats[i + 1]["tags"]}.get("dagster/data_version") if i + 1 < len(mats) else None
+        meta = {e["label"]: _nilai_meta(e) for e in m["metadataEntries"] if e["label"] in METADATA_RIWAYAT}
+        run = runs.get(m["runId"], {})
+        hasil.append({
+            "waktu": float(m["timestamp"]) / 1000, "aset": nama, "jenis": "materialisasi", "runId": m["runId"],
+            "berubah": None if sebelum is None else versi != sebelum, "versi": (versi or "")[:16], "meta": meta,
+            "cek": cek_per_run.get(m["runId"], []), "pemicu": run.get("pemicu"), "job": run.get("job"),
+        })
+    for r in runs.values():
+        for s in r["langkah"]:
+            if s["stepKey"] == nama.split("/")[-1] and s["status"] == "FAILURE":
+                hasil.append({"waktu": s["endTime"] or s["startTime"] or r["mulai"], "aset": nama, "jenis": "gagal", "runId": r["runId"],
+                              "pemicu": r["pemicu"], "job": r["job"], "cek": cek_per_run.get(r["runId"], [])})
+    return hasil
+
+
+def run_untuk_riwayat(batas: int = 300) -> dict:
+    d = graphql(Q_RUN_RIWAYAT, {"n": batas})["runsOrError"]
+    hasil = {}
+    for r in d.get("results", []):
+        tag = {t["key"]: t["value"] for t in r["tags"]}
+        hasil[r["runId"]] = {"runId": r["runId"], "status": r["status"], "job": r["jobName"], "mulai": r["startTime"],
+                             "pemicu": pemicu_run(tag), "langkah": r["stepStats"]}
+    return hasil
