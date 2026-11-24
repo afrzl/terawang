@@ -4,8 +4,6 @@ Yang diuji, semuanya dibandingkan dengan hasil dasar k2_operasional.hitung(hari_
   1. jangkar      : JANGKAR_MIN 0,7 / 1,3 (asumsi cakupan terendah Jatim) -> berapa status kab berubah;
   2. tanggal      : hitung ulang dengan hari_ini mundur (15 Sep, 15 Okt) -> apakah jangkar dan cakupan bulan lalu ikut bergeser;
   3. konsumsi     : konsumsi x 1,2 (rumah tangga Susenas belum memuat horeka, industri, susut);
-  4. arus musiman : arus antar kab mengikuti musim (keluar sebanding kelebihan panen bulan itu, masuk sebanding kekurangan bulan itu)
-                    alih-alih rata 1/12 per bulan;
   5. status vs sd : apakah pita ketidakpastian ikut menentukan status (aturan peluang >= 50%).
 
   python scripts/k2/uji_k2_kepekaan.py [--hari-ini 2026-11-24]
@@ -32,7 +30,7 @@ def ringkas(R, bulan):
 
 
 def beda(a, b, kol="status"):
-    j = a[[kol]].join(b[[kol]], rsuffix="_b")
+    j = a[[kol]].join(b[[kol]].add_suffix("_b"))
     return int((j[kol] != j[kol + "_b"]).sum())
 
 
@@ -43,33 +41,6 @@ def hitung_jangkar(jmin, hari_ini, prod, sd):
         return ko.hitung(hari_ini, prod=prod, sd_prod=sd)
     finally:
         ko.JANGKAR_MIN = lama
-
-
-def arus_musiman(h):
-    """Lintasan cakupan dengan arus antar kab mengikuti musim. Jangkar dihitung ulang dengan aturan yang sama."""
-    w, P25, C25, D, bl = ms.muat()
-    kab, BULAN, prod, C, theta, ini = list(w.index), h["bulan"], h["prod"], h["C"], h["theta"], h["ini"]
-    net = P25.sum(axis=1) - 12 * C25
-    F = ms.arus_lp(net, D)
-    masuk, keluar = pd.Series(0.0, index=kab), pd.Series(0.0, index=kab)
-    masuk[F.columns], keluar[F.index] = F.sum(axis=0), F.sum(axis=1)  # tahunan
-    U = {}
-    for k in kab:
-        Pk = np.array([prod[b][k] for b in BULAN])
-        lebih, kurang = np.maximum(Pk - C[k], 0), np.maximum(C[k] - Pk, 0)
-        n = len(BULAN)
-        wk = lebih / lebih.sum() if lebih.sum() > 0 else np.full(n, 1 / n)
-        wm = kurang / kurang.sum() if kurang.sum() > 0 else np.full(n, 1 / n)
-        # arus tahunan dibagi menurut musim; horizon bisa > 12 bulan, jadi skala ke n/12 tahun
-        out_t, in_t = keluar[k] * n / 12 * wk, masuk[k] * n / 12 * wm
-        Xk = theta[k] * np.maximum(Pk - C[k] - out_t, 0)
-        U[k] = np.cumsum(Pk - C[k] + in_t - out_t - Xk)
-    tot = sum(U[k] for k in kab) / C.sum()
-    a = ko.JANGKAR_MIN - tot[:BULAN.index(ini) + 1].min()
-    rows = [(k, ty, tm, a + U[k][i] / C[k]) for k in kab for i, (ty, tm) in enumerate(BULAN)]
-    R = pd.DataFrame(rows, columns=["kab", "tahun", "bulan", "cak"])
-    R["status"] = status_dari(R.cak)
-    return R, a
 
 
 def main():
@@ -118,15 +89,6 @@ def main():
         ms.muat = asli
     Ri, Ra = ringkas(hc["R"], ini), ringkas(hc["R"], akhir)
     print(f"\n[3] Konsumsi x 1,2: jangkar {hc['a_jangkar']:.2f}; status berubah {beda(b_ini, Ri)}/38 ({ini}), {beda(b_akh, Ra)}/38 ({akhir}); {akhir}: {Ra.status.value_counts().to_dict()}")
-
-    # 4. arus musiman
-    Rm, am = arus_musiman(h)
-    Mi, Ma = ringkas(Rm, ini), ringkas(Rm, akhir)
-    print(f"\n[4] Arus antar kab mengikuti musim: jangkar {am:.2f}; status berubah {beda(b_ini, Mi)}/38 ({ini}), {beda(b_akh, Ma)}/38 ({akhir}); {akhir}: {Ma.status.value_counts().to_dict()}")
-    j = b_akh[["cak", "status"]].join(Ma[["cak", "status"]], rsuffix="_musiman")
-    j = j[j.status != j.status_musiman].sort_values("cak")
-    if len(j):
-        print("   berubah:", "; ".join(f"{k} {r.status}->{r.status_musiman} ({r.cak:.2f}->{r.cak_musiman:.2f})" for k, r in j.iterrows()))
 
 
 if __name__ == "__main__":
