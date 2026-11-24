@@ -29,6 +29,18 @@ SUMBER: dict[str, dict] = {
               "aset": ["bronze_jarak"], "env": None},
 }
 ASET_KE_SUMBER = {a: s for s, info in SUMBER.items() for a in info["aset"]}
+# Sumber tanpa unggah manual, tetap punya halaman sendiri di admin (riwayat + status).
+SUMBER_LAIN: dict[str, dict] = {
+    "citra": {"label": "Citra satelit", "ket": "Sentinel-1/2 dari Google Earth Engine: olahan per wilayah dan deret titik sawah.",
+              "aset": ["bronze_citra", "bronze_titik_satelit"], "env": "TERAWANG_SUMBER_CITRA"},
+}
+
+
+def halaman() -> list[dict]:
+    """Satu halaman admin per sumber data, urut seperti di menu."""
+    hasil = [{"id": s, "label": i["label"], "ket": i["ket"], "aset": i["aset"], "env": i["env"], "unggah": True} for s, i in SUMBER.items()]
+    hasil += [{"id": s, "label": i["label"], "ket": i["ket"], "aset": i["aset"], "env": i["env"], "unggah": False} for s, i in SUMBER_LAIN.items()]
+    return hasil
 EKSTENSI = (".csv", ".csv.gz")
 NAMA_SAH = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,200}$")
 

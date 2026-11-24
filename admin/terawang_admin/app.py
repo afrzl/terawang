@@ -188,10 +188,14 @@ async def riwayat(req: Request):
     kegagalan, unggahan/penarikan manual, dan perubahan konfigurasi sumber. Terbaru dulu."""
     aset_q = req.query_params.get("aset", "")
     grup_q = req.query_params.get("grup", "bronze")
+    sumber_q = req.query_params.get("sumber", "")
 
     def kumpulkan():
         semua = dagster.daftar_aset()
-        if aset_q:
+        if sumber_q:
+            aset_sumber = next((h["aset"] for h in sumber.halaman() if h["id"] == sumber_q), [])
+            pilih = [a["nama"] for a in semua if a["nama"] in aset_sumber]
+        elif aset_q:
             pilih = [a["nama"] for a in semua if a["nama"] == aset_q]
         else:
             pilih = [a["nama"] for a in semua if grup_q in ("", "semua") or a["grup"] == grup_q]
@@ -210,6 +214,8 @@ async def riwayat(req: Request):
         # perubahan konfigurasi sumber (tanpa nilai secret; jejak memang tidak menyimpannya)
         env_ke_aset = {info["env"]: a for info in sumber.SUMBER.values() if info["env"] for a in info["aset"]}
         env_ke_aset.update({"BPS_WEBAPI_KEY": "bronze_bps", "TERAWANG_SUMBER_CITRA": "bronze_citra", "GEE_PROJECT": "bronze_citra"})
+        if "bronze_citra" not in pilih and "bronze_titik_satelit" in pilih:
+            env_ke_aset.update({"TERAWANG_SUMBER_CITRA": "bronze_titik_satelit", "GEE_PROJECT": "bronze_titik_satelit"})
         for j in jejak.baca(2000):
             if j.get("tindakan") == "ubah_konfigurasi" and j.get("berkas") == "pipeline" and env_ke_aset.get(j.get("kunci")) in pilih:
                 kejadian.append({"waktu": j["waktu"], "aset": env_ke_aset[j["kunci"]], "jenis": "konfigurasi", "pemicu": j.get("pengguna"),
@@ -299,6 +305,16 @@ async def daftar_sumber(req: Request):
     for s in data:
         s["mode"] = env.get(s["env"]) if s["env"] else None
     return JSONResponse({"sumber": data, "folder": str(pengaturan.MANUAL_DIR).replace(str(Path.home()), "~")})
+
+
+@perlu_login("pipeline")
+async def halaman_sumber(req: Request):
+    """Daftar sumber data untuk menu samping (satu halaman per sumber) beserta mode sumber saat ini."""
+    env = envfile.baca(pengaturan.BERKAS_ENV["pipeline"]) if "pipeline" in pengaturan.BERKAS_ENV else {}
+    data = sumber.halaman()
+    for h in data:
+        h["mode"] = env.get(h["env"]) if h["env"] else None
+    return JSONResponse({"sumber": data})
 
 
 @perlu_login("unggah")
@@ -396,6 +412,7 @@ routes = [
     Route(f"{API}/konfigurasi/uji", uji_konfigurasi, methods=["POST"]),
     Route(f"{API}/muat-ulang/{{target}}", muat_ulang, methods=["POST"]),
     Route(f"{API}/sumber", daftar_sumber),
+    Route(f"{API}/sumber-data", halaman_sumber),
     Route(f"{API}/sumber/{{sumber}}/{{nama}}", unggah, methods=["PUT"]),
     Route(f"{API}/sumber/{{sumber}}/{{nama}}", tarik, methods=["DELETE"]),
     Route(f"{API}/sumber/{{sumber}}/{{nama}}/contoh", templat),

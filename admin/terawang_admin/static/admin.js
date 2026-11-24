@@ -81,28 +81,96 @@ const STATUS = {
 const lencana = (st) => { const [t, k] = STATUS[st] || [st ? st.toLowerCase() : "Belum pernah", ""]; return el("span", { class: "lencana " + k }, t); };
 
 // ---------- navigasi & sesi ----------
-let tabAktif = "pipeline";
+let halAktif = "pipeline";
 const pemuat = {};
+const JUDUL_HAL = { pipeline: "Ringkasan pipeline", konfigurasi: "Konfigurasi & secret", akun: "Akun & peran", jejak: "Jejak admin" };
+const HAK_HAL = { pipeline: "pipeline", konfigurasi: "konfigurasi", akun: "akun", jejak: "jejak" };
 
 let sesi = null;
+let daftarSumber = [];
 const punya = (hak) => !!sesi?.hak?.includes(hak);
+
+// Di layar sempit tabel tampil sebagai kartu; tiap sel diberi label dari kepala kolomnya.
+function labeli(tabel) {
+  const judul = [...tabel.querySelectorAll("thead th")].map((th) => th.textContent.trim());
+  for (const tr of tabel.tBodies[0]?.rows || []) {
+    if (tr.cells.length === 1 && tr.cells[0].colSpan > 1) continue;
+    [...tr.cells].forEach((td, i) => { if (judul[i]) td.dataset.label = judul[i]; });
+  }
+}
+
+function laci(buka) {
+  document.body.classList.toggle("laci-buka", buka);
+  $("#tirai").hidden = !buka;
+  $("#tombol-menu").setAttribute("aria-expanded", String(buka));
+}
 
 function tampilMasuk() {
   sesi = null;
+  laci(false);
   $("#layar-tanpa-akses").hidden = true;
   $("#layar-masuk").hidden = false;
-  $("#tab").hidden = true;
-  $("#kop-kanan").hidden = true;
+  $("#sisi").hidden = true;
+  $("#bilah-atas").hidden = true;
+  $("#kerangka").classList.add("tanpa-sisi");
   document.querySelectorAll(".bagian").forEach((b) => (b.hidden = true));
   clearInterval(intervalPipeline);
 }
 
-function pilihTab(nama) {
-  tabAktif = nama;
-  document.querySelectorAll("#tab button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === nama)));
-  document.querySelectorAll(".bagian").forEach((b) => (b.hidden = b.id !== "bagian-" + nama));
-  try { history.replaceState(null, "", "#" + nama); } catch { /* abaikan */ }
-  pemuat[nama]?.();
+function halTersedia() {
+  const hal = Object.keys(HAK_HAL).filter((h) => punya(HAK_HAL[h]));
+  if (punya("pipeline")) hal.push(...daftarSumber.map((s) => "sumber-" + s.id));
+  return hal;
+}
+
+function pilihHal(nama, sub) {
+  const ada = halTersedia();
+  if (nama === "riwayat" || nama === "unggah") { sub = nama; nama = daftarSumber[0] ? "sumber-" + daftarSumber[0].id : "pipeline"; }
+  if (!ada.includes(nama)) nama = ada[0];
+  if (!nama) return;
+  halAktif = nama;
+  const bagian = nama.startsWith("sumber-") ? "sumber" : nama;
+  document.querySelectorAll("#menu a[data-hal]").forEach((a) => (a.getAttribute("data-hal") === nama ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
+  document.querySelectorAll(".bagian").forEach((b) => (b.hidden = b.id !== "bagian-" + bagian));
+  const s = daftarSumber.find((x) => "sumber-" + x.id === nama);
+  const judul = s ? s.label : JUDUL_HAL[nama] || "Admin";
+  $("#judul-halaman").textContent = judul;
+  document.title = judul + " · Admin TERAWANG";
+  laci(false);
+  try { history.replaceState(null, "", "#" + nama + (sub && sub !== "riwayat" ? "/" + sub : "")); } catch { /* abaikan */ }
+  window.scrollTo(0, 0);
+  if (s) muatHalamanSumber(s, sub || "riwayat"); else pemuat[nama]?.();
+}
+
+function gambarMenuSumber() {
+  const wadah = $("#menu-sumber");
+  wadah.replaceChildren(...daftarSumber.map((s) => {
+    const a = el("a", { href: "#sumber-" + s.id, "data-hal": "sumber-" + s.id },
+      el("span", {}, s.label), el("i", { class: "titik", id: "titik-" + s.id, "aria-hidden": "true" }));
+    a.addEventListener("click", (e) => { e.preventDefault(); pilihHal("sumber-" + s.id); });
+    return a;
+  }));
+  perbaruiTitik();
+}
+
+// titik status di menu: kondisi terburuk dari aset sumber itu
+function statusSumber(s) {
+  if (!dataPipeline) return "";
+  const aset = dataPipeline.aset.filter((a) => s.aset.includes(a.nama));
+  if (aset.some((a) => a.status === "FAILURE")) return "gagal";
+  if (aset.some((a) => a.cek.some((c) => c.status === "FAILED" || c.status === "EXECUTION_FAILED"))) return "waspada";
+  if (aset.some((a) => a.status === "IN_PROGRESS" || a.antre)) return "jalan";
+  if (aset.length && aset.every((a) => a.status === "SUCCESS")) return "ok";
+  return "";
+}
+function perbaruiTitik() {
+  for (const s of daftarSumber) {
+    const t = document.getElementById("titik-" + s.id);
+    if (!t) continue;
+    const st = statusSumber(s);
+    t.className = "titik " + st;
+    t.title = { gagal: "Ada aset gagal", waspada: "Cek konektor tidak lolos", jalan: "Sedang berjalan", ok: "Berhasil" }[st] || "";
+  }
 }
 
 function tujuanKembali() {
@@ -111,28 +179,32 @@ function tujuanKembali() {
   return k && k.startsWith("/") && !k.startsWith("//") && !k.startsWith("/\\") ? k : null;
 }
 
-function masukBerhasil(d, baruMasuk = false) {
+async function masukBerhasil(d, baruMasuk = false) {
   sesi = d;
   const kembali = tujuanKembali();
   if (baruMasuk && kembali) { location.href = kembali; return; }
   $("#layar-masuk").hidden = true;
-  $("#kop-kanan").hidden = false;
   $("#nama-pengguna").textContent = d.pengguna;
   $("#peran-pengguna").textContent = d.labelPeran;
   document.querySelectorAll("[data-hak]").forEach((e) => (e.hidden = !punya(e.dataset.hak)));
-  const tab = [...document.querySelectorAll("#tab button")].filter((b) => punya(b.dataset.hak)).map((b) => b.dataset.tab);
-  if (!tab.length) {
-    $("#tab").hidden = true;
+  if (!Object.values(HAK_HAL).some(punya)) {
     $("#nama-tanpa-akses").textContent = d.pengguna;
     $("#peran-tanpa-akses").textContent = d.labelPeran;
     $("#layar-tanpa-akses").hidden = false;
     return;
   }
-  $("#tab").hidden = false;
-  const awal = location.hash.slice(1);
-  pilihTab(tab.includes(awal) ? awal : tab[0]);
+  $("#kerangka").classList.remove("tanpa-sisi");
+  $("#sisi").hidden = false;
+  $("#bilah-atas").hidden = false;
+  if (punya("pipeline")) {
+    try { daftarSumber = (await api("/sumber-data")).sumber; } catch (e) { daftarSumber = []; toast(e.message, true); }
+    gambarMenuSumber();
+    if (!dataPipeline) api("/pipeline").then((x) => { dataPipeline = x; perbaruiTitik(); }).catch(() => {});
+  }
+  const [awal, sub] = location.hash.slice(1).split("/");
+  pilihHal(awal || "pipeline", sub);
   clearInterval(intervalPipeline);
-  intervalPipeline = setInterval(() => { if (tabAktif === "pipeline" && !document.hidden) muatPipeline(true); }, 30000);
+  intervalPipeline = setInterval(() => { if (halAktif === "pipeline" && !document.hidden) muatPipeline(true); }, 30000);
 }
 
 // ---------- pipeline ----------
@@ -144,6 +216,7 @@ async function muatPipeline(diam = false) {
   try {
     dataPipeline = await api("/pipeline");
     gambarPipeline(dataPipeline);
+    perbaruiTitik();
     $("#info-perbarui").textContent = "Diperbarui " + fmtJam.format(new Date()) + " WIB · otomatis tiap 30 detik";
   } catch (e) {
     $("#info-perbarui").textContent = "Gagal memuat";
@@ -170,17 +243,17 @@ function gambarPipeline(d) {
 
   const peringatan = [];
   const daemonSakit = d.daemon.filter((x) => !x.sehat);
-  if (daemonSakit.length) peringatan.push(el("p", { class: "pemberitahuan gagal" }, `Daemon Dagster tidak sehat (${daemonSakit.map((x) => x.jenis).join(", ")}): jadwal dan sensor tidak berjalan. ${punya("konfigurasi") ? 'Coba "Muat ulang Dagster" di tab Konfigurasi.' : "Hubungi superadmin."}`));
+  if (daemonSakit.length) peringatan.push(el("p", { class: "pemberitahuan gagal" }, `Daemon Dagster tidak sehat (${daemonSakit.map((x) => x.jenis).join(", ")}): jadwal dan sensor tidak berjalan. ${punya("konfigurasi") ? 'Coba "Muat ulang Dagster" di halaman Konfigurasi.' : "Hubungi superadmin."}`));
   for (const a of gagal) {
     const p = el("p", { class: "pemberitahuan gagal" }, el("b", {}, a.nama), ` gagal ${relatif(a.selesai)}. `,
       el("a", { href: "#", onclick: (e) => { e.preventDefault(); bukaLog(a.runId); } }, "Lihat log"));
-    if (a.sumberManual && punya("unggah")) p.append(" · ", el("a", { href: "#unggah", onclick: (e) => { e.preventDefault(); pilihTab("unggah"); setTimeout(() => document.getElementById("sumber-" + a.sumberManual)?.scrollIntoView({ behavior: "smooth" }), 300); } }, "Unggah data manual"));
+    if (a.sumberManual && punya("unggah")) p.append(" · ", el("a", { href: "#sumber-" + a.sumberManual + "/unggah", onclick: (e) => { e.preventDefault(); pilihHal("sumber-" + a.sumberManual, "unggah"); } }, "Unggah data manual"));
     peringatan.push(p);
   }
   for (const a of d.aset) for (const c of a.cek.filter((c) => c.status === "FAILED" || c.status === "EXECUTION_FAILED")) {
     const p = el("p", { class: "pemberitahuan " + (c.keparahan === "ERROR" ? "gagal" : "waspada") }, el("b", {}, a.nama), ` · cek ${c.nama}: `, c.pesan || c.ket || "tidak lolos", ` (${relatif(c.waktu)}). `);
     if (c.runId) p.append(el("a", { href: "#", onclick: (e) => { e.preventDefault(); bukaLog(c.runId); } }, "Lihat log"));
-    if (a.sumberManual && punya("unggah")) p.append(" · ", el("a", { href: "#unggah", onclick: (e) => { e.preventDefault(); pilihTab("unggah"); } }, "Unggah data manual"));
+    if (a.sumberManual && punya("unggah")) p.append(" · ", el("a", { href: "#sumber-" + a.sumberManual + "/unggah", onclick: (e) => { e.preventDefault(); pilihHal("sumber-" + a.sumberManual, "unggah"); } }, "Unggah data manual"));
     peringatan.push(p);
   }
   $("#peringatan-pipeline").replaceChildren(...peringatan);
@@ -193,10 +266,10 @@ function gambarPipeline(d) {
     for (const a of d.aset.filter((x) => x.grup === g)) {
       const aksi = el("td", {});
       if (a.runId) aksi.append(el("button", { class: "tombol kecil", type: "button", onclick: (e) => { e.stopPropagation(); bukaLog(a.runId); } }, "Log"));
-      if (a.status === "FAILURE" && a.sumberManual && punya("unggah")) aksi.append(" ", el("button", { class: "tombol kecil bahaya", type: "button", onclick: (e) => { e.stopPropagation(); pilihTab("unggah"); } }, "Unggah"));
+      if (a.status === "FAILURE" && a.sumberManual && punya("unggah")) aksi.append(" ", el("button", { class: "tombol kecil bahaya", type: "button", onclick: (e) => { e.stopPropagation(); pilihHal("sumber-" + a.sumberManual, "unggah"); } }, "Unggah"));
       const cekGagal = a.cek.some((c) => c.status === "FAILED" || c.status === "EXECUTION_FAILED");
       baris.push(el("tr", { class: (a.status === "FAILURE" ? "gagal " : cekGagal ? "waspada " : "") + (a.runId ? "klik" : ""), onclick: a.runId ? () => bukaLog(a.runId) : null },
-        el("td", {}, el("div", { class: "nama-aset" }, a.nama), a.ket ? el("div", { class: "ket" }, a.ket) : null,
+        el("td", {}, el("div", { class: "nama-aset" }, a.nama, halamanAset(a.nama)), a.ket ? el("div", { class: "ket" }, a.ket) : null,
           ...a.cek.filter((c) => c.status === "FAILED" || c.status === "EXECUTION_FAILED").map((c) => el("div", { class: "cek-gagal" }, "⚠ " + (c.pesan || c.nama)))),
         el("td", {}, lencana(a.status), a.antre && a.status !== "IN_PROGRESS" ? el("div", { class: "ket" }, "+ ada run antre") : null),
         el("td", { class: "waktu", title: waktu(a.selesai || a.mulai) }, relatif(a.selesai || a.mulai)),
@@ -205,6 +278,7 @@ function gambarPipeline(d) {
     }
   }
   $("#tabel-aset tbody").replaceChildren(...baris);
+  labeli($("#tabel-aset"));
 
   $("#tabel-run tbody").replaceChildren(...d.run.map((r) => el("tr", {
     class: "klik" + (r.status === "FAILURE" ? " gagal" : "") + (r.runId === runTerbuka ? " dipilih" : ""), onclick: () => bukaLog(r.runId), title: r.runId,
@@ -214,6 +288,13 @@ function gambarPipeline(d) {
     el("td", { class: "waktu" }, waktu(r.mulai)),
     el("td", { class: "waktu" }, durasi(r.mulai, r.selesai)),
     el("td", { class: "ket" }, r.pemicu))));
+  labeli($("#tabel-run"));
+}
+
+function halamanAset(nama) {
+  const s = daftarSumber.find((x) => x.aset.includes(nama));
+  if (!s) return null;
+  return [" ", el("a", { class: "tautan-kecil", href: "#sumber-" + s.id, onclick: (e) => { e.preventDefault(); e.stopPropagation(); pilihHal("sumber-" + s.id); } }, "riwayat →")];
 }
 
 let logData = null;
@@ -269,21 +350,55 @@ const JENIS = {
 };
 function teksMd(v) { return String(v ?? "").replace(/[`*]/g, "").replace(/^- /gm, "").trim(); }
 
-async function muatRiwayat() {
-  const pilih = $("#filter-riwayat");
-  const q = pilih.value ? (pilih.value.startsWith("grup:") ? `?grup=${encodeURIComponent(pilih.value.slice(5))}` : `?aset=${encodeURIComponent(pilih.value)}`) : "";
-  $("#tabel-riwayat tbody").replaceChildren(el("tr", {}, el("td", { colspan: 6, class: "redup" }, "Memuat…")));
+let sumberAktif = null;
+
+async function muatHalamanSumber(s, sub = "riwayat") {
+  sumberAktif = s;
+  $("#judul-sumber").textContent = s.label;
+  $("#ket-sumber").replaceChildren(s.ket, s.env ? " Mode sumber " : "", s.env ? el("code", {}, s.env) : null, s.env ? " = " : "", s.env ? el("b", {}, s.mode || "(kosong)") : null,
+    ...(s.env && punya("konfigurasi") ? [" · ", el("a", { href: "#konfigurasi", onclick: (e) => { e.preventDefault(); pilihHal("konfigurasi"); } }, "ubah")] : []));
+  const bisaUnggah = s.unggah && punya("unggah");
+  $("#sub-tab-sumber").hidden = !bisaUnggah;
+  pilihSub(bisaUnggah ? sub : "riwayat");
+  gambarStatusSumber(s);
+  if (!dataPipeline) api("/pipeline").then((x) => { dataPipeline = x; perbaruiTitik(); if (sumberAktif === s) gambarStatusSumber(s); }).catch(() => {});
+  await Promise.all([muatRiwayat(s), bisaUnggah ? muatUnggahSumber(s) : null]);
+}
+
+function pilihSub(sub) {
+  document.querySelectorAll("#sub-tab-sumber button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.sub === sub)));
+  $("#sub-riwayat").hidden = sub !== "riwayat";
+  $("#sub-unggah").hidden = sub !== "unggah";
+  if (sumberAktif) try { history.replaceState(null, "", "#sumber-" + sumberAktif.id + (sub === "unggah" ? "/unggah" : "")); } catch { /* abaikan */ }
+}
+
+function gambarStatusSumber(s) {
+  const wadah = $("#status-sumber");
+  if (!dataPipeline) { wadah.replaceChildren(el("div", {}, el("span", { class: "redup" }, "Memuat status…"))); return; }
+  wadah.replaceChildren(...s.aset.map((nama) => {
+    const a = dataPipeline.aset.find((x) => x.nama === nama);
+    if (!a) return el("div", {}, el("div", { class: "nama-aset" }, nama), el("span", { class: "redup kecil" }, "Aset belum terdaftar di Dagster."));
+    const cekGagal = a.cek.filter((c) => c.status === "FAILED" || c.status === "EXECUTION_FAILED");
+    return el("div", { class: a.status === "FAILURE" ? "gagal" : cekGagal.length ? "waspada" : "" },
+      el("div", { class: "baris" }, el("span", { class: "nama-aset" }, a.nama), lencana(a.status)),
+      el("div", { class: "ket" }, `Terakhir jalan ${relatif(a.selesai || a.mulai)} · data terakhir ${relatif(a.materialisasi)}`),
+      ...cekGagal.map((c) => el("div", { class: "cek-gagal" }, "⚠ " + (c.pesan || c.nama))),
+      a.runId ? el("div", { class: "aksi" }, el("button", { class: "tombol kecil", type: "button", onclick: () => { pilihHal("pipeline"); setTimeout(() => bukaLog(a.runId), 200); } }, "Log run terakhir"),
+        a.status === "FAILURE" && s.unggah && punya("unggah") ? el("button", { class: "tombol kecil bahaya", type: "button", onclick: () => pilihSub("unggah") }, "Unggah manual") : null) : null);
+  }));
+}
+
+async function muatRiwayat(s = sumberAktif) {
+  if (!s) return;
+  const kolom = $("#tabel-riwayat thead th").parentElement.cells.length;
+  $("#tabel-riwayat tbody").replaceChildren(el("tr", {}, el("td", { colspan: kolom, class: "redup" }, "Memuat…")));
   try {
-    riwayatData = await api("/riwayat" + q);
-    if (pilih.options.length <= 1) {
-      const nilai = pilih.value;
-      pilih.replaceChildren(el("option", { value: "" }, "Semua sumber (bronze)"), el("option", { value: "grup:semua" }, "Semua aset"),
-        ...riwayatData.aset.map((a) => el("option", { value: a.nama }, `${a.grup} · ${a.nama}`)));
-      pilih.value = nilai;
-    }
+    const d = await api("/riwayat?sumber=" + encodeURIComponent(s.id));
+    if (sumberAktif !== s) return;
+    riwayatData = d;
     gambarRiwayat();
   } catch (e) {
-    $("#tabel-riwayat tbody").replaceChildren(el("tr", {}, el("td", { colspan: 6, class: "pesan-galat" }, e.message)));
+    $("#tabel-riwayat tbody").replaceChildren(el("tr", {}, el("td", { colspan: kolom, class: "pesan-galat" }, e.message)));
   }
 }
 
@@ -320,26 +435,29 @@ function gambarRiwayat() {
       rinci.append(el("span", { class: "galat" }, `Langkah gagal di ${k.job}. Buka log untuk penyebabnya.`));
     }
     for (const c of cekGagal) rinci.append(el("div", { class: c.keparahan === "ERROR" ? "galat" : "waspada" }, `⚠ ${c.nama}: ${c.pesan || "tidak lolos"}`));
+    const banyakAset = (sumberAktif?.aset.length || 0) > 1;
     baris.push(el("tr", { class: jenis === "gagal" ? "gagal" : cekGagal.length ? "waspada" : "" },
       el("td", { class: "waktu" }, waktu(k.waktu)),
-      el("td", { class: "nama-aset" }, k.aset),
-      el("td", {}, el("span", { class: "lencana " + kelas }, label)),
+      el("td", {}, el("span", { class: "lencana " + kelas }, label), banyakAset ? el("div", { class: "nama-aset ket" }, k.aset) : null),
       el("td", {}, rinci),
       el("td", { class: "ket" }, k.pemicu || "–"),
-      el("td", {}, k.runId ? el("button", { class: "tombol kecil", type: "button", onclick: () => { pilihTab("pipeline"); setTimeout(() => bukaLog(k.runId), 200); } }, "Log") : null)));
+      el("td", {}, k.runId ? el("button", { class: "tombol kecil", type: "button", onclick: () => { pilihHal("pipeline"); setTimeout(() => bukaLog(k.runId), 200); } }, "Log") : null)));
   }
-  $("#tabel-riwayat tbody").replaceChildren(...(baris.length ? baris : [el("tr", {}, el("td", { colspan: 6, class: "redup" }, "Belum ada riwayat."))]));
+  $("#tabel-riwayat tbody").replaceChildren(...(baris.length ? baris : [el("tr", {}, el("td", { colspan: 5, class: "redup" }, "Belum ada riwayat."))]));
+  labeli($("#tabel-riwayat"));
 }
-pemuat.riwayat = muatRiwayat;
 
 // ---------- unggah manual ----------
-async function muatSumber() {
-  const wadah = $("#daftar-sumber");
+async function muatUnggahSumber(hal = sumberAktif) {
+  const wadah = $("#unggah-sumber");
+  wadah.replaceChildren(el("p", { class: "redup" }, "Memuat…"));
   try {
     const d = await api("/sumber");
-    $("#folder-manual").textContent = d.folder;
+    if (sumberAktif !== hal) return;
+    $("#folder-manual").textContent = d.folder + "/" + hal.id;
+    const s = d.sumber.find((x) => x.id === hal.id);
     const status = dataPipeline ? Object.fromEntries(dataPipeline.aset.map((a) => [a.nama, a])) : {};
-    wadah.replaceChildren(...d.sumber.map((s) => gambarSumber(s, status)));
+    wadah.replaceChildren(s ? gambarSumber(s, status) : el("p", { class: "pemberitahuan waspada" }, "Sumber ini tidak punya unggah manual."));
   } catch (e) {
     wadah.replaceChildren(el("p", { class: "pemberitahuan gagal" }, e.message));
   }
@@ -348,13 +466,12 @@ async function muatSumber() {
 function gambarSumber(s, status) {
   const asetGagal = s.aset.filter((a) => status[a]?.status === "FAILURE");
   const kepala = el("div", { class: "sumber-kepala" },
-    el("div", {}, el("h3", {}, s.label), el("p", { class: "redup kecil" }, s.ket + " Aset: ", s.aset.join(", "),
-      s.env ? ` · mode ${s.env} = ` : "", s.env ? el("code", {}, s.mode || "(kosong)") : null)),
+    el("div", {}, el("h3", {}, "Berkas acuan"), el("p", { class: "redup kecil" }, `${s.acuan.length} berkas. Seret berkas ke barisnya atau tekan Unggah.`)),
     asetGagal.length ? el("span", { class: "lencana gagal" }, "Aset gagal: " + asetGagal.join(", ")) : null);
 
   const daftar = el("div", { class: "berkas-daftar" }, ...s.acuan.map((b) => gambarBerkas(s, b)));
   const bagian = [kepala];
-  if (s.env && s.mode && s.mode !== "manual") bagian.push(el("p", { class: "pemberitahuan info kecil" }, `Unggahan dipakai otomatis bila pengambilan ${s.mode} gagal. Untuk memaksa selalu memakai unggahan, ${punya("konfigurasi") ? `ubah ${s.env} menjadi manual di tab Konfigurasi` : `minta superadmin mengubah ${s.env} menjadi manual`}.`));
+  if (s.env && s.mode && s.mode !== "manual") bagian.push(el("p", { class: "pemberitahuan info kecil" }, `Unggahan dipakai otomatis bila pengambilan ${s.mode} gagal. Untuk memaksa selalu memakai unggahan, ${punya("konfigurasi") ? `ubah ${s.env} menjadi manual di halaman Konfigurasi` : `minta superadmin mengubah ${s.env} menjadi manual`}.`));
   bagian.push(daftar);
   if (s.lain.length) bagian.push(el("p", { class: "pemberitahuan waspada kecil" }, "Berkas di folder manual yang tidak dikenali aset (diabaikan): " + s.lain.map((x) => x.nama).join(", ")));
   if (s.riwayat.length) bagian.push(el("details", { class: "riwayat" }, el("summary", {}, `Riwayat unggahan (${s.riwayat.length})`),
@@ -372,8 +489,8 @@ function gambarBerkas(s, b) {
     const catatan = prompt("Catatan singkat (opsional), mis. alasan unggah manual:", "") ?? "";
     await sibuk(tombolUnggah, async () => {
       const d = await api(`/sumber/${s.id}/${encodeURIComponent(b.nama)}?catatan=${encodeURIComponent(catatan)}`, { method: "PUT", body: file, headers: { "Content-Type": "application/octet-stream" } });
-      toast(d.pesan + " Jalankan ulang job di tab Pipeline bila perlu.");
-      muatSumber();
+      toast(d.pesan + " Jalankan ulang job di Ringkasan pipeline bila perlu.");
+      muatUnggahSumber(); muatRiwayat();
     });
   };
   masukan.addEventListener("change", () => kirim(masukan.files[0]));
@@ -383,7 +500,7 @@ function gambarBerkas(s, b) {
     tombolUnggah, masukan);
   if (b.unggahan) aksi.append(el("button", { class: "tombol kecil bahaya", type: "button", onclick: async (e) => {
     if (!confirm(`Tarik ${b.nama} dari pemakaian? Berkas dipindah ke arsip, aset kembali ke sumber otomatis/berkas repo.`)) return;
-    await sibuk(e.currentTarget, async () => { const d = await api(`/sumber/${s.id}/${encodeURIComponent(b.nama)}`, { method: "DELETE" }); toast(d.pesan); muatSumber(); });
+    await sibuk(e.currentTarget, async () => { const d = await api(`/sumber/${s.id}/${encodeURIComponent(b.nama)}`, { method: "DELETE" }); toast(d.pesan); muatUnggahSumber(); muatRiwayat(); });
   } }, "Tarik"));
   kartu.append(
     el("div", {}, el("div", { class: "nama-aset" }, b.nama), el("div", { class: "kol", title: b.path }, b.kolom ? b.kolom.join(", ") : "(header tidak terbaca)"),
@@ -396,7 +513,6 @@ function gambarBerkas(s, b) {
   return kartu;
 }
 
-pemuat.unggah = async () => { if (!dataPipeline) { try { dataPipeline = await api("/pipeline"); } catch { /* status opsional */ } } muatSumber(); };
 
 // ---------- konfigurasi ----------
 const NAMA_BERKAS = { pipeline: ["Pipeline (Dagster)", "Muat ulang Dagster"], bot: ["Bot WhatsApp", "Nyalakan ulang bot"] };
@@ -514,6 +630,7 @@ pemuat.akun = async () => {
         el("td", {}, a.aktif ? el("span", { class: "lencana ok" }, "Aktif") : el("span", { class: "lencana waspada" }, "Nonaktif")),
         el("td", { class: "waktu" }, relatif(a.terakhirMasuk)), aksi);
     }));
+    labeli($("#tabel-akun"));
   } catch (e) { toast(e.message, true); }
 };
 
@@ -529,19 +646,26 @@ pemuat.jejak = async () => {
       return el("tr", { class: tindakan === "login_gagal" ? "gagal" : "" }, el("td", { class: "waktu" }, waktu(w)), el("td", {}, NAMA_TINDAKAN[tindakan] || tindakan),
         el("td", {}, pengguna || "–"), el("td", { class: "ket" }, teks), el("td", { class: "mono kecil" }, ip || ""));
     }));
+    labeli($("#tabel-jejak"));
   } catch (e) { toast(e.message, true); }
 };
 
 // ---------- awal ----------
 document.addEventListener("DOMContentLoaded", async () => {
-  document.querySelectorAll("#tab button").forEach((b) => b.addEventListener("click", () => pilihTab(b.dataset.tab)));
+  document.querySelectorAll("#menu a[data-hal]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); pilihHal(a.dataset.hal); }));
+  document.querySelectorAll("#sub-tab-sumber button").forEach((b) => b.addEventListener("click", () => pilihSub(b.dataset.sub)));
+  $("#tombol-menu").addEventListener("click", () => laci(!document.body.classList.contains("laci-buka")));
+  $("#tirai").addEventListener("click", () => laci(false));
+  window.addEventListener("hashchange", () => { if (sesi) { const [h, sub] = location.hash.slice(1).split("/"); pilihHal(h || "pipeline", sub); } });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") laci(false); });
+  $("#segarkan-sumber").addEventListener("click", (e) => sibuk(e.currentTarget, async () => {
+    try { dataPipeline = await api("/pipeline"); perbaruiTitik(); } catch { /* status opsional */ }
+    if (sumberAktif) await muatHalamanSumber(sumberAktif, $("#sub-unggah").hidden ? "riwayat" : "unggah");
+  }));
   $("#tombol-segarkan").addEventListener("click", (e) => sibuk(e.currentTarget, () => muatPipeline()));
   $("#tutup-log").addEventListener("click", () => { $("#panel-log").hidden = true; runTerbuka = null; });
   $("#hanya-galat").addEventListener("change", gambarLog);
   $("#hanya-berubah").addEventListener("change", gambarRiwayat);
-  $("#filter-riwayat").append(el("option", { value: "" }, "Semua sumber (bronze)"));
-  $("#filter-riwayat").addEventListener("change", muatRiwayat);
-  $("#segarkan-riwayat").addEventListener("click", (e) => sibuk(e.currentTarget, muatRiwayat));
   $("#tombol-jalankan").addEventListener("click", async (e) => {
     const job = $("#pilih-job").value;
     if (!job || !confirm(`Jalankan ${job} sekarang?\n${dataPipeline?.job[job] || ""}`)) return;
