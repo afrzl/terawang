@@ -27,6 +27,7 @@
     </div>
     <nav class="wrap tab" id="tab" hidden aria-label="Bagian admin">
       <button type="button" data-tab="pipeline" data-hak="pipeline" aria-selected="true">Pipeline</button>
+      <button type="button" data-tab="riwayat" data-hak="pipeline">Riwayat data</button>
       <button type="button" data-tab="unggah" data-hak="unggah">Unggah manual</button>
       <button type="button" data-tab="konfigurasi" data-hak="konfigurasi">Konfigurasi &amp; secret</button>
       <button type="button" data-tab="akun" data-hak="akun">Akun &amp; peran</button>
@@ -98,6 +99,19 @@
         </div>
         <div id="isi-log" class="log"></div>
       </div>
+    </section>
+
+    <section id="bagian-riwayat" class="bagian" hidden>
+      <div class="baris-judul">
+        <div><h2>Riwayat data</h2>
+          <p class="redup">Setiap kali data diperbarui: kapan, lewat apa (otomatis, unggahan manual, atau berkas repo), siapa/apa pemicunya, apakah isinya berubah, dan bila gagal, penyebabnya.</p></div>
+        <div class="aksi">
+          <select id="filter-riwayat" aria-label="Aset"></select>
+          <label class="centang"><input type="checkbox" id="hanya-berubah" /> Sembunyikan yang tidak mengubah data</label>
+          <button class="tombol" id="segarkan-riwayat" type="button">Segarkan</button>
+        </div>
+      </div>
+      <div class="panel"><div class="tabel-gulir tinggi"><table class="tabel" id="tabel-riwayat"><thead><tr><th>Waktu</th><th>Aset</th><th>Kejadian</th><th>Rincian</th><th>Pemicu</th><th></th></tr></thead><tbody></tbody></table></div></div>
     </section>
 
     <section id="bagian-unggah" class="bagian" hidden>
