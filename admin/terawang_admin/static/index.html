@@ -38,8 +38,9 @@
       <a href="#pipeline" data-hal="pipeline" data-hak="pipeline"><span class="k">PL</span><span class="lbl">Ringkasan pipeline</span></a>
       <div class="grup-menu" data-hak="pipeline">Sumber data</div>
       <div id="menu-sumber" data-hak="pipeline"></div>
-      <div class="grup-menu" data-hak="konfigurasi">Pengaturan</div>
+      <div class="grup-menu" data-hak="pipeline">Pengaturan</div>
       <a href="#konfigurasi" data-hal="konfigurasi" data-hak="konfigurasi"><span class="k">ENV</span><span class="lbl">Konfigurasi &amp; secret</span></a>
+      <a href="#whatsapp" data-hal="whatsapp" data-hak="pipeline"><span class="k">WA</span><span class="lbl">Bot WhatsApp</span><i class="titik" id="titik-wa" aria-hidden="true"></i></a>
       <a href="#akun" data-hal="akun" data-hak="akun"><span class="k">AKN</span><span class="lbl">Akun &amp; peran</span></a>
       <a href="#jejak" data-hal="jejak" data-hak="jejak"><span class="k">JJK</span><span class="lbl">Jejak admin</span></a>
     </nav>
@@ -138,9 +139,43 @@
       </div>
     </section>
 
+    <section id="bagian-whatsapp" class="bagian" hidden>
+      <div class="vh">
+        <div><div class="eyebrow">Pengaturan · GoWA</div><h2>Bot WhatsApp</h2></div>
+        <div class="aksi">
+          <button class="tombol" id="segarkan-wa" type="button">Segarkan</button>
+          <a class="tombol" href="https://wa.terawang.tech" target="_blank" rel="noopener">GoWA ↗</a>
+        </div>
+      </div>
+      <div class="kpis" id="kpi-wa"></div>
+      <div id="peringatan-wa" class="peringatan"></div>
+      <div class="grid-21">
+        <div class="panel">
+          <div class="ph"><h3>Alur pesan</h3><span class="note" id="info-wa">Memuat…</span></div>
+          <div id="alur-wa" class="baris-daftar"></div>
+          <form id="form-uji-wa" class="form-baris" data-hak="konfigurasi">
+            <input name="teks" placeholder="Uji pertanyaan, mis. beras di Jember naik nggak bulan depan?" maxlength="300" autocomplete="off" aria-label="Pertanyaan uji" />
+            <button class="tombol" type="submit">Uji bot → OpenAI</button>
+          </form>
+          <div id="hasil-uji-wa" class="hasil-wa" hidden></div>
+        </div>
+        <div class="tumpuk-panel">
+          <div class="panel">
+            <div class="ph"><h3>Device</h3><span class="note">hanya satu yang dipakai bot</span></div>
+            <div id="device-wa" class="baris-daftar"></div>
+            <div id="hubungkan-wa" class="pb" hidden></div>
+          </div>
+          <div class="panel">
+            <div class="ph"><h3>Balasan bot 24 jam</h3><span class="note" id="info-kontak-wa"></span></div>
+            <div id="intent-wa" class="baris-daftar"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="bagian-sumber" class="bagian" hidden>
       <div class="vh">
-        <div><div class="eyebrow" id="eyebrow-sumber">Sumber data</div><h2 id="judul-sumber"></h2><p id="ket-sumber"></p></div>
+        <div><div class="eyebrow" id="eyebrow-sumber">Sumber data</div><h2 id="judul-sumber"></h2><p id="ket-sumber" class="ket-sumber"></p></div>
         <div class="aksi"><button class="tombol" id="segarkan-sumber" type="button">Segarkan</button></div>
       </div>
       <div class="kpis" id="status-sumber"></div>
@@ -159,7 +194,6 @@
       <div id="sub-data" class="grid-data" hidden>
         <div class="panel">
           <div class="ph"><h3>Data terkini</h3><span class="note" id="info-data"></span></div>
-          <div class="pb"><p class="catatan lebar">Berkas yang dibaca pipeline pada pembaruan terakhir, dengan asalnya: <b>otomatis</b> (hasil API/konektor), <b>manual</b> (unggahan), atau <b>repo</b> (CSV bawaan). Konektor menimpa berkas di tempat, jadi yang bisa dilihat hanya versi terakhir.</p></div>
           <div id="daftar-data" class="baris-daftar"></div>
         </div>
         <div class="panel" id="panel-pratinjau">
@@ -177,21 +211,18 @@
       <div id="sub-unggah" hidden>
         <div class="panel">
           <div class="ph"><h3>Unggah manual</h3><span class="note mono" id="folder-manual"></span></div>
-          <div class="pb"><p class="catatan lebar">Dipakai kalau pengambilan otomatis gagal. Nama berkas dan baris kolom harus sama persis dengan berkas acuan. Seret berkas ke barisnya atau tekan Unggah.</p></div>
           <div id="unggah-sumber"></div>
         </div>
       </div>
     </section>
 
     <section id="bagian-konfigurasi" class="bagian" hidden>
-      <div class="vh"><div><div class="eyebrow">Pengaturan · .env</div><h2>Konfigurasi &amp; secret</h2>
-        <p>Secret tidak pernah ditampilkan utuh, hanya 4 karakter terakhir. Mengisi kolom secret berarti mengganti nilainya. Setelah menyimpan, muat ulang layanan supaya nilai baru dipakai. Lima cadangan terakhir disimpan, setiap perubahan tercatat di jejak.</p></div></div>
+      <div class="vh"><div><div class="eyebrow">Pengaturan · .env</div><h2>Konfigurasi &amp; secret</h2></div></div>
       <div id="daftar-konfigurasi" class="tumpuk-panel"></div>
     </section>
 
     <section id="bagian-akun" class="bagian" hidden>
-      <div class="vh"><div><div class="eyebrow">Pengaturan · akses</div><h2>Akun &amp; peran</h2>
-        <p>Guest tidak perlu akun. Mengubah peran, mengatur ulang sandi, atau menonaktifkan akun langsung mengeluarkan sesi akun itu.</p></div></div>
+      <div class="vh"><div><div class="eyebrow">Pengaturan · akses</div><h2>Akun &amp; peran</h2></div></div>
       <div class="panel">
         <div class="ph"><h3>Hak tiap peran</h3></div>
         <div id="daftar-peran"></div>
@@ -209,7 +240,7 @@
     </section>
 
     <section id="bagian-jejak" class="bagian" hidden>
-      <div class="vh"><div><div class="eyebrow">Pengaturan · audit</div><h2>Jejak admin</h2><p>Login, perubahan konfigurasi, unggahan, dan job yang dijalankan dari halaman ini. Nilai secret tidak dicatat.</p></div></div>
+      <div class="vh"><div><div class="eyebrow">Pengaturan · audit</div><h2>Jejak admin</h2></div></div>
       <div class="panel"><div class="tbl-wrap"><table class="tabel" id="tabel-jejak"><thead><tr><th>Waktu</th><th>Tindakan</th><th>Pengguna</th><th>Rincian</th><th>IP</th></tr></thead><tbody></tbody></table></div></div>
     </section>
   </main>

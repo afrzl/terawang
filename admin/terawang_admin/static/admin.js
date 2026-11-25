@@ -83,8 +83,8 @@ const lencana = (st) => { const [t, k] = STATUS[st] || [st ? st.toLowerCase() : 
 // ---------- navigasi & sesi ----------
 let halAktif = "pipeline";
 const pemuat = {};
-const JUDUL_HAL = { pipeline: "Ringkasan pipeline", konfigurasi: "Konfigurasi & secret", akun: "Akun & peran", jejak: "Jejak admin" };
-const HAK_HAL = { pipeline: "pipeline", konfigurasi: "konfigurasi", akun: "akun", jejak: "jejak" };
+const JUDUL_HAL = { pipeline: "Ringkasan pipeline", whatsapp: "Bot WhatsApp", konfigurasi: "Konfigurasi & secret", akun: "Akun & peran", jejak: "Jejak admin" };
+const HAK_HAL = { pipeline: "pipeline", whatsapp: "pipeline", konfigurasi: "konfigurasi", akun: "akun", jejak: "jejak" };
 
 let sesi = null;
 let daftarSumber = [];
@@ -238,7 +238,7 @@ function tautanLog(runId) {
 
 function gambarPipeline(d) {
   const pilih = $("#pilih-job");
-  if (!pilih.options.length) for (const [j, ket] of Object.entries(d.job)) pilih.append(el("option", { value: j, title: ket }, j));
+  if (!pilih.options.length) for (const [j, ket] of Object.entries(d.job)) pilih.append(el("option", { value: j }, j));
 
   const gagal = d.aset.filter((a) => a.status === "FAILURE");
   const jalan = d.aset.filter((a) => a.status === "IN_PROGRESS" || a.antre);
@@ -282,7 +282,6 @@ function gambarPipeline(d) {
       baris.push(el("div", { class: "br" + (a.status === "FAILURE" ? " gagal" : cg.length ? " waspada" : "") + (a.runId ? " klik" : ""), onclick: a.runId ? () => bukaLog(a.runId) : null },
         el("div", { class: "nm" },
           el("div", { class: "id" }, a.nama, hal ? el("a", { href: "#sumber-" + hal.id, onclick: (e) => { e.preventDefault(); e.stopPropagation(); pilihHal("sumber-" + hal.id); } }, "riwayat") : null),
-          a.ket ? el("div", { class: "ds" }, a.ket) : null,
           ...cg.map((c) => el("div", { class: "wr" }, "Cek " + c.nama + ": " + (c.pesan || "tidak lolos"))),
           a.status === "FAILURE" && a.sumberManual && punya("unggah") ? el("div", { class: "er" }, "Gagal. ", tautanUnggah(a.sumberManual)) : null),
         el("div", { class: "st" }, lencana(a.antre && a.status !== "IN_PROGRESS" ? a.status : a.status)),
@@ -359,8 +358,9 @@ let sumberAktif = null;
 async function muatHalamanSumber(s, sub = "riwayat") {
   sumberAktif = s;
   $("#judul-sumber").textContent = s.label;
-  $("#ket-sumber").replaceChildren(s.ket, s.env ? " Mode sumber " : "", s.env ? el("code", {}, s.env) : null, s.env ? " = " : "", s.env ? el("b", {}, s.mode || "(kosong)") : null,
-    ...(s.env && punya("konfigurasi") ? [" · ", el("a", { href: "#konfigurasi", onclick: (e) => { e.preventDefault(); pilihHal("konfigurasi"); } }, "ubah")] : []));
+  $("#ket-sumber").replaceChildren(...(s.env ? [punya("konfigurasi")
+    ? el("a", { class: "pill st-jalan", href: "#konfigurasi", title: s.env, onclick: (e) => { e.preventDefault(); pilihHal("konfigurasi"); } }, "mode " + (s.mode || "kosong"))
+    : el("span", { class: "pill", title: s.env }, "mode " + (s.mode || "kosong"))] : []));
   const bisaUnggah = s.unggah && punya("unggah");
   $("#tab-unggah").hidden = !bisaUnggah;
   pilihSub(!bisaUnggah && sub === "unggah" ? "riwayat" : sub);
@@ -579,7 +579,7 @@ function gambarSumber(s, status) {
   const bagian = [];
   const info = [];
   if (asetGagal.length) info.push(el("p", { class: "alert" }, "Aset gagal: ", el("b", {}, asetGagal.join(", ")), ". Unggahan di bawah akan dipakai pada run berikutnya."));
-  if (s.env && s.mode && s.mode !== "manual") info.push(el("p", { class: "alert info" }, `Unggahan dipakai otomatis bila pengambilan ${s.mode} gagal. Untuk selalu memakai unggahan, ${punya("konfigurasi") ? `ubah ${s.env} menjadi manual di Konfigurasi` : `minta superadmin mengubah ${s.env} menjadi manual`}.`));
+  if (s.env && s.mode && s.mode !== "manual") info.push(el("p", { class: "alert info" }, `Unggahan dipakai bila ${s.mode} gagal.`));
   if (s.lain.length) info.push(el("p", { class: "alert warn" }, "Berkas di folder manual yang tidak dikenali aset (diabaikan): " + s.lain.map((x) => x.nama).join(", ")));
   if (info.length) bagian.push(el("div", { class: "pb-alert peringatan" }, ...info));
   bagian.push(...s.acuan.map((b) => gambarBerkas(s, b)));
@@ -703,6 +703,148 @@ function gambarVar(berkas, v) {
 
 pemuat.konfigurasi = muatKonfigurasi;
 
+
+// ---------- bot WhatsApp ----------
+let dataWa = null;
+let intervalWa = null;
+let qrSampai = 0;
+const dtkMs = (ms) => (ms ? ms / 1000 : 0);
+const pillSt = (teks, st) => el("span", { class: "pill" + (st ? " st-" + st : "") }, teks);
+const STATE_WA = { logged_in: ["Tersambung", "ok"], connected: ["Belum login", "waspada"], connecting: ["Menyambung", "jalan"], disconnected: ["Terputus", "gagal"] };
+
+async function muatWa(diam = false) {
+  try {
+    dataWa = await api("/wa");
+    gambarWa();
+  } catch (e) {
+    if (!diam) $("#peringatan-wa").replaceChildren(el("p", { class: "alert" }, e.message));
+  }
+}
+
+function devBot() { return dataWa?.perangkat.find((p) => p.bot) || null; }
+
+function langkahWa() {
+  const d = dataWa, b = d.bot || {}, dev = devBot();
+  const wh = b.webhook || {}, bl = b.balasan || {}, llm = b.llm || {};
+  const L = [];
+  L.push({ jd: "Server GoWA", st: d.gowa.ok ? "ok" : "gagal", ds: d.gowa.ok ? `versi ${d.gowa.versi || "?"}` : null, er: d.gowa.ok ? null : d.gowa.galat });
+  L.push({ jd: "Nomor bot login", st: !dev ? "gagal" : dev.login && dev.terhubung ? "ok" : dev.login ? "waspada" : "gagal",
+    ds: dev ? `${dev.nama || dev.id}${dev.nomor ? " · " + dev.nomor : ""}` : null, er: !dev ? "Belum ada device bot." : !dev.login ? "Belum login, hubungkan lewat QR atau kode." : !dev.terhubung ? "Login tapi koneksi ke WhatsApp terputus." : null });
+  const tg = wh.tandaTanganGagal || 0;
+  L.push({ jd: "Webhook GoWA → bot", st: b.ok === false ? "gagal" : tg && wh.terakhirGagalTanda > (wh.terakhir || 0) ? "gagal" : wh.terakhir ? "ok" : "",
+    ds: b.ok === false ? null : wh.terakhir ? `event terakhir ${relatif(dtkMs(wh.terakhir))}${wh.pesanTerakhir ? ` · pesan ${relatif(dtkMs(wh.pesanTerakhir))}` : ""}` : "belum ada event sejak bot menyala",
+    er: b.ok === false ? b.galat : tg ? `${tg} webhook ditolak karena secret tidak cocok` : null });
+  L.push({ jd: "Bot membalas", st: bl.terakhirGagal > (bl.terakhirOk || 0) ? "gagal" : bl.terakhirOk ? "ok" : "",
+    ds: bl.terakhirOk ? `terakhir ${relatif(dtkMs(bl.terakhirOk))} · ${bl.jumlahOk} terkirim${bl.jumlahGagal ? `, ${bl.jumlahGagal} gagal` : ""}` : "belum ada balasan sejak bot menyala",
+    er: bl.terakhirGagal > (bl.terakhirOk || 0) ? bl.galat : null });
+  const t = llm.terakhir || {};
+  L.push({ jd: "OpenAI", st: !llm.aktif ? "waspada" : t.terakhir && !t.ok ? "gagal" : t.terakhir ? "ok" : "",
+    ds: llm.aktif ? `${llm.model} · ${Number(llm.token || 0).toLocaleString("id-ID")} / ${Number(llm.batas || 0).toLocaleString("id-ID")} token hari ini${t.terakhir ? ` · panggilan terakhir ${relatif(dtkMs(t.terakhir))}` : ""}` : null,
+    er: !llm.aktif ? "API key kosong, bot hanya melayani perintah baku." : t.terakhir && !t.ok ? t.galat : null });
+  return L;
+}
+
+function gambarWa() {
+  const d = dataWa, b = d.bot || {}, dev = devBot();
+  const kpi = (v, k, t, kelas = "") => el("div", { class: "kpi " + kelas }, el("div", { class: "v" }, v), el("div", { class: "k" }, k), t ? el("div", { class: "t" }, t) : null);
+  const [stTeks, stK] = dev ? (dev.login && dev.terhubung ? STATE_WA.logged_in : STATE_WA[dev.state] || STATE_WA.disconnected) : ["Tidak ada", "gagal"];
+  const wh = b.webhook || {}, bl = b.balasan || {}, llm = b.llm || {};
+  $("#kpi-wa").replaceChildren(
+    kpi(stTeks, "nomor bot", dev ? dev.nomor || dev.id : "belum ada device", stK === "ok" ? "" : "crit"),
+    kpi(wh.pesanTerakhir ? relatif(dtkMs(wh.pesanTerakhir)) : "–", "pesan masuk terakhir", b.mulai ? `sejak bot menyala ${relatif(dtkMs(b.mulai))}` : ""),
+    kpi(String(bl.jumlahOk ?? "–"), "balasan terkirim", bl.jumlahGagal ? `${bl.jumlahGagal} gagal` : "tanpa gagal", bl.jumlahGagal ? "warn" : ""),
+    kpi(llm.aktif ? Number(llm.token || 0).toLocaleString("id-ID") : "Mati", "token OpenAI hari ini", llm.aktif ? `batas ${Number(llm.batas).toLocaleString("id-ID")} · ${llm.model}` : "API key kosong", llm.aktif ? "" : "warn"),
+  );
+  const lebih = d.perangkat.filter((p) => !p.bot);
+  const per = [];
+  if (lebih.length) per.push(el("p", { class: "alert warn" }, `${lebih.length} device lain terdaftar di GoWA. Bot hanya memakai `, el("b", {}, d.idBot), "."));
+  if (b.perangkat?.kejadian) per.push(el("p", { class: "alert" }, `GoWA melaporkan ${b.perangkat.kejadian} ${relatif(dtkMs(b.perangkat.waktu))}.`));
+  $("#peringatan-wa").replaceChildren(...per);
+  $("#info-wa").textContent = "diperbarui " + fmtJam.format(new Date());
+
+  $("#alur-wa").replaceChildren(...langkahWa().map((x, i) => el("div", { class: "langkah " + (x.st || "") },
+    el("span", { class: "no" }, x.st === "ok" ? "✓" : x.st === "gagal" ? "!" : String(i + 1)),
+    el("div", {}, el("div", { class: "jd" }, x.jd), x.ds ? el("div", { class: "ds" }, x.ds) : null, x.er ? el("div", { class: "er" }, x.er) : null),
+    pillSt(x.st === "ok" ? "OK" : x.st === "gagal" ? "Gagal" : x.st === "waspada" ? "Perlu dicek" : "Belum ada data", x.st))));
+
+  const bisa = punya("konfigurasi");
+  const tombol = (teks, fn, kelas = "") => el("button", { class: "tombol kecil " + kelas, type: "button", onclick: (e) => sibuk(e.currentTarget, fn) }, teks);
+  const baris = d.perangkat.map((p) => {
+    const [t, k] = p.bot ? (p.login && p.terhubung ? STATE_WA.logged_in : STATE_WA[p.state] || STATE_WA.disconnected) : STATE_WA[p.state] || STATE_WA.disconnected;
+    const aksi = !bisa ? [] : p.bot
+      ? (p.login ? [tombol("Sambung ulang", () => aksiWa("reconnect", p.id)), tombol("Keluar", () => confirm("Keluarkan nomor bot dari WhatsApp? Bot berhenti membalas sampai dihubungkan lagi.") && aksiWa("logout", p.id), "bahaya")]
+        : [tombol("Hubungkan", () => tampilHubungkan(p.id), "utama")])
+      : [tombol("Lepas", () => confirm(`Lepas device ${p.id} dari GoWA? Sesinya dihapus.`) && aksiWa("lepas", p.id), "bahaya")];
+    return el("div", { class: "br" + (p.bot ? "" : " waspada") },
+      el("div", { class: "nm" }, el("div", { class: "id" }, p.nama || p.id, p.bot ? el("span", { class: "pill st-jalan", style: "margin-left:6px" }, "bot") : null),
+        el("div", { class: "ds" }, [p.id, p.nomor].filter(Boolean).join(" · ")), aksi.length ? el("div", { class: "aksi", style: "margin-top:6px;display:flex;gap:6px;flex-wrap:wrap" }, ...aksi) : null),
+      el("div", { class: "st" }, pillSt(t, k)), el("div", { class: "wkt" }, p.dibuat ? fmtTglData.format(new Date(p.dibuat)) : ""));
+  });
+  if (!d.adaBot && bisa && d.gowa.ok) baris.push(el("div", { class: "pb" }, tombol("Buat device bot", async () => { const r = await api("/wa/buat", { method: "POST", json: {} }); toast(r.pesan); await muatWa(); tampilHubungkan(r.device); }, "utama")));
+  $("#device-wa").replaceChildren(...(baris.length ? baris : [el("p", { class: "kosong" }, d.gowa.ok ? "Belum ada device." : "GoWA tidak terjangkau.")]));
+  if (dev?.login && !$("#hubungkan-wa").hidden && qrSampai) { $("#hubungkan-wa").hidden = true; qrSampai = 0; toast("Nomor bot tersambung."); aturIntervalWa(); }
+
+  const it = b.intent24j || [];
+  const LABEL_INTENT = { harga: "HARGA", stok: "STOK", beras_murah: "SPHP", peringatan: "PERINGATAN", langganan: "LANGGANAN", berhenti: "BERHENTI", lapor: "LAPOR", bantuan: "BANTUAN",
+    llm: "Pesan bebas (OpenAI)", llm_cache: "Pesan bebas (cache)", istilah: "Istilah", siaran: "Siaran peringatan" };
+  $("#intent-wa").replaceChildren(...(it.length ? it.map((x) => el("div", { class: "br" + (/^(tolak|llm_gagal|galat)/.test(x.intent || "") ? " waspada" : "") },
+    el("div", { class: "nm" }, el("div", { class: "id" }, LABEL_INTENT[x.intent] || x.intent || "–")), el("div", { class: "st" }, pillSt(String(x.jumlah), "")),
+    el("div", { class: "wkt" }, relatif(Date.parse(x.terakhir.replace(" ", "T") + "Z") / 1000)))) : [el("p", { class: "kosong" }, "Belum ada balasan 24 jam terakhir.")]));
+  $("#info-kontak-wa").textContent = b.kontak ? `${b.kontak.n} kontak · ${b.kontak.langganan} berlangganan` : "";
+  const tw = $("#titik-wa");
+  if (tw) { const bad = langkahWa().some((x) => x.st === "gagal"); tw.className = "titik " + (bad ? "gagal" : stK === "ok" ? "ok" : "waspada"); }
+}
+
+async function aksiWa(aksi, device) {
+  const r = await api("/wa/" + aksi, { method: "POST", json: { device } });
+  toast(r.pesan);
+  await muatWa();
+}
+
+function tampilHubungkan(device) {
+  const w = $("#hubungkan-wa");
+  w.hidden = false;
+  const nomor = el("input", { placeholder: "628xxxxxxxxxx", inputmode: "numeric", "aria-label": "Nomor WhatsApp bot", autocomplete: "off" });
+  const isi = el("div", {}, el("p", { class: "kosong" }, "Memuat QR…"));
+  const tutup = el("button", { class: "tombol kecil", type: "button", onclick: () => { w.hidden = true; qrSampai = 0; aturIntervalWa(); } }, "Tutup");
+  w.replaceChildren(
+    el("div", { class: "seg", role: "tablist" },
+      el("button", { type: "button", "aria-selected": "true", onclick: (e) => { pilihSeg(e); muatQr(device, isi); } }, "QR"),
+      el("button", { type: "button", "aria-selected": "false", onclick: (e) => { pilihSeg(e); qrSampai = 0; isi.replaceChildren(el("form", { class: "form-baris", style: "padding:12px 0 0;border:0", onsubmit: async (ev) => {
+        ev.preventDefault();
+        await sibuk(ev.submitter, async () => {
+          const r = await api("/wa/kode", { method: "POST", json: { device, nomor: nomor.value } });
+          isi.replaceChildren(el("div", { class: "kode-pair" }, r.kode), el("p", { class: "catatan" }, "WhatsApp → Perangkat tertaut → Tautkan perangkat → Tautkan dengan nomor telepon."));
+          qrSampai = Date.now() + 120000; aturIntervalWa();
+        });
+      } }, nomor, el("button", { class: "tombol utama", type: "submit" }, "Minta kode"))); } }, "Kode pairing")),
+    " ", tutup, isi);
+  muatQr(device, isi);
+}
+function pilihSeg(e) { e.currentTarget.parentElement.querySelectorAll("button").forEach((b) => b.setAttribute("aria-selected", String(b === e.currentTarget))); }
+
+async function muatQr(device, wadah) {
+  try {
+    const r = await api("/wa/qr", { method: "POST", json: { device } });
+    qrSampai = Date.now() + r.durasi * 1000;
+    const hitung = el("div", { class: "hitung" });
+    wadah.replaceChildren(el("div", { class: "qr-wa", style: "margin-top:12px" }, el("img", { src: r.qr, alt: "QR WhatsApp" }),
+      el("div", {}, el("ol", {}, el("li", {}, "Buka WhatsApp di HP nomor bot"), el("li", {}, "Perangkat tertaut → Tautkan perangkat"), el("li", {}, "Pindai QR ini")), hitung,
+        el("button", { class: "tombol kecil", type: "button", style: "margin-top:8px", onclick: () => muatQr(device, wadah) }, "QR baru"))));
+    const jalan = () => { const s = Math.max(0, Math.round((qrSampai - Date.now()) / 1000)); hitung.textContent = s ? `berlaku ${s} dtk lagi` : "kedaluwarsa, minta QR baru"; if (s && wadah.isConnected) setTimeout(jalan, 1000); };
+    jalan();
+    aturIntervalWa();
+  } catch (e) { wadah.replaceChildren(el("p", { class: "alert" }, e.message)); }
+}
+
+function aturIntervalWa() {
+  clearInterval(intervalWa);
+  const cepat = qrSampai && qrSampai > Date.now() - 5000;
+  intervalWa = setInterval(() => { if (halAktif === "whatsapp" && !document.hidden) muatWa(true); }, cepat ? 3000 : 20000);
+}
+
+pemuat.whatsapp = () => { muatWa(); aturIntervalWa(); };
+
 // ---------- akun ----------
 const NAMA_HAK = { dasbor_sphp: "Dasbor lengkap termasuk SPHP", pipeline: "Pantau pipeline", jalankan: "Jalankan job",
   unggah: "Unggah data manual", konfigurasi: "Konfigurasi & secret", akun: "Kelola akun", jejak: "Jejak admin" };
@@ -745,7 +887,8 @@ pemuat.akun = async () => {
 };
 
 // ---------- jejak ----------
-const NAMA_TINDAKAN = { buat_akun: "Buat akun", ubah_akun: "Ubah akun", hapus_akun: "Hapus akun", ganti_sandi: "Ganti sandi sendiri", login: "Masuk", login_gagal: "Gagal masuk", ubah_konfigurasi: "Ubah konfigurasi", uji_konfigurasi: "Uji key",
+const NAMA_TINDAKAN = { wa_buat_device: "Buat device WA", wa_login: "Hubungkan WA", wa_reconnect: "Sambung ulang WA", wa_logout: "Keluarkan WA", wa_lepas: "Lepas device WA", wa_uji_alur: "Uji bot",
+  buat_akun: "Buat akun", ubah_akun: "Ubah akun", hapus_akun: "Hapus akun", ganti_sandi: "Ganti sandi sendiri", login: "Masuk", login_gagal: "Gagal masuk", ubah_konfigurasi: "Ubah konfigurasi", uji_konfigurasi: "Uji key",
   muat_ulang: "Muat ulang layanan", unggah_manual: "Unggah manual", tarik_unggahan: "Tarik unggahan", jalankan_job: "Jalankan job" };
 pemuat.jejak = async () => {
   try {
@@ -774,13 +917,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     const sub = $("#sub-tab-sumber button[aria-selected=true]")?.dataset.sub || "riwayat";
     if (sumberAktif) await muatHalamanSumber(sumberAktif, sub);
   }));
+  $("#segarkan-wa").addEventListener("click", (e) => sibuk(e.currentTarget, () => muatWa()));
+  $("#form-uji-wa").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.currentTarget, teks = f.teks.value.trim();
+    if (!teks) return;
+    await sibuk(f.querySelector("button"), async () => {
+      const r = await api("/wa/uji", { method: "POST", json: { teks } });
+      const h = $("#hasil-uji-wa");
+      h.hidden = false;
+      h.replaceChildren(el("span", { class: "meta" }, `intent ${r.intent} · ${r.detik} dtk`), r.teks.replace(/\*([^*\n]+)\*/g, "$1"));
+      muatWa(true);
+    });
+  });
   $("#tombol-segarkan").addEventListener("click", (e) => sibuk(e.currentTarget, () => muatPipeline()));
   $("#tutup-log").addEventListener("click", () => { $("#panel-log").hidden = true; runTerbuka = null; });
   $("#hanya-galat").addEventListener("change", gambarLog);
   $("#hanya-berubah").addEventListener("change", gambarRiwayat);
   $("#tombol-jalankan").addEventListener("click", async (e) => {
     const job = $("#pilih-job").value;
-    if (!job || !confirm(`Jalankan ${job} sekarang?\n${dataPipeline?.job[job] || ""}`)) return;
+    if (!job || !confirm(`Jalankan ${job} sekarang?`)) return;
     await sibuk(e.currentTarget, async () => { toast((await api("/jalankan", { method: "POST", json: { job } })).pesan); setTimeout(() => muatPipeline(true), 4000); });
   });
   $("#tombol-keluar").addEventListener("click", async () => { try { await api("/keluar", { method: "POST" }); } catch { /* abaikan */ } tampilMasuk(); });
