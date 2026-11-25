@@ -132,6 +132,8 @@ export function rapikanJawaban(s: string): string {
     .replace(/\*\*(.+?)\*\*/g, "*$1*") // markdown tebal -> WhatsApp
     .replace(/^#{1,6}\s*/gm, "")
     .replace(/\[(.+?)\]\((https?:[^)]+)\)/g, "$1 ($2)")
+    // nama fungsi internal tidak boleh bocor ke pengguna
+    .replace(/\s*(atau\s+)?\*?`?\b(harga_wilayah|stok_wilayah|beras_murah|daftar_peringatan|tentang_terawang|ringkasan_jatim)\b`?\*?/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim()
   if (t.length > 1200) t = t.slice(0, 1150).replace(/\s+\S*$/, "") + "…"

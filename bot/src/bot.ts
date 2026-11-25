@@ -190,7 +190,7 @@ async function pesanBebas(k: kontak.Kontak, teks: string): Promise<Balasan> {
 
   const ingat = daftar.find((w) => w.id === k.wilayah_id) ?? null
   try {
-    const r = await jawabBebas(teks, await riwayat(k.id), ingat)
+    const r = await jawabBebas(teks, await riwayat(k.id), ingat, sebut)
     pagar.catatToken(r.token)
     pantau.llm = { ...pantau.llm, terakhir: Date.now(), ok: true, galat: "", token: r.token }
     console.log(`[llm] kontak=${k.id} token=${r.token} alat=${r.pakaiAlat} hari_ini=${pagar.pemakaianHariIni().token}`)
@@ -199,7 +199,8 @@ async function pesanBebas(k: kontak.Kontak, teks: string): Promise<Balasan> {
       return { teks: `Maaf, aku belum bisa menjawab itu dengan data yang ada. Coba perintah baku:\n\n${BANTUAN}`, intent: "llm_ditolak", wilayahId: null }
     }
     if (r.wilayahId) await kontak.ingatWilayah(k.id, r.wilayahId)
-    pagar.simpanCache(kunci, jawaban, r.wilayahId)
+    // hanya jawaban berbasis data yang disimpan; penolakan/jawaban tanpa data tidak ikut cache
+    if (r.pakaiAlat) pagar.simpanCache(kunci, jawaban, r.wilayahId)
     return { teks: jawaban, intent: "llm", wilayahId: r.wilayahId ?? null }
   } catch (e) {
     console.error("[llm] gagal:", e)

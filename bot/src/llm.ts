@@ -95,13 +95,15 @@ async function jalankanAlat(nama: string, argumen: string): Promise<{ hasil: unk
 
 const tanpaPenalaran = new Set<string>()
 
-async function panggilOpenAI(pesan: Pesan[]) {
+async function panggilOpenAI(pesan: Pesan[], wajibAlat = false) {
   const body: Record<string, unknown> = {
     model: config.openai.model,
     messages: pesan,
     tools: ALAT,
     max_completion_tokens: config.openai.maksKeluaran,
   }
+  // pesan yang menyebut wilayah: model wajib mengambil data dulu, jadi angka selalu dari DB
+  if (wajibAlat) body.tool_choice = "required"
   if (config.openai.reasoningEffort && !tanpaPenalaran.has(config.openai.model) && /^(gpt-[5-9]|o\d)/.test(config.openai.model)) {
     body.reasoning_effort = config.openai.reasoningEffort
   }
@@ -136,6 +138,7 @@ export async function jawabBebas(
   teks: string,
   riwayat: { arah: "MASUK" | "KELUAR"; isi: string }[],
   wilayahIngat: Wilayah | null,
+  wajibAlat = false,
 ): Promise<{ jawaban: string; wilayahId?: number; token: number; pakaiAlat: boolean }> {
   const pendek = (x: string) => (x.length > 300 ? x.slice(0, 300) + "…" : x)
   const pesan: Pesan[] = [
@@ -148,7 +151,7 @@ export async function jawabBebas(
   let token = 0
   let pakaiAlat = false
   for (let putaran = 0; putaran < 3; putaran++) {
-    const { pesan: m, usage } = await panggilOpenAI(pesan)
+    const { pesan: m, usage } = await panggilOpenAI(pesan, wajibAlat && putaran === 0)
     token += (usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0)
     if (!m.tool_calls?.length) return { jawaban: (m.content ?? "").trim(), wilayahId, token, pakaiAlat }
     pakaiAlat = true

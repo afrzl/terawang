@@ -37,3 +37,7 @@ test("rapikan dan deteksi angka karangan", () => {
   assert.equal(angkaTanpaData("Harganya Rp13.000/kg", true), false)
   assert.equal(angkaTanpaData("Coba ketik HARGA MALANG ya", false), false)
 })
+
+test("nama fungsi internal dibuang dari jawaban", () => {
+  assert.equal(rapikanJawaban("Ketik *BANTUAN* atau *tentang_terawang*."), "Ketik *BANTUAN*.")
+})
