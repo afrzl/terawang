@@ -10,7 +10,7 @@ import { dfmt, hash, nf, rng, scale, short, sum, ticks } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
 import { BULAN_NAMA, N_BULAN, bulanLabel, useFilter, useWilayah } from "@/lib/filter"
-import { PRODUKTIVITAS, faktorBeras, luasPanen } from "@/lib/petaLayers"
+import { PRODUKTIVITAS, luasPanen, produksiBatas, produksiPrevRentang, produksiRentang, yoyRentang } from "@/lib/petaLayers"
 
 const STEPS = ["--s1", "--s2", "--s3", "--s4", "--s5"]
 const PHASE_COLORS = ["--s0", "--s1", "--s2", "--s4", "--s5"]
@@ -26,11 +26,10 @@ export default function Produksi() {
   const tertanam = (n: string) => indeks.find((m) => m.lokasi === n)?.stat.tertanam_sesudah_pct ?? -1
   const citraWil = cw && nama.includes(cw) ? cw : [...nama].sort((a, b) => tertanam(b) - tertanam(a))[0]
   const { mulai, akhir } = useFilter()
-  const por = faktorBeras(mulai, akhir)
-  const prodT = sum(wil, (k) => k.est) * por // ribu ton beras
-  const prevT = sum(wil, (k) => k.prev) * por
+  const prodT = sum(wil, (k) => produksiRentang(k, mulai, akhir)) / 1000 // ribu ton beras
+  const prevT = sum(wil, (k) => produksiPrevRentang(k, mulai, akhir)) / 1000
   const luasRb = (prodT * 1000) / PRODUKTIVITAS / 1000 // ribu ha
-  const turun = wil.filter((k) => k.yoy < 0).length
+  const turun = wil.filter((k) => yoyRentang(k, mulai, akhir) < 0).length
   const yoy = prevT ? (prodT / prevT - 1) * 100 : 0
 
   return (
@@ -273,18 +272,20 @@ function ProfilIsi({ wilayah }: { wilayah: string }) {
 function EstimateBars() {
   const wil = useWilayah().map((k) => k)
   const { mulai, akhir } = useFilter()
-  const por = faktorBeras(mulai, akhir)
   const { sel, select } = useSelection()
   const { show, hide } = useTooltip()
   const est = wil.filter((k) => !k.isKota)
-    .map((k) => ({ ...k, est: k.est * por, ci: k.ci * por, prev: k.prev * por }))
+    .map((k) => {
+      const b = produksiBatas(k, mulai, akhir)
+      return { n: k.n, est: produksiRentang(k, mulai, akhir) / 1000, lo: b.lo / 1000, hi: b.hi / 1000, prev: produksiPrevRentang(k, mulai, akhir) / 1000 }
+    })
     .sort((a, b) => b.est - a.est)
     .slice(0, 16)
   const W = 560
   const ml = 96
   const mr = 46
   const H = MT + est.length * ROW_H + 24
-  const xm = Math.max(...est.map((k) => k.est + k.ci)) * 1.05
+  const xm = Math.max(...est.map((k) => Math.max(k.hi, k.prev))) * 1.05 || 1
   const xs = scale(0, xm, ml, W - mr)
 
   return (
@@ -302,8 +303,8 @@ function EstimateBars() {
       {est.map((k, i) => {
         const y = MT + i * ROW_H + ROW_H / 2
         const isSel = k.n === sel
-        const lo = xs(k.est - k.ci)
-        const hi = xs(k.est + k.ci)
+        const lo = xs(k.lo)
+        const hi = xs(k.hi)
         return (
           <g
             key={k.n}
@@ -317,7 +318,7 @@ function EstimateBars() {
                   <br />
                   Selang 90%{" "}
                   <span className="m">
-                    {nf(k.est - k.ci, 1)}–{nf(k.est + k.ci, 1)}
+                    {nf(k.lo, 1)}–{nf(k.hi, 1)}
                   </span>
                   <br />
                   Periode sama 2025 <span className="m">{nf(k.prev, 1)}</span>
@@ -337,7 +338,7 @@ function EstimateBars() {
             <line x1={lo} x2={lo} y1={y - 4} y2={y + 4} stroke="var(--ink)" strokeWidth={1.4} />
             <line x1={hi} x2={hi} y1={y - 4} y2={y + 4} stroke="var(--ink)" strokeWidth={1.4} />
             <circle cx={xs(k.prev)} cy={y} r={3.6} fill="var(--panel)" stroke="var(--ink-2)" strokeWidth={1.6} />
-            <text x={xs(Math.max(k.est + k.ci, k.prev)) + 8} y={y + 4}>
+            <text x={xs(Math.max(k.hi, k.prev)) + 8} y={y + 4}>
               {nf(k.est, 0)}
             </text>
           </g>

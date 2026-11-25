@@ -10,7 +10,7 @@ import { StokPill } from "@/components/ui/Pill"
 import { binColor, type StokStatus, type Wilayah } from "@/lib/data"
 import { nf, scale, sum, ticks } from "@/lib/format"
 import { BULAN_KINI, N_BULAN, bulanLabel, useFilter, useWilayah } from "@/lib/filter"
-import { covBulan, produksiBeras, surplusTon } from "@/lib/petaLayers"
+import { cakupanBatas, covBulan, dataK2, produksiBeras, surplusTon } from "@/lib/petaLayers"
 
 const SS: Record<string, number> = { surplus: -1, cukup: 0, tipis: 1, defisit: 2 }
 /** Ambang status K2 (bulan konsumsi). */
@@ -113,6 +113,13 @@ export default function Stok() {
 
 /** Simpangan cakupan per bulan (bulan konsumsi) mengikuti ragam K2: (0,4·C)² + Σ[(0,20·X)² + (0,05·C)² + (sdP·P)²], sdP 0,15 untuk riwayat dan 0,30 untuk estimasi ke depan. */
 function simpangan(k: Wilayah) {
+  // Hasil K2 dari database: simpangan dari pita P10 dan P90 (skenario RENDAH dan TINGGI), z = 1,2816.
+  if (dataK2) {
+    return [...Array(N_BULAN)].map((_, i) => {
+      const b = cakupanBatas(k, i)
+      return b ? Math.max(0, (b.hi - b.lo) / 2 / 1.2816) : 0
+    })
+  }
   let v = 0.4 ** 2
   const sd: number[] = []
   for (let i = 0; i < N_BULAN; i++) {
@@ -142,6 +149,12 @@ function KalmanPanel({ wil }: { wil: Wilayah[] }) {
   const center = dates.map((_, i) => sum(wil, (k) => covBulan(k, i) * k.C) / cT)
   const sd = dates.map((_, i) => sds.reduce((a, x) => a + x.sd[i] * x.C, 0) / cT)
   const top = Math.max(1.6, Math.max(...center) * 1.25)
+  // Label ujung garis digeser vertikal supaya tidak menimpa label "batas aman" dan "defisit" (posisi dihitung dalam piksel).
+  const H_GRAFIK = 290
+  const ppu = (H_GRAFIK - 14 - 28) / top
+  const akhirC = center[N_BULAN - 1]
+  const labelRef = [-3, (1 - 0.75) * ppu + 9] // posisi dasar label "batas aman" dan "defisit" terhadap garis 1,0
+  const lyAkhir = [4, -12, 20, -24, 32, -36, 44].find((ly) => labelRef.every((r) => Math.abs((1 - akhirC) * ppu + ly - r) >= 14)) ?? 4
   const band = (z: number, op: number) => ({
     lo: center.map((v, i) => Math.max(0, v - z * sd[i])),
     hi: center.map((v, i) => Math.min(top, v + z * sd[i])),
@@ -161,14 +174,14 @@ function KalmanPanel({ wil }: { wil: Wilayah[] }) {
           H={290}
           splitAt={BULAN_KINI}
           splitLabel="Des–Jan"
-          bands={[band(0.674, 0.22)]}
+          bands={dataK2 ? [band(1.2816, 0.2)] : [band(0.674, 0.22)]}
           refs={[
             { v: 1, label: "batas aman", color: "var(--warn)", dy: -3 },
             { v: 0.75, label: "defisit", color: "var(--crit)", dy: 9 },
           ]}
           series={[
             { vals: center.slice(0, BULAN_KINI + 1), color: "var(--accent)", w: 2.2 },
-            { vals: center.slice(BULAN_KINI), off: BULAN_KINI, color: "var(--accent)", dash: "5 4", w: 2, label: nf(center[N_BULAN - 1], 2) + " bln" },
+            { vals: center.slice(BULAN_KINI), off: BULAN_KINI, color: "var(--accent)", dash: "5 4", w: 2, label: nf(center[N_BULAN - 1], 2) + " bln", ly: lyAkhir },
           ]}
           tip={(i) => (
             <>

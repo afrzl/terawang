@@ -12,7 +12,7 @@ import pandas as pd
 
 from .danang import di_repo, modul
 
-VERSI = "k1-gabungan-nowcast2-2026.11b"  # b: bobot kota/kab terpisah, pita galat empiris, cadangan tanpa citra
+VERSI = "k1-gabungan-nowcast2-2026.11c"  # b: bobot kota/kab terpisah, pita galat empiris, cadangan tanpa citra; c: bobot per musim, musiman = rata-rata 3 tahun
 JENIS_DATA = "MODEL"
 Z80 = 1.2816  # pita P10-P90
 LEAD_HARI = (0, 28, 56)

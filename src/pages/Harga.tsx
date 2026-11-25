@@ -7,7 +7,7 @@ import { PriceRidgeline } from "@/components/charts/PriceRidgeline"
 import { DataTable, type Column } from "@/components/ui/DataTable"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
-import { HET, HET_PREMIUM, HIST, SIAGA_KALI, STATUS, WILAYAH, fcDates, flowsBulan, histDates, peluangDi, statusDari, type Flow } from "@/lib/data"
+import { HET, HET_PREMIUM, HIST, SIAGA_KALI, STATUS, WILAYAH, fcDates, fcHarga, flowsBulan, histDates, pNowHarga, peluangDi, seriHarga, statusDari, type Flow } from "@/lib/data"
 import { dfmt, nf, rp, sum } from "@/lib/format"
 import { bulanLabel, useFilter, useWilayah } from "@/lib/filter"
 import { covBulan, statusHargaAt, type Komoditas } from "@/lib/petaLayers"
@@ -33,7 +33,7 @@ export default function Harga() {
   const popT = sum(wil, (k) => k.pop) || 1
   const ringkas = (kom: Komoditas) => ({
     kom,
-    rata: sum(wil, (k) => (kom === "premium" ? k.prem : k.pNow) * k.pop) / popT,
+    rata: sum(wil, (k) => pNowHarga(k, kom) * k.pop) / popT,
     nS: wil.filter((k) => statusHargaAt(k, 4, kom) === "siaga").length,
     nW: wil.filter((k) => statusHargaAt(k, 4, kom) === "waspada").length,
   })
@@ -187,13 +187,12 @@ function PricePanel({ jenis }: { jenis: Komoditas[] }) {
   const popAll = sum(WILAYAH, (q) => q.pop)
   const sebagian = wil.length < WILAYAH.length
   const data = jenis.map((kom) => {
-    const g = (q: { prem: number; pNow: number }) => (kom === "premium" ? q.prem - q.pNow : 0)
     const het = kom === "premium" ? HET_PREMIUM : HET
-    const harga = histDates.map((_, i) => rata((q) => q.price[i] + g(q)))
-    const fcM = fcDates.map((_, h) => rata((q) => q.fc[h].m + g(q)))
-    const fcLo = fcDates.map((_, h) => rata((q) => q.fc[h].lo + g(q)))
-    const fcHi = fcDates.map((_, h) => rata((q) => q.fc[h].hi + g(q)))
-    const prov = histDates.map((_, i) => sum(WILAYAH, (q) => (q.price[i] + g(q)) * q.pop) / popAll)
+    const harga = histDates.map((_, i) => rata((q) => seriHarga(q, kom)[i]))
+    const fcM = fcDates.map((_, h) => rata((q) => fcHarga(q, kom)[h].m))
+    const fcLo = fcDates.map((_, h) => rata((q) => fcHarga(q, kom)[h].lo))
+    const fcHi = fcDates.map((_, h) => rata((q) => fcHarga(q, kom)[h].hi))
+    const prov = histDates.map((_, i) => sum(WILAYAH, (q) => seriHarga(q, kom)[i] * q.pop) / popAll)
     const status = statusDari(fcM[3], fcHi[3], het, 4, kom)
     return { kom, het, siaga: Math.round(het * SIAGA_KALI), harga, fcM, fcLo, fcHi, prov, status, pNow: harga[HIST - 1] }
   })

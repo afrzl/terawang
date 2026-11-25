@@ -1,4 +1,5 @@
-import { HET, HET_PREMIUM, HIST, flowsBulan, statusDari, type HargaStatus, type Wilayah } from "@/lib/data"
+import { HET, HET_PREMIUM, HIST, fcHarga, flowsBulan, statusDari, statusK3a, type HargaStatus, type Wilayah } from "@/lib/data"
+import { K1, K2 } from "@/lib/api"
 import { nf, rp, sum } from "@/lib/format"
 
 /**
@@ -41,8 +42,59 @@ const BERAS_PER_GKG = 0.6402
 
 export const hetOf = (kom: Komoditas) => (kom === "medium" ? HET : HET_PREMIUM)
 
-/** Produksi beras bulan i (ton). Nov–Jan dibagi menurut pola; total Nov–Jan = proyeksi per kabupaten. */
-export const produksiBeras = (k: Wilayah, i: number) => (k.est * 1000 * BERAS_PER_GKG * POLA[Math.min(12, Math.max(0, i))]) / 200
+const bln = (i: number) => Math.min(12, Math.max(0, i))
+/** Hasil K1 dari database tersedia (bukan simulasi). */
+export const dataK1 = K1 !== null
+
+/** Produksi beras bulan i (ton). Dari K1 (app.prediksi_produksi) bila API tersambung; selain itu simulasi (Nov–Jan dibagi menurut pola). */
+export const produksiBeras = (k: Wilayah, i: number) => {
+  if (K1) return K1.wilayah[k.n]?.k1[bln(i)] ?? 0
+  return (k.est * 1000 * BERAS_PER_GKG * POLA[bln(i)]) / 200
+}
+
+/** Produksi beras bulan a sampai b (termasuk), ton. */
+export const produksiRentang = (k: Wilayah, a: number, b: number) => {
+  let t = 0
+  for (let i = Math.min(a, b); i <= Math.max(a, b); i++) t += produksiBeras(k, i)
+  return t
+}
+
+/** Pembanding periode yang sama setahun sebelumnya (ton): BPS 2025 untuk Jan–Des 2026; Jan 2027 dibandingkan dengan Jan 2026. */
+export const produksiPrev = (k: Wilayah, i: number) => {
+  if (K1) {
+    const w = K1.wilayah[k.n]
+    return i <= 11 ? (w?.bps2025[bln(i)] ?? 0) : (w?.k1[0] ?? 0)
+  }
+  return produksiBeras(k, i) / (1 + k.yoy)
+}
+export const produksiPrevRentang = (k: Wilayah, a: number, b: number) => {
+  let t = 0
+  for (let i = Math.min(a, b); i <= Math.max(a, b); i++) t += produksiPrev(k, i)
+  return t
+}
+
+/** Perubahan terhadap periode yang sama tahun lalu (pecahan, 0,1 = +10%). */
+export const yoyRentang = (k: Wilayah, a: number, b: number) => {
+  const p = produksiPrevRentang(k, a, b)
+  return p > 0 ? produksiRentang(k, a, b) / p - 1 : 0
+}
+
+/** Batas P10 dan P90 produksi bulan a sampai b (ton). Rentang berbulan dijumlah per bulan, jadi sedikit lebih lebar dari kuantil jumlahnya. */
+export const produksiBatas = (k: Wilayah, a: number, b: number) => {
+  if (K1) {
+    const w = K1.wilayah[k.n]
+    let lo = 0
+    let hi = 0
+    for (let i = Math.min(a, b); i <= Math.max(a, b); i++) {
+      lo += w?.p10[bln(i)] ?? 0
+      hi += w?.p90[bln(i)] ?? 0
+    }
+    return { lo, hi }
+  }
+  const tot = produksiRentang(k, a, b)
+  const r = k.est > 0 ? k.ci / k.est : 0
+  return { lo: tot * (1 - r), hi: tot * (1 + r) }
+}
 
 /** Porsi panen Nov–Jan yang jatuh pada bulan a..b (termasuk). Dipakai halaman Produksi untuk menyesuaikan angka dengan filter waktu. */
 export const porsiPanen = (a: number, b: number) => {
@@ -62,23 +114,37 @@ export const luasPanen = (k: Wilayah, i: number) => produksiBeras(k, i) / PROD_H
 
 /** Cakupan stok akhir bulan i (bulan konsumsi). */
 export function covBulan(k: Wilayah, i: number) {
+  if (K2) return K2.wilayah[k.n]?.cakupan[Math.min(12, Math.max(0, i))] ?? k.cov
   if (i >= 12) return k.covP[7]
   if (i === 11) return k.covP[3]
   if (i === 10) return k.cov
   return k.covH[Math.max(0, HIST - 1 - (10 - i) * 4)]
 }
 
+/** Hasil K2 dari database tersedia (bukan simulasi). */
+export const dataK2 = K2 !== null
+
+/** Pita P10 dan P90 cakupan stok bulan i (skenario RENDAH dan TINGGI K2); null bila tidak ada. */
+export const cakupanBatas = (k: Wilayah, i: number) => {
+  if (!K2) return null
+  const w = K2.wilayah[k.n]
+  const j = Math.min(12, Math.max(0, i))
+  return w && w.p10[j] != null && w.p90[j] != null ? { lo: w.p10[j] as number, hi: w.p90[j] as number } : null
+}
+
 /** Surplus (+) atau kebutuhan (−) dalam ton beras, terhadap cakupan 1,0 bulan. */
 export const surplusTon = (k: Wilayah, i: number) => (covBulan(k, i) - 1) * k.C * 1000
 
 /** Median prakiraan harga (Rp/kg) pada horizon `hor` pekan. Premium: selisih tetap terhadap medium (DUMMY). */
-export const hargaAt = (k: Wilayah, hor: number, kom: Komoditas) => k.fc[hor - 1].m + (kom === "premium" ? k.prem - k.pNow : 0)
+export const hargaAt = (k: Wilayah, hor: number, kom: Komoditas) => fcHarga(k, kom)[hor - 1].m
 
 /** Status harga K3a pada horizon `hor` (1–4 pekan) untuk jenis beras `kom`. Premium: selisih tetap terhadap medium (DUMMY). */
 export function statusHargaAt(k: Wilayah, hor: number, kom: Komoditas): HargaStatus {
-  const f = k.fc[hor - 1]
-  const m = hargaAt(k, hor, kom)
-  return statusDari(m, m + (f.hi - f.m), hetOf(kom), hor, kom)
+  // Hasil K3a (status dari model) bila ada; selain itu aturan yang sama dihitung dari prakiraan simulasi.
+  const st = statusK3a(k, hor, kom)
+  if (st) return st
+  const f = fcHarga(k, kom)[hor - 1]
+  return statusDari(f.m, f.hi, hetOf(kom), hor, kom)
 }
 
 const erf = (x: number) => {
@@ -88,7 +154,7 @@ const erf = (x: number) => {
 }
 /** Peluang harga melewati HET pada horizon `hor` pekan, dari pita P10–P90 (aproksimasi normal; DUMMY). */
 export function pAtasHet(k: Wilayah, hor: number, kom: Komoditas) {
-  const f = k.fc[hor - 1]
+  const f = fcHarga(k, kom)[hor - 1]
   const sd = Math.max((f.hi - f.lo) / 2.563, 1)
   const z = (hetOf(kom) - hargaAt(k, hor, kom)) / sd
   return 1 - 0.5 * (1 + erf(z / Math.SQRT2))

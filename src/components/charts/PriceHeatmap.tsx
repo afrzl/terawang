@@ -1,4 +1,4 @@
-import { HET, HET_PREMIUM, HIST, SIAGA_KALI, fcDates, histDates } from "@/lib/data"
+import { HET, HET_PREMIUM, HIST, SIAGA_KALI, fcDates, fcHarga, histDates, seriHarga } from "@/lib/data"
 import { dfmt, nf, rp, short } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
@@ -21,8 +21,7 @@ export function PriceHeatmap({ kom }: { kom: "medium" | "premium" }) {
   const het = kom === "premium" ? HET_PREMIUM : HET
   const BINS = kelas(het)
   const colorFor = (v: number) => `var(${BINS.find((b) => v < b[0])![1]})`
-  const geser = (k: { prem: number; pNow: number }) => (kom === "premium" ? k.prem - k.pNow : 0)
-  const rows = wil.slice().sort((a, b) => b.p4 + geser(b) - (a.p4 + geser(a)))
+  const rows = wil.slice().sort((a, b) => fcHarga(b, kom)[3].m - fcHarga(a, kom)[3].m)
   const dates = histDates.concat(fcDates)
   const n = dates.length
   const W = 1100
@@ -44,7 +43,7 @@ export function PriceHeatmap({ kom }: { kom: "medium" | "premium" }) {
           ) : null,
         )}
         {rows.map((k, r) => {
-          const vals = k.price.concat(k.fc.map((f) => f.m)).map((v) => v + geser(k))
+          const vals = seriHarga(k, kom).concat(fcHarga(k, kom).map((f) => f.m))
           const y = m.t + r * rowH
           return (
             <g key={k.n}>

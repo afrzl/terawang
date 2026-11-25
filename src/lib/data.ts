@@ -1,4 +1,5 @@
 import { JARAK_JALAN_KM, NAMA_JARAK } from "./jarak"
+import { API_AKTIF, K2, K3A, K3B } from "./api"
 import { K3B_RUTE } from "./k3b"
 import geoJson from "./jatim.json"
 import geeJson from "./gee_wilayah.json"
@@ -73,6 +74,13 @@ export interface Forecast {
   hi: number
 }
 
+/** Seri harga hasil K3a untuk satu jenis beras (dari API). */
+export interface HargaK3a {
+  price: number[]
+  fc: Forecast[]
+  status: HargaStatus[]
+}
+
 export interface Wilayah {
   n: string
   /** Penduduk (ribu jiwa). */
@@ -107,6 +115,8 @@ export interface Wilayah {
   decl: number
   price: number[]
   fc: Forecast[]
+  /** Seri K3a medium dan premium; ada bila API tersambung. */
+  harga?: Record<"medium" | "premium", HargaK3a>
   prem: number
   pNow: number
   p4: number
@@ -211,6 +221,60 @@ function simulate([n, pop0, prod0, pb]: [string, number, number, number]): Wilay
 }
 
 export const WILAYAH: Wilayah[] = BASE.map(simulate)
+
+/** Bila hasil K3a tersedia dari API: harga, prakiraan, dan status (medium dan premium) diambil dari model, bukan simulasi. */
+if (K3A) {
+  const huruf: Record<string, HargaStatus> = { AMAN: "aman", WASPADA: "waspada", SIAGA: "siaga" }
+  const isi = (xs: (number | null)[]) => {
+    const out: number[] = []
+    let last: number | null = xs.find((v) => v != null) ?? null
+    for (const v of xs) {
+      if (v != null) last = v
+      out.push(last ?? 0)
+    }
+    return out
+  }
+  const bentuk = (sr: { price: (number | null)[]; fc: Forecast[]; status: string[] }): HargaK3a => ({ price: isi(sr.price), fc: sr.fc, status: sr.status.map((x) => huruf[x] ?? "aman") })
+  for (const k of WILAYAH) {
+    const w = K3A.wilayah[k.n]
+    if (!w || w.medium.fc.length < 4 || w.premium.fc.length < 4) continue
+    const med = bentuk(w.medium)
+    const pre = bentuk(w.premium)
+    k.harga = { medium: med, premium: pre }
+    k.price = med.price
+    k.pNow = med.price[med.price.length - 1]
+    k.fc = med.fc
+    k.p4 = med.fc[3].m
+    k.hs = med.status[3]
+    k.prem = pre.price[pre.price.length - 1]
+  }
+}
+
+/** Seri harga mingguan (26 pekan) untuk jenis beras `kom`. Tanpa K3a: premium = medium + selisih tetap (simulasi). */
+export const seriHarga = (k: Wilayah, kom: "medium" | "premium"): number[] => (k.harga ? k.harga[kom].price : k.price.map((v) => v + (kom === "premium" ? k.prem - k.pNow : 0)))
+/** Prakiraan 7, 14, 21, 28 hari untuk jenis beras `kom`. */
+export const fcHarga = (k: Wilayah, kom: "medium" | "premium"): Forecast[] => {
+  if (k.harga) return k.harga[kom].fc
+  const off = kom === "premium" ? k.prem - k.pNow : 0
+  return k.fc.map((f) => ({ m: f.m + off, lo: f.lo + off, hi: f.hi + off }))
+}
+export const pNowHarga = (k: Wilayah, kom: "medium" | "premium") => (kom === "premium" ? k.prem : k.pNow)
+/** Status K3a tersimpan pada horizon `hor` (1–4); null bila tidak ada hasil K3a. */
+export const statusK3a = (k: Wilayah, hor: number, kom: "medium" | "premium"): HargaStatus | null => k.harga?.[kom].status[hor - 1] ?? null
+
+/** Bila hasil K2 tersedia dari API: konsumsi, cakupan, dan status stok bulan berjalan (Nov 2026) diambil dari model, bukan simulasi. */
+if (K2) {
+  const STATUS_STOK: Record<string, StokStatus> = { DEFISIT: "defisit", TIPIS: "tipis", CUKUP: "cukup", SURPLUS: "surplus" }
+  for (const k of WILAYAH) {
+    const w = K2.wilayah[k.n]
+    if (!w) continue
+    if (w.konsumsi) k.C = w.konsumsi / 1000
+    const c = w.cakupan[10]
+    if (c != null) k.cov = c
+    const st = w.status[10]
+    if (st && STATUS_STOK[st]) k.ss = STATUS_STOK[st]
+  }
+}
 export const byName: Record<string, Wilayah> = Object.fromEntries(WILAYAH.map((k) => [k.n, k]))
 export const WILAYAH_SORTED = WILAYAH.map((k) => k.n).sort((a, b) => a.localeCompare(b))
 
@@ -237,9 +301,11 @@ export interface Flow {
 }
 
 /** Rute SPHP dari K3b, semua bulan. Rute dengan asal sama dengan tujuan (0 km) berarti kiriman ke kabupaten lokasi cabang itu sendiri. */
-export const FLOWS: Flow[] = K3B_RUTE.map((r) => ({ from: byName[r.dari], to: byName[r.ke], ton: Math.round(r.ton), km: r.km, bulan: r.bulan })).sort(
-  (a, b) => a.bulan - b.bulan || b.ton - a.ton,
-)
+/** Sumber rute: hasil K3b dari API bila pengguna berhak; API aktif tanpa hak (guest) = kosong; API mati = salinan statis lama (K3B_RUTE). */
+const SUMBER_RUTE = K3B ? K3B.rute.map((r) => ({ bulan: r.bulan, dari: r.dari, ke: r.ke, ton: r.ton, km: r.km })) : API_AKTIF ? [] : K3B_RUTE
+export const FLOWS: Flow[] = SUMBER_RUTE.filter((r) => byName[r.dari] && byName[r.ke])
+  .map((r) => ({ from: byName[r.dari], to: byName[r.ke], ton: Math.round(r.ton), km: r.km, bulan: r.bulan }))
+  .sort((a, b) => a.bulan - b.bulan || b.ton - a.ton)
 
 /** Rute SPHP pada bulan `a` sampai `b` (termasuk). */
 export const flowsBulan = (a: number, b: number) => FLOWS.filter((f) => f.bulan >= Math.min(a, b) && f.bulan <= Math.max(a, b))

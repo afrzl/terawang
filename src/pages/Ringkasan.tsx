@@ -5,8 +5,8 @@ import { Legenda } from "@/components/charts/Legenda"
 import { HargaPill, StokPill } from "@/components/ui/Pill"
 import { WeekSlider } from "@/components/ui/WeekSlider"
 import type { Wilayah } from "@/lib/data"
-import { HET, HET_PREMIUM, byName, flowsBulan, risk } from "@/lib/data"
-import { covBulan, hargaAt, makeSpec, pAtasHet, produksiBeras, statusHargaAt } from "@/lib/petaLayers"
+import { HET, HET_PREMIUM, byName, fcHarga, flowsBulan, pNowHarga, risk } from "@/lib/data"
+import { covBulan, hargaAt, makeSpec, pAtasHet, produksiBeras, produksiPrevRentang, statusHargaAt, yoyRentang } from "@/lib/petaLayers"
 import { NOW, dfmt, nf, rp, sum } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { useSesi } from "@/lib/sesi"
@@ -42,7 +42,7 @@ export default function Ringkasan() {
   // K1: produksi beras dalam rentang bulan filter; YoY memakai periode yang sama.
   const bulanR = Array.from({ length: akhir - mulai + 1 }, (_, j) => mulai + j)
   const prodT = sum(wil, (k) => sum(bulanR, (i) => produksiBeras(k, i)))
-  const prodPrev = sum(wil, (k) => sum(bulanR, (i) => produksiBeras(k, i)) / (1 + k.yoy))
+  const prodPrev = sum(wil, (k) => produksiPrevRentang(k, mulai, akhir))
   const yoy = prodPrev > 0 ? prodT / prodPrev - 1 : 0
   // K2: stok dan status pada akhir bulan terpilih.
   const stT = sum(wil, (k) => covBulan(k, akhir) * k.C * 1000)
@@ -197,9 +197,7 @@ function KabCard({ onBack }: { onBack: () => void }) {
   const { mulai, akhir } = useFilter()
   const { kom, setKom } = usePeta()
   const k = byName[sel]
-  // Premium: selisih terhadap medium dianggap tetap (data simulasi belum punya prakiraan premium).
   const het = kom === "medium" ? HET : HET_PREMIUM
-  const geser = kom === "medium" ? 0 : k.prem - k.pNow
   const periodeFlow = flowsBulan(mulai, akhir)
   const fl = periodeFlow.filter((f) => f.to === k)
   const out = periodeFlow.filter((f) => f.from === k && f.to !== k)
@@ -244,12 +242,13 @@ function KabCard({ onBack }: { onBack: () => void }) {
           </div>
           <div className="mrows">
             {POLA_PANEN.map((m) => {
-              const ton = k.est * 1000 * 0.6402 * m.w
+              const ton = produksiBeras(k, m.i)
+              const mx = Math.max(1, ...POLA_PANEN.map((q) => produksiBeras(k, q.i)))
               const on = m.i >= mulai && m.i <= akhir
               return (
                 <div key={m.i} className={"mrow" + (on ? " on" : "")}>
                   <span>{bulanLabel(m.i)}</span>
-                  <i style={{ width: `${(m.w / POLA_PANEN[0].w) * 100}%` }} />
+                  <i style={{ width: `${(ton / mx) * 100}%` }} />
                   <b>{nf(ton, 0)}</b>
                 </div>
               )
@@ -257,9 +256,9 @@ function KabCard({ onBack }: { onBack: () => void }) {
           </div>
           <div className="kv">
             <span>Total Nov–Jan</span>
-            <b>{nf(k.est * 1000 * 0.6402, 0)} ton</b>
+            <b>{nf(POLA_PANEN.reduce((a, m) => a + produksiBeras(k, m.i), 0), 0)} ton</b>
             <span>YoY</span>
-            <b className="delta-dn">{nf(k.yoy * 100, 1)}%</b>
+            <b className={yoyRentang(k, BULAN_KINI, BULAN_KINI + 2) < 0 ? "delta-dn" : "delta-up"}>{nf(yoyRentang(k, BULAN_KINI, BULAN_KINI + 2) * 100, 1)}%</b>
           </div>
         </div>
 
@@ -320,7 +319,7 @@ function KabCard({ onBack }: { onBack: () => void }) {
           </div>
           <div className="prow head">
             <span>Kini, {dfmt(NOW)}</span>
-            <b>{nf(kom === "medium" ? k.pNow : k.prem, 0)}</b>
+            <b>{nf(pNowHarga(k, kom), 0)}</b>
             <em>HET {nf(het, 0)}</em>
           </div>
           <div className="prow cap">
@@ -328,12 +327,12 @@ function KabCard({ onBack }: { onBack: () => void }) {
             <b>Median</b>
             <em>P10 – P90</em>
           </div>
-          {k.fc.map((f, i) => (
-            <div key={i} className={"prow" + (f.m + geser > het ? " over" : "")}>
+          {fcHarga(k, kom).map((f, i) => (
+            <div key={i} className={"prow" + (f.m > het ? " over" : "")}>
               <span>+{(i + 1) * 7} hari</span>
-              <b>{nf(f.m + geser, 0)}</b>
+              <b>{nf(f.m, 0)}</b>
               <em>
-                {nf(f.lo + geser, 0)} – {nf(f.hi + geser, 0)}
+                {nf(f.lo, 0)} – {nf(f.hi, 0)}
               </em>
             </div>
           ))}

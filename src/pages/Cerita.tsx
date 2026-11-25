@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react"
 import { ChevronDown } from "lucide-react"
 import { MapLegend, PetaJatim, type MapArc } from "@/components/charts/PetaJatim"
 import { CountUp } from "@/components/ui/CountUp"
-import { REGIONS, TRADE, TRADE_TOTAL, regionOf } from "@/lib/arus"
-import { FLOWS, WILAYAH, type LayerKey } from "@/lib/data"
+import { REGIONS, regionOf, tradeFor } from "@/lib/arus"
+import { FLOWS, WILAYAH, type LayerKey, type Wilayah } from "@/lib/data"
 import { useSesi } from "@/lib/sesi"
-import { nf, sum } from "@/lib/format"
+import { NOW, dfmt, nf, short, sum } from "@/lib/format"
+import { BULAN_KINI } from "@/lib/filter"
+import { covBulan, produksiPrevRentang, produksiRentang, statusHargaAt } from "@/lib/petaLayers"
 
 interface Step {
   key: string
@@ -14,97 +16,137 @@ interface Step {
   text: React.ReactNode
   stat: { v: number; fmt: (v: number) => string; unit: string; from?: number }
   layer: LayerKey
+  /** Nilai peta menggantikan nilai bawaan lapisan (mis. cakupan stok bulan tertentu). */
+  getValue?: (k: Wilayah) => number
+  valueLabel?: string
+  /** Judul legenda peta. */
+  legend?: string
   muted?: boolean
   arcs?: MapArc[]
   flows?: boolean
 }
 
-const estT = sum(WILAYAH, (k) => k.est)
-const prevT = sum(WILAYAH, (k) => k.prev)
+const AWAL = BULAN_KINI
+const AKHIR = BULAN_KINI + 2
+const DES = BULAN_KINI + 1
+
+// Produksi beras Nov 2026 sampai Jan 2027 (K1) dan pembanding periode yang sama setahun sebelumnya (BPS Nov dan Des 2025, Jan 2026 dari K1).
+const estT = sum(WILAYAH, (k) => produksiRentang(k, AWAL, AKHIR)) / 1000 // ribu ton beras
+const prevT = sum(WILAYAH, (k) => produksiPrevRentang(k, AWAL, AKHIR)) / 1000
 const yoy = (estT / prevT - 1) * 100
-const lagHa = sum(WILAYAH, (k) => (k.ha * k.lag) / 100)
-const nDef = WILAYAH.filter((k) => k.ss === "defisit").length
-const nTip = WILAYAH.filter((k) => k.ss === "tipis").length
-const nS = WILAYAH.filter((k) => k.hs === "siaga").length
-const nW = WILAYAH.filter((k) => k.hs === "waspada").length
+const tanda = (v: number) => (v < 0 ? "−" : "+")
+const luasRb = (estT * 1000) / 3.3 / 1000
+const lumbung = WILAYAH.slice().sort((a, b) => produksiRentang(b, AWAL, AKHIR) - produksiRentang(a, AWAL, AKHIR)).slice(0, 3).map((k) => short(k.n))
+const gabung = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")}, dan ${xs[xs.length - 1]}` : (xs[0] ?? ""))
+
+const nDef = WILAYAH.filter((k) => covBulan(k, DES) < 0.75).length
+const nTip = WILAYAH.filter((k) => covBulan(k, DES) >= 0.75 && covBulan(k, DES) < 1).length
+const terendah = WILAYAH.slice().sort((a, b) => covBulan(a, DES) - covBulan(b, DES))[0]
+
+const arusBulan = tradeFor(AWAL)
+const arusTotal = arusBulan.reduce((a, t) => a + t.ton, 0)
+const arusTerbesar = arusBulan[0]
+
+const hitung = (kom: "medium" | "premium", st: "waspada" | "siaga") => WILAYAH.filter((k) => statusHargaAt(k, 4, kom) === st).length
+const nWm = hitung("medium", "waspada")
+const nSm = hitung("medium", "siaga")
+const nWp = hitung("premium", "waspada")
+const nSp = hitung("premium", "siaga")
+const nPerhatianM = nWm + nSm
+const nPerhatianP = nWp + nSp
+
 const tonS = sum(FLOWS, (f) => f.ton)
+const nPenerima = new Set(FLOWS.filter((f) => f.from !== f.to).map((f) => f.to.n)).size
 
 const STEPS: Step[] = [
   {
     key: "sawah",
     k: "01 Sawah",
-    title: "Hujan datang terlambat",
+    title: "Awal tanam dibaca dari satelit",
     text: (
       <>
-        Radar Sentinel-1 menembus awan dan membaca genangan sawah setiap 12 hari. Musim ini genangan muncul 2–3 pekan lebih lambat dari rata-rata tiga
-        musim terakhir, jadi tanam MT I ikut mundur. Petak yang tertinggal ditandai dari citra Sentinel-2.
+        Sentinel-2 membaca kehijauan dan kandungan air sawah tiap 12 hari. Sawah yang tergenang tapi belum hijau dianggap baru ditanami, dan panennya dihitung
+        sekitar 96 hari kemudian. Kalau awan menutup, radar Sentinel-1 dipakai untuk mengisi celahnya.
       </>
     ),
-    stat: { v: lagHa / 1000, fmt: (v) => nf(v, 1), unit: "ribu ha petak tertinggal" },
-    layer: "fase",
+    stat: { v: luasRb, fmt: (v) => nf(v, 0), unit: "ribu ha luas panen Nov–Jan" },
+    layer: "produksi",
+    getValue: (k) => produksiRentang(k, AWAL, AKHIR) / 1000,
+    valueLabel: "Produksi beras Nov–Jan",
+    legend: "Produksi beras Nov 2026 sampai Jan 2027, ribu ton",
   },
   {
     key: "panen",
     k: "02 Panen",
-    title: "Panen Nov–Jan menyusut",
+    title: yoy < 0 ? "Panen Nov–Jan lebih kecil dari tahun lalu" : "Panen Nov–Jan lebih besar dari tahun lalu",
     text: (
       <>
-        Luas tanam dan fase tumbuh diubah menjadi proyeksi produksi, lalu dikalibrasi ke ubinan BPS. Hasilnya {nf(estT / 1000, 2)} juta ton GKG, turun{" "}
-        {nf(Math.abs(yoy), 1)}% dari periode yang sama tahun lalu. Lumbung di utara dan barat tetap terbesar.
+        Dari luas panen itu, model memperkirakan {nf(estT / 1000, 2)} juta ton beras untuk November sampai Januari, {yoy < 0 ? "turun" : "naik"} {nf(Math.abs(yoy), 1)}% dari
+        periode yang sama tahun lalu menurut BPS. Penyumbang terbesarnya {gabung(lumbung)}. Galatnya sekitar 14% per kabupaten untuk tiga bulan ke depan.
       </>
     ),
-    stat: { v: Math.abs(yoy), fmt: (v) => "−" + nf(v, 1) + "%", unit: "proyeksi panen vs 2025" },
+    stat: { v: Math.abs(yoy), fmt: (v) => tanda(yoy) + nf(v, 1) + "%", unit: "proyeksi panen dibanding setahun lalu" },
     layer: "produksi",
+    getValue: (k) => produksiRentang(k, AWAL, AKHIR) / 1000,
+    valueLabel: "Produksi beras Nov–Jan",
+    legend: "Produksi beras Nov 2026 sampai Jan 2027, ribu ton",
   },
   {
     key: "stok",
     k: "03 Stok",
-    title: "Stok kota dan Madura menipis",
+    title: "Stok di beberapa wilayah mulai tipis",
     text: (
       <>
-        Filter Kalman menaksir stok beredar tiap pekan dari produksi, konsumsi, dan data stok Bulog. Wilayah dengan sawah sedikit paling cepat habis:{" "}
-        {nDef} wilayah diproyeksikan defisit dalam 4 pekan dan {nTip} lainnya tipis.
+        Stok beras di luar gudang Bulog dihitung dari selisih produksi dan konsumsi tiap bulan. Pada akhir Desember, {nDef} wilayah diperkirakan di bawah 0,75 bulan
+        konsumsi (defisit) dan {nTip} lainnya di bawah satu bulan (tipis). Yang paling rendah {terendah.n}. Yang lebih bisa dipegang adalah urutan antarwilayah, bukan
+        angka stok mutlaknya.
       </>
     ),
-    stat: { v: nDef, fmt: (v) => nf(v), unit: "wilayah defisit dalam 4 pekan" },
-    layer: "stok",
+    stat: { v: nDef, fmt: (v) => nf(v), unit: "wilayah defisit akhir Desember" },
+    layer: "stokK2",
+    getValue: (k) => covBulan(k, DES),
+    valueLabel: "Cakupan stok akhir Des",
+    legend: "Cakupan stok non-Bulog, akhir Des 2026",
   },
   {
     key: "arus",
     k: "04 Arus",
-    title: "Beras berpindah ke yang kekurangan",
+    title: "Beras bergerak ke wilayah yang kurang",
     text: (
       <>
-        Selisih produksi dan konsumsi menggerakkan beras dari lumbung ke kota. Model gravitasi menaksir sekitar {nf(TRADE_TOTAL / 1000, 1)} ribu ton
-        bergerak tiap bulan. Bila panen di lumbung mundur, arus ini mengecil dan wilayah penerima merasakannya lebih dulu.
+        Wilayah yang produksinya melebihi konsumsi mengirim ke yang kekurangan. Perkiraannya sekitar {nf(arusTotal / 1000, 1)} ribu ton per bulan berpindah antarkabupaten,
+        terbesar dari {arusTerbesar ? `${short(arusTerbesar.from.n)} ke ${short(arusTerbesar.to.n)}` : "-"}. Ini hasil hitungan model, bukan data pengiriman.
       </>
     ),
-    stat: { v: TRADE_TOTAL / 1000, fmt: (v) => nf(v, 1), unit: "ribu ton beras per bulan" },
-    layer: "stok",
+    stat: { v: arusTotal / 1000, fmt: (v) => nf(v, 1), unit: "ribu ton beras per bulan" },
+    layer: "stokK2",
+    getValue: (k) => covBulan(k, AWAL),
+    valueLabel: "Cakupan stok akhir Nov",
+    legend: "Cakupan stok non-Bulog, akhir Nov 2026",
     muted: true,
-    arcs: TRADE.slice(0, 22).map((t) => ({ from: t.from.n, to: t.to.n, ton: t.ton, color: regionOf[t.from.n].color })),
+    arcs: arusBulan.slice(0, 22).map((t) => ({ from: t.from.n, to: t.to.n, ton: t.ton, color: regionOf[t.from.n].color })),
   },
   {
     key: "harga",
     k: "05 Pasar",
-    title: "Harga merambat ke HET",
+    title: "Harga dan batas HET",
     text: (
       <>
-        Prakiraan harga 4 pekan memakai produksi dan stok sebagai penjelas. {nS} wilayah diprakirakan melewati HET lebih dari 3% (Siaga) dan {nW}{" "}
-        lainnya mendekati HET (Waspada).
+        Harga dilihat 28 hari ke depan terhadap HET. Untuk beras medium ada {nWm} wilayah berstatus Waspada dan {nSm} Siaga. Untuk premium ada {nWp} Waspada dan {nSp} Siaga.
+        Prakiraannya hanya melanjutkan harga terakhir dan sebaran perubahan setahun terakhir, jadi lebih tepat dibaca sebagai peringatan dini.
       </>
     ),
-    stat: { v: nS, fmt: (v) => nf(v), unit: `wilayah Siaga, ${nW} Waspada` },
+    stat: { v: nPerhatianM, fmt: (v) => nf(v), unit: `wilayah Waspada atau Siaga untuk medium, ${nPerhatianP} untuk premium` },
     layer: "harga",
   },
   {
     key: "aksi",
     k: "06 Tindakan",
-    title: "Bertindak sebelum harga naik",
+    title: "Menyiapkan penyaluran SPHP",
     text: (
       <>
-        Bulog menyalurkan beras SPHP dari cabangnya ke kabupaten yang stoknya kurang, {nf(tonS)} ton dalam {FLOWS.length} rute. Rute dan jumlah
-        per wilayah bisa dilihat di Peta Ringkasan, pada lapisan penyaluran SPHP.
+        Bulog bisa melepas beras SPHP dari cabangnya ke kabupaten yang stoknya kurang. Rekomendasi terbaru {nf(tonS)} ton lewat {FLOWS.length} rute, dengan {nPenerima} wilayah
+        penerima untuk November sampai Januari. Anggaran rilis dan lokasi cabang masih asumsi, jadi anggap ini rancangan.
       </>
     ),
     stat: { v: tonS, fmt: (v) => nf(v), unit: "ton SPHP direkomendasikan" },
@@ -118,11 +160,11 @@ const STEP_AKSI_UMUM: Step = {
   ...STEPS[STEPS.length - 1],
   text: (
     <>
-      Wilayah Siaga dipasangkan dengan gudang surplus terdekat untuk penyaluran beras SPHP; rinciannya tersedia untuk akun dinas dan perusahaan
-      mitra. Warga bisa mengecek harga dan lokasi SPHP lewat WhatsApp tanpa membuka dasbor.
+      Bulog bisa melepas beras SPHP dari cabangnya ke kabupaten yang stoknya kurang. Rincian rute dan volumenya hanya tersedia untuk akun dinas dan perusahaan mitra.
+      Warga tetap bisa mengecek harga lewat WhatsApp.
     </>
   ),
-  stat: { v: WILAYAH.filter((k) => k.hs === "siaga").length, fmt: (v) => nf(v), unit: "wilayah Siaga diprioritaskan" },
+  stat: { v: nPerhatianM, fmt: (v) => nf(v), unit: `wilayah Waspada atau Siaga untuk medium, ${nPerhatianP} untuk premium` },
   flows: false,
 }
 
@@ -150,16 +192,16 @@ export default function Cerita() {
       <header className="story-hero">
         <div className="story-hero-txt">
           <div className="story-kicker">
-            <span>Laporan pekanan</span>
-            <span>Pekan 44, 1 November 2026</span>
+            <span>Laporan pekan</span>
+            <span>Data per {dfmt(NOW)} 2026</span>
           </div>
           <h1>Dari sawah ke pasar</h1>
           <p className="story-dek">
-            Hujan yang datang terlambat memundurkan tanam di sawah. Dampaknya merambat pelan: panen menyusut, stok di kota menipis, lalu harga mulai
-            menyentuh HET. Enam bagian berikut menelusuri rantai itu dan apa yang bisa dilakukan sebelum terlambat.
+            Panen November sampai Januari diperkirakan {yoy < 0 ? "lebih kecil" : "lebih besar"} dari tahun lalu, stok di beberapa kota mulai tipis, dan harga di sejumlah wilayah sudah
+            di atas HET. Enam bagian di bawah menelusuri rantainya, dari sawah sampai beras SPHP.
           </p>
           <p className="story-byline">
-            Disusun dari radar Sentinel-1, citra Sentinel-2, data stok Bulog, dan Panel Harga Pangan Bapanas. Angka di prototipe ini adalah simulasi.
+            Sumber: citra Sentinel-1 dan Sentinel-2, data BPS dan Bulog, serta harga harian SISKAPERBAPO. Semua angka adalah hasil model dan masih punya galat.
           </p>
           <a className="story-cue" href="#langkah-1">
             Mulai membaca <ChevronDown size={15} />
@@ -168,16 +210,16 @@ export default function Cerita() {
         <aside className="story-facts" aria-label="Pekan ini dalam tiga angka">
           <div className="story-facts-h">Pekan ini dalam tiga angka</div>
           <a href="#langkah-2">
-            <b>−{nf(Math.abs(yoy), 1)}%</b>
+            <b>{tanda(yoy)}{nf(Math.abs(yoy), 1)}%</b>
             <span>proyeksi panen Nov–Jan dibanding periode yang sama tahun lalu</span>
           </a>
           <a href="#langkah-3">
             <b>{nDef}</b>
-            <span>kabupaten/kota diproyeksikan kekurangan stok dalam empat pekan</span>
+            <span>kabupaten/kota diperkirakan defisit stok pada akhir Desember</span>
           </a>
           <a href="#langkah-5">
-            <b>{nS}</b>
-            <span>wilayah dengan prakiraan harga lebih dari 3% di atas HET</span>
+            <b>{nPerhatianM}</b>
+            <span>wilayah berstatus Waspada atau Siaga untuk beras medium, dan {nPerhatianP} untuk premium</span>
           </a>
         </aside>
       </header>
@@ -195,7 +237,7 @@ export default function Cerita() {
               </div>
             </div>
             <div className="map">
-              <PetaJatim layer={st.layer} muted={st.muted} arcs={st.arcs} flows={st.flows} labels={!st.arcs && !st.flows} />
+              <PetaJatim layer={st.layer} getValue={st.getValue} valueLabel={st.valueLabel} muted={st.muted} arcs={st.arcs} flows={st.flows} labels={!st.arcs && !st.flows} />
             </div>
             {st.arcs ? (
               <div className="legend">
@@ -208,7 +250,7 @@ export default function Cerita() {
                 ))}
               </div>
             ) : (
-              <MapLegend layer={st.layer} />
+              <MapLegend layer={st.layer} title={st.legend} />
             )}
             <div className="story-dots" aria-hidden="true">
               {steps.map((s, i) => (

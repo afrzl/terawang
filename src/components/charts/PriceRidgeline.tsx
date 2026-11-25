@@ -1,5 +1,5 @@
 import { useId } from "react"
-import { HET, HET_PREMIUM, HIST, SIAGA_KALI, fcDates, histDates } from "@/lib/data"
+import { HET, HET_PREMIUM, HIST, SIAGA_KALI, fcDates, fcHarga, histDates, seriHarga } from "@/lib/data"
 import { dfmt, nf, rp, scale } from "@/lib/format"
 import { useTooltip } from "@/lib/tooltip"
 import { useWilayah } from "@/lib/filter"
@@ -22,19 +22,17 @@ export function PriceRidgeline({ jenis }: { jenis: Jenis[] }) {
   const wil = useWilayah()
   const ganda = jenis.length > 1
   const hetOf = (j: Jenis) => (j === "premium" ? HET_PREMIUM : HET)
-  const gOf = (j: Jenis) => (k: { prem: number; pNow: number }) => (j === "premium" ? k.prem - k.pNow : 0)
   const popF = wil.reduce((a, k) => a + k.pop, 0) || 1
   const rataF = (f: (k: (typeof wil)[number]) => number) => wil.reduce((a, k) => a + f(k) * k.pop, 0) / popF
   const { show, hide } = useTooltip()
   const gid = useId().replace(/:/g, "")
   const seri = jenis.map((j) => {
-    const g = gOf(j)
     const weeks = [
       ...Array.from({ length: NH }, (_, jj) => {
         const i = HIST - NH + jj
-        return { d: histDates[i], fc: false, vals: wil.map((k) => k.price[i] + g(k)), mine: rataF((k) => k.price[i] + g(k)) }
+        return { d: histDates[i], fc: false, vals: wil.map((k) => seriHarga(k, j)[i]), mine: rataF((k) => seriHarga(k, j)[i]) }
       }),
-      ...fcDates.map((d, h) => ({ d, fc: true, vals: wil.map((k) => k.fc[h].m + g(k)), mine: rataF((k) => k.fc[h].m + g(k)) })),
+      ...fcDates.map((d, h) => ({ d, fc: true, vals: wil.map((k) => fcHarga(k, j)[h].m), mine: rataF((k) => fcHarga(k, j)[h].m) })),
     ]
     return { j, weeks }
   })

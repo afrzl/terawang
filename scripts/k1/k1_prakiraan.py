@@ -68,6 +68,11 @@ def muat_citra(Yw):
     return ES
 
 
+def musim(bulan):
+    """Kelompok musim untuk bobot gabungan: 0 = Jan-Apr (puncak MT I), 1 = Mei-Agu (MT II), 2 = Sep-Des."""
+    return 0 if bulan <= 4 else (1 if bulan <= 8 else 2)
+
+
 class Gabungan:
     """Model gabungan untuk satu jarak waktu dan satu set tahun latih."""
 
@@ -91,12 +96,15 @@ class Gabungan:
         bg, bk, clim = par if par is not None else self.par
         Yw = self.Yw
         es = self.E[th] if th in self.E.columns else pd.Series(np.nan, index=Yw.index)
-        prev = Yw[prev_y].fillna(clim) if prev_y in Yw.columns else clim
+        # Komponen "musiman" = rata-rata 3 tahun final terakhir (bukan satu tahun saja), supaya satu tahun menyimpang
+        # (mis. 2024) tidak menarik prakiraan. Uji bergulir 2022-2025: lihat ai-notes/evaluasi-k1-perbaikan.md (25 Nov 2026).
+        th3 = [t for t in (prev_y - 2, prev_y - 1, prev_y) if t in Yw.columns]
+        prev = Yw[th3].mean(axis=1).fillna(clim) if th3 else clim
         return pd.DataFrame({"sat_kab": es.to_numpy() * bk.reindex(es.index.get_level_values(0)).to_numpy(),
                              "klim": clim.to_numpy(), "musiman": prev.to_numpy()}, index=es.index)
 
     def _bobot(self, cols):
-        """Bobot NNLS dari prediksi leave-one-year-out, terpisah untuk kota dan kabupaten."""
+        """Bobot NNLS dari prediksi leave-one-year-out, terpisah untuk kota dan kabupaten dan per musim (Jan-Apr, Mei-Agu, Sep-Des)."""
         rows = []
         for th in self.tr:
             lain = [x for x in self.tr if x != th]
@@ -106,9 +114,12 @@ class Gabungan:
         d = pd.concat(rows)
         iskota = d.index.get_level_values(0).isin(self.kota)
         semua = nnls(d[cols].to_numpy(), d.y.to_numpy())[0]
+        g = np.array([musim(b) for b in d.index.get_level_values(1)])
         w = {}
-        for nama, m in (("kota", iskota), ("kab", ~iskota)):
-            w[nama] = nnls(d.loc[m, cols].to_numpy(), d.y[m].to_numpy())[0] if m.sum() >= 3 * len(cols) * 12 else semua
+        for nama, mk in (("kota", iskota), ("kab", ~iskota)):
+            for gi in range(3):
+                m = mk & (g == gi)
+                w[(nama, gi)] = nnls(d.loc[m, cols].to_numpy(), d.y[m].to_numpy())[0] if m.sum() >= 3 * len(cols) * 4 else semua
         return w
 
     def prediksi(self, th, prev_y):
@@ -116,8 +127,11 @@ class Gabungan:
         p = self.komponen(th, prev_y)
         iskota = p.index.get_level_values(0).isin(self.kota)
         ada = p.sat_kab.notna().to_numpy()
-        g3 = np.where(iskota, p[FIT3].fillna(0).to_numpy() @ self.w3["kota"], p[FIT3].fillna(0).to_numpy() @ self.w3["kab"])
-        g2 = np.where(iskota, p[FIT2].to_numpy() @ self.w2["kota"], p[FIT2].to_numpy() @ self.w2["kab"])
+        nm = np.where(iskota, "kota", "kab")
+        g = [musim(b) for b in p.index.get_level_values(1)]
+        X3, X2 = p[FIT3].fillna(0).to_numpy(), p[FIT2].to_numpy()
+        g3 = np.array([X3[i] @ self.w3[(nm[i], g[i])] for i in range(len(p))])
+        g2 = np.array([X2[i] @ self.w2[(nm[i], g[i])] for i in range(len(p))])
         p["gabungan"] = np.where(ada, g3, g2)
         p["citra_ada"] = ada
         return p
