@@ -12,7 +12,7 @@ import pandas as pd
 
 from .danang import di_repo, modul
 
-VERSI = "k2-neraca-lp-kalman-2026.11"
+VERSI = "k2-neraca-lp-kalman-2026.11b"  # b: konsumsi + di luar rumah tangga (BPS 2025)
 JENIS_DATA = "MODEL"
 
 
@@ -27,6 +27,7 @@ def estimasi_stok(akar: str | Path, hari_ini: dt.date, produksi: pd.DataFrame, e
         sk = ko.skenario(h["R"], h["C"])
         param = {"ambang": {"defisit": ko.AMBANG_DEFISIT, "cukup": ko.AMBANG_CUKUP, "surplus": ko.AMBANG_SURPLUS},
                  "sigma": {"keluar_provinsi": ko.SIGMA_X, "konsumsi": ko.SIGMA_C, "prod_model": ko.SIGMA_P_MODEL, "prod_k1": ko.SIGMA_P_K1},
-                 "jangkar_min_bulan": ko.JANGKAR_MIN, "sd_jangkar": ko.SD_JANGKAR}
+                 "jangkar_min_bulan": ko.JANGKAR_MIN, "sd_jangkar": ko.SD_JANGKAR,
+                 "konsumsi_nonrt_kg_kapita_bulan": round(ko.KONSUMSI_NONRT, 3)}
     return {"skenario": sk, "rinci": h["R"], "konsumsi": h["C"].rename("konsumsi_ton_bulan"), "hari_ke_defisit": h["hit"],
             "jangkar": float(h["a_jangkar"]), "parameter": param}

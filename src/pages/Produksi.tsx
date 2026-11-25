@@ -9,7 +9,7 @@ import { PHASES, byName, type Wilayah } from "@/lib/data"
 import { dfmt, hash, nf, rng, scale, short, sum, ticks } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
-import { BULAN_NAMA, N_BULAN, bulanLabel, useFilter, useWilayah } from "@/lib/filter"
+import { BULAN_NAMA, N_BULAN, SATUAN, bulanLabel, useFilter, useWilayah } from "@/lib/filter"
 import { PRODUKTIVITAS, luasPanen, produksiBatas, produksiPrevRentang, produksiRentang, yoyRentang } from "@/lib/petaLayers"
 
 const STEPS = ["--s1", "--s2", "--s3", "--s4", "--s5"]
@@ -25,10 +25,12 @@ export default function Produksi() {
   const nama = wil.map((k) => k.n)
   const tertanam = (n: string) => indeks.find((m) => m.lokasi === n)?.stat.tertanam_sesudah_pct ?? -1
   const citraWil = cw && nama.includes(cw) ? cw : [...nama].sort((a, b) => tertanam(b) - tertanam(a))[0]
-  const { mulai, akhir } = useFilter()
-  const prodT = sum(wil, (k) => produksiRentang(k, mulai, akhir)) / 1000 // ribu ton beras
-  const prevT = sum(wil, (k) => produksiPrevRentang(k, mulai, akhir)) / 1000
-  const luasRb = (prodT * 1000) / PRODUKTIVITAS / 1000 // ribu ha
+  const { mulai, akhir, satuan } = useFilter()
+  const sat = SATUAN[satuan]
+  const berasT = sum(wil, (k) => produksiRentang(k, mulai, akhir)) / 1000 // ribu ton beras
+  const prodT = berasT * sat.f // ribu ton, satuan terpilih
+  const prevT = (sum(wil, (k) => produksiPrevRentang(k, mulai, akhir)) / 1000) * sat.f
+  const luasRb = (berasT * 1000) / PRODUKTIVITAS / 1000 // ribu ha
   const turun = wil.filter((k) => yoyRentang(k, mulai, akhir) < 0).length
   const yoy = prevT ? (prodT / prevT - 1) * 100 : 0
 
@@ -38,7 +40,7 @@ export default function Produksi() {
       <KpiStrip
         items={[
           {
-            k: "Produksi beras",
+            k: satuan === "gkg" ? "Produksi padi (GKG)" : "Produksi beras",
             v: prodT >= 1000 ? `${nf(prodT / 1000, 2)} jt ton` : `${nf(prodT, 0)} rb ton`,
             t: (
               <>
@@ -46,7 +48,7 @@ export default function Produksi() {
               </>
             ),
           },
-          { k: "Luas panen", v: luasRb >= 1000 ? `${nf(luasRb / 1000, 2)} jt ha` : `${nf(luasRb, 0)} rb ha`, t: `${nf(PRODUKTIVITAS, 1)} ton beras/ha` },
+          { k: "Luas panen", v: luasRb >= 1000 ? `${nf(luasRb / 1000, 2)} jt ha` : `${nf(luasRb, 0)} rb ha`, t: `${nf(PRODUKTIVITAS * sat.f, 1)} ton ${sat.lab}/ha` },
           { k: "Galat prakiraan", v: "±14%", t: "3 bulan ke depan per kabupaten · ±29% per bulan" },
           { k: "Wilayah YoY turun", v: `${turun} dari ${wil.length}`, t: "produksi di bawah periode sama 2025" },
         ]}
@@ -271,13 +273,15 @@ function ProfilIsi({ wilayah }: { wilayah: string }) {
 
 function EstimateBars() {
   const wil = useWilayah().map((k) => k)
-  const { mulai, akhir } = useFilter()
+  const { mulai, akhir, satuan } = useFilter()
+  const sat = SATUAN[satuan]
   const { sel, select } = useSelection()
   const { show, hide } = useTooltip()
+  const f = sat.f / 1000 // ton beras -> ribu ton satuan terpilih
   const est = wil.filter((k) => !k.isKota)
     .map((k) => {
       const b = produksiBatas(k, mulai, akhir)
-      return { n: k.n, est: produksiRentang(k, mulai, akhir) / 1000, lo: b.lo / 1000, hi: b.hi / 1000, prev: produksiPrevRentang(k, mulai, akhir) / 1000 }
+      return { n: k.n, est: produksiRentang(k, mulai, akhir) * f, lo: b.lo * f, hi: b.hi * f, prev: produksiPrevRentang(k, mulai, akhir) * f }
     })
     .sort((a, b) => b.est - a.est)
     .slice(0, 16)
@@ -314,7 +318,7 @@ function EstimateBars() {
                 <>
                   <b>{k.n}</b>
                   <br />
-                  Proyeksi <span className="m">{nf(k.est, 1)} rb ton</span>
+                  Proyeksi <span className="m">{nf(k.est, 1)} rb ton {sat.lab}</span>
                   <br />
                   Selang 90%{" "}
                   <span className="m">

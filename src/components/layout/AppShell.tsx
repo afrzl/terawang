@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react"
 import { NavLink, Outlet, useLocation } from "react-router-dom"
 import { LogIn, LogOut, Settings, UserRound } from "lucide-react"
-import { KopPattern } from "@/components/layout/KopPattern"
 import { ThemeToggle } from "@/components/layout/ThemeToggle"
 import { navItems } from "@/components/layout/nav"
 import { FilterPanel } from "@/components/layout/FilterPanel"
@@ -71,7 +70,6 @@ export function AppShell() {
   return (
     <div className="shell">
       <header className="kop">
-        <KopPattern />
         <div className="wrap">
           <div className="brand">
             <div className="logo">

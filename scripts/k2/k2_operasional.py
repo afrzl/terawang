@@ -3,7 +3,8 @@
 Alur:
   produksi  : Jan-Sep 2026 = pola bulanan K1 (gabungan) diskalakan ke total BPS Jan-Sep 2026 per kab (asli); Okt-Nov 2026 = K1 bulan berjalan;
               Des 2026 dan Jan 2027 = PRAKIRAAN K1 (jarak 4 dan 8 minggu). Beras = luas panen x produktivitas beras/ha BPS per kab.
-  konsumsi  : penduduk proyeksi 2026 x Susenas Maret 2025 (kg/kapita/minggu x 30/7)
+  konsumsi  : penduduk proyeksi 2026 x (Susenas Maret 2025 rumah tangga, kg/kapita/minggu x 30/7 + konsumsi di luar rumah
+              tangga KONSUMSI_NONRT kg/kapita/bulan, sama untuk semua kab). Produksi beras BPS sudah bersih susut.
   arus      : optimasi jarak jalan (surplus -> defisit), struktur 2025. Kab defisit menerima arus tetap tiap bulan; kab surplus
               melepas beras (ke kab lain DAN keluar provinsi) hanya dari kelebihan panen: keluar_t = theta x max(P_t - C, 0),
               theta = (arus LP tahunan + sisa surplus) / kelebihan tahunan 2025 (diperbaiki 24 Nov 2026; sebelumnya arus antar kab
@@ -40,6 +41,11 @@ HARI_INI = dt.date.today()
 AMBANG_CUKUP, AMBANG_DEFISIT, AMBANG_SURPLUS = 1.0, 0.75, 1.5
 JANGKAR_MIN, SD_JANGKAR = 1.0, 0.4  # ASUMSI: cakupan terendah Jatim 1,0 bulan (SCBN Juni 2022 nasional); sd 0,4 bulan
 TAHUN_LATIH = None  # None = semua tahun BPS bulanan yang lengkap (k1_prakiraan.tahun_final)
+# Konsumsi beras di luar rumah tangga (jasa makanan, industri pengolahan, institusi), kg/kapita/bulan. Angka NASIONAL:
+# BPS "Konsumsi Bahan Pokok Nonrumah Tangga 2025" (rilis 12 Jun 2026) 9,57 juta ton / penduduk Indonesia 2025 284,4 juta / 12.
+# Susenas hanya mencatat rumah tangga; tanpa suku ini surplus Jatim 2025 terbaca 2,8 juta ton (dengan suku ini ±1,4 juta ton).
+# Ganti dengan angka Jawa Timur dari publikasi yang sama bila sudah dibaca. Uji kepekaan: ai-notes/metodologi-k2.md (25 Nov 2026).
+KONSUMSI_NONRT = 9.57e6 / 284.4e6 * 1000 / 12
 
 
 def bulan_horizon(hari_ini):
@@ -123,6 +129,7 @@ def hitung(hari_ini=HARI_INI, prod=None, sd_prod=None):
     kab = list(w.index)
     pop26 = ms.sql("select w.nama_repo kab, p.jumlah_jiwa from silver.penduduk p join ref.wilayah w on w.id=p.wilayah_id where w.level='KABKOTA' and p.tahun=2026").set_index("kab").jumlah_jiwa.loc[kab]
     pop25 = ms.sql("select w.nama_repo kab, p.jumlah_jiwa from silver.penduduk p join ref.wilayah w on w.id=p.wilayah_id where w.level='KABKOTA' and p.tahun=2025").set_index("kab").jumlah_jiwa.loc[kab]
+    C25 = C25 + pop25 * KONSUMSI_NONRT / 1000  # + konsumsi di luar rumah tangga (ton/bulan); juga dipakai neraca 2025 untuk arus dan theta
     C = C25 * pop26 / pop25  # ton/bulan, 2026
 
     # struktur arus dan porsi keluar provinsi dari neraca 2025

@@ -1,6 +1,6 @@
 import { REGIONS } from "@/lib/arus"
 import { WILAYAH, byName, type Wilayah } from "@/lib/data"
-import { useFilter } from "@/lib/filter"
+import { SATUAN, useFilter } from "@/lib/filter"
 import { produksiRentang, yoyRentang } from "@/lib/petaLayers"
 import { nf, short, sum } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
@@ -15,8 +15,9 @@ const HEAD = 18
 export function ProdTreemap() {
   const { sel, select } = useSelection()
   const { show, hide } = useTooltip()
-  const { lolos, mulai, akhir } = useFilter()
-  const est = (k: Wilayah) => produksiRentang(k, mulai, akhir) / 1000 // ribu ton beras
+  const { lolos, mulai, akhir, satuan } = useFilter()
+  const sat = SATUAN[satuan]
+  const est = (k: Wilayah) => (produksiRentang(k, mulai, akhir) / 1000) * sat.f // ribu ton, satuan terpilih
   const total = sum(WILAYAH.filter(lolos), (k) => est(k))
   const groups = REGIONS.map((r) => ({ r, v: sum(r.members.filter((m) => lolos(byName[m])), (m) => est(byName[m])) })).filter((g) => g.v > 0)
   const outer = squarify(groups, (g) => g.v, { x: 0, y: 0, w: W, h: H })
@@ -49,7 +50,7 @@ export function ProdTreemap() {
                       <>
                         <b>{k.n}</b> · {g.r.short}
                         <br />
-                        Produksi <span className="m">{nf(est(k), 1)} rb ton beras</span>
+                        Produksi <span className="m">{nf(est(k), 1)} rb ton {sat.lab}</span>
                         <br />
                         Porsi <span className="m">{nf((est(k) / total) * 100, 1)}%</span>
                         <br />

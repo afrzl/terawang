@@ -9,7 +9,7 @@ import { usePeta, type ArusMode, type Basemap, type CitraMode } from "@/lib/peta
 import { useSelection } from "@/lib/selection"
 import { useSesi } from "@/lib/sesi"
 import { useLocation } from "react-router-dom"
-import { BULAN_KINI, HS_ALL, N_BULAN, SS_ALL, bulanLabel, useFilter } from "@/lib/filter"
+import { BULAN_KINI, HS_ALL, N_BULAN, SS_ALL, bulanLabel, useFilter, type Satuan } from "@/lib/filter"
 
 const WARNA_STOK = { surplus: "var(--d5)", cukup: "var(--ok)", tipis: "var(--warn)", defisit: "var(--crit)" } as const
 
@@ -214,6 +214,21 @@ export function FilterPanel() {
             ]}
             value={f.jenisHarga}
             onChange={f.setJenisHarga}
+          />
+        </div>
+      )}
+
+      {t.satuan && (
+        <div className="fp-top">
+          <h3>Satuan produksi</h3>
+          <Select<Satuan>
+            label="Satuan produksi"
+            options={[
+              { value: "gkg", label: "Gabah kering giling (GKG)" },
+              { value: "beras", label: "Beras" },
+            ]}
+            value={f.satuan}
+            onChange={f.setSatuan}
           />
         </div>
       )}

@@ -158,7 +158,8 @@ function simulate([n, pop0, prod0, pb]: [string, number, number, number]): Wilay
   const pop = g ? g.pop : pop0
   const prod = g ? g.prod : prod0
   const isKota = n.startsWith("Kota ") || n === "Batu"
-  const C = (pop * 6.39) / 1000 // ribu ton beras / bulan
+  // ribu ton beras / bulan: rumah tangga (Susenas, 6,39 kg/kapita) + di luar rumah tangga (BPS 2025, 2,80 kg/kapita), sama dengan K2 2026.11b
+  const C = (pop * (6.39 + 2.8)) / 1000
   const r = (prod * 0.6402) / 12 / C // rasio produksi : konsumsi
   const df = clamp(1 - r / 2, 0, 1)
   // K1 produksi

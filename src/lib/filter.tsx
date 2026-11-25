@@ -24,11 +24,20 @@ export interface Tersedia {
   peta?: boolean
   /** Pilihan jenis beras (medium atau premium) tampil di sidebar. */
   jenis?: boolean
+  /** Pilihan satuan produksi (beras atau GKG) tampil di sidebar. */
+  satuan?: boolean
+}
+
+/** Satuan produksi. GKG = beras / 0,5774 (faktor konversi BPS Jawa Timur, sama dengan BRS: Pacitan 2025 76.517 t beras = 132.516 t GKG). */
+export type Satuan = "beras" | "gkg"
+export const SATUAN: Record<Satuan, { f: number; lab: string }> = {
+  beras: { f: 1, lab: "beras" },
+  gkg: { f: 1 / 0.5774, lab: "GKG" },
 }
 const RUTE: Record<string, Tersedia> = {
   "/": { waktu: true, wilayah: true, hs: true, ss: true, peta: true },
   "/ringkasan": { waktu: true, wilayah: true, hs: true, ss: true, peta: true },
-  "/produksi": { waktu: true, wilayah: true, hs: false, ss: false },
+  "/produksi": { waktu: true, wilayah: true, hs: false, ss: false, satuan: true },
   "/stok": { waktu: true, wilayah: true, hs: false, ss: true },
   "/arus": { waktu: true, wilayah: true, hs: false, ss: true },
   "/harga": { waktu: true, wilayah: true, hs: true, ss: false, jenis: true },
@@ -66,6 +75,9 @@ interface FilterContextValue extends FilterState {
   /** Jenis beras yang ditampilkan di halaman Harga (satu atau keduanya). */
   jenisHarga: Komoditas[]
   setJenisHarga: (k: Komoditas[]) => void
+  /** Satuan produksi di halaman Produksi. */
+  satuan: Satuan
+  setSatuan: (s: Satuan) => void
   tersedia: Tersedia
   toggleWilayah: (n: string) => void
   setWilayah: (n: string[]) => void
@@ -117,6 +129,7 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
   const [rentang, setRentangState] = useState(false)
   const [kom, setKom] = useState<Komoditas>("medium")
   const [jenisHarga, setJenisHargaState] = useState<Komoditas[]>(["medium", "premium"])
+  const [satuan, setSatuan] = useState<Satuan>("gkg")
   const setJenisHarga = useCallback((j: Komoditas[]) => setJenisHargaState(j.length ? (["medium", "premium"] as Komoditas[]).filter((x) => j.includes(x)) : ["medium", "premium"]), [])
   const klem = (i: number) => Math.min(N_BULAN - 1, Math.max(0, i))
   const setBulan = useCallback(
@@ -201,6 +214,8 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
       setKom,
       jenisHarga,
       setJenisHarga,
+      satuan,
+      setSatuan,
       tersedia,
       toggleWilayah: (n) => simpan({ ...st, wilayah: toggle(st.wilayah, n) }),
       setWilayah: (n) => simpan({ ...st, wilayah: n }),
@@ -226,7 +241,7 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
       lolos,
       W: WILAYAH.filter(lolos),
     }
-  }, [st, simpan, tersedia, pathname, jenisHarga, setJenisHarga, panel, setPanel, kom, bulan, setBulan, rentang, setRentang, bulan2, setBulan2, setRange])
+  }, [st, simpan, tersedia, pathname, jenisHarga, setJenisHarga, satuan, panel, setPanel, kom, bulan, setBulan, rentang, setRentang, bulan2, setBulan2, setRange])
 
   return <FilterContext.Provider value={value}>{children}</FilterContext.Provider>
 }

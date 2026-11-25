@@ -174,12 +174,15 @@ function DaftarPerhatian({ wil, onPick }: { wil: Wilayah[]; onPick: (n: string) 
                 <span className="dp-n">
                   <b>{k.n}</b>
                   <span className="dp-pills">
-                    <HargaPill s={k.hs} />
-                    <StokPill s={k.ss} />
+                    <HargaPill s={k.hs} pre="Harga" />
+                    <StokPill s={k.ss} pre="Stok" />
                   </span>
                   <small className="dp-sub">
-                    <span>
+                    <span title="Harga medium kini → prakiraan 4 pekan">
                       {rp(k.pNow)} → {rp(k.p4)}
+                    </span>
+                    <span title="Cakupan stok: berapa bulan konsumsi wilayah ini bisa dipenuhi stok yang ada (defisit < 0,75, tipis < 1)">
+                      stok {nf(k.cov, 2)} bln
                     </span>
                   </small>
                 </span>
