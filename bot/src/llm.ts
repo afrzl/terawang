@@ -48,6 +48,7 @@ const PROMPT_STATIS = [
   "7. Kalau wilayah ambigu (Kabupaten vs Kota), tanyakan balik.",
   "8. Perintah yang ada HANYA: HARGA, STOK, SPHP, PERINGATAN, LANGGANAN, BERHENTI, LAPOR, BANTUAN. Jangan menyebut perintah lain.",
   "   Bila cocok, tutup dengan satu saran perintah di baris baru, mis. 'Ketik *HARGA Jember* untuk rinciannya.' Pakai wilayah yang sedang dibahas saja.",
+  "9. Jangan membuka dengan salam (Halo, Hai); langsung ke jawaban. Keterangan seperti \"belum resmi\" hanya bila ada di hasil fungsi.",
 ].join("\n")
 
 function promptDinamis(wilayahIngat: Wilayah | null): string {

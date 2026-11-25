@@ -163,7 +163,7 @@ async function riwayat(kontakId: number) {
   return rows.slice(1).reverse().slice(-4)
 }
 
-async function pesanBebas(k: kontak.Kontak, teks: string): Promise<Balasan> {
+async function pesanBebas(k: kontak.Kontak, teks: string, pilihan: Wilayah | null = null): Promise<Balasan> {
   const daftar = await semuaWilayah()
   // pesan yang isinya hanya nama wilayah -> HARGA (tanpa LLM)
   const hanya = cocokkan(teks, daftar)
@@ -176,7 +176,15 @@ async function pesanBebas(k: kontak.Kontak, teks: string): Promise<Balasan> {
   if (!llmAktif()) return { teks: `Maaf, aku belum paham pesannya.\n\n${BANTUAN}`, intent: "tidak_dikenal", wilayahId: null }
 
   // guard rail sebelum OpenAI: panjang, injeksi prompt, topik
-  const sebut = cariDiKalimat(teks, daftar).jenis !== "tidak_ada"
+  const di = pilihan ? null : cariDiKalimat(teks, daftar)
+  // "di malang" bisa Kabupaten atau Kota: tanya balik dulu tanpa memanggil OpenAI
+  if (di?.jenis === "ambigu") {
+    const perintah: Perintah = /\bstok\b/.test(normal(teks)) ? "stok" : "harga"
+    tunda.set(k.nomor_wa, { jenis: "pilih", perintah, pilihan: di.pilihan, sampai: Date.now() + 10 * MENIT, sisa: teks })
+    return { teks: teksPilihWilayah(di.pilihan, labelWilayah), intent: "pilih_wilayah", wilayahId: null }
+  }
+  if (pilihan) teks = `${teks} (wilayah: ${labelWilayah(pilihan)})`
+  const sebut = Boolean(pilihan) || di?.jenis === "pas"
   const tolak = pagar.cekMasukan(teks, sebut)
   if (tolak) return { teks: tolak.teks, intent: `tolak_${tolak.alasan}`, wilayahId: null }
 
@@ -188,7 +196,7 @@ async function pesanBebas(k: kontak.Kontak, teks: string): Promise<Balasan> {
   const batas = pagar.cekBatas(k.id, await kontak.jumlahLlmHariIni(k.id))
   if (batas) return { teks: `${batas.teks}\n\n${BANTUAN}`, intent: `tolak_${batas.alasan}`, wilayahId: null }
 
-  const ingat = daftar.find((w) => w.id === k.wilayah_id) ?? null
+  const ingat = pilihan ?? daftar.find((w) => w.id === k.wilayah_id) ?? null
   try {
     const r = await jawabBebas(teks, await riwayat(k.id), ingat, sebut)
     pagar.catatToken(r.token)
@@ -240,6 +248,8 @@ async function proses(nomor: string, k: kontak.Kontak, teks: string): Promise<Ba
       if (w) {
         tunda.delete(nomor)
         if (BUTUH_WILAYAH.includes(t.perintah)) await kontak.ingatWilayah(k.id, w.id)
+        // pertanyaan bebas yang tadi ditunda: jawab ulang dengan wilayah yang dipilih
+        if (t.sisa && llmAktif()) return pesanBebas(k, t.sisa, w)
         return jalankan(t.perintah, w, k, "")
       }
     }
