@@ -380,7 +380,8 @@ async def data_pratinjau(req: Request):
         n = int(req.query_params.get("n", "50"))
     except ValueError:
         n = 50
-    return JSONResponse(await run_in_threadpool(data.pratinjau, req.query_params.get("sumber", ""), _indeks(req), n))
+    urut = "awal" if req.query_params.get("urut") == "awal" else "terbaru"
+    return JSONResponse(await run_in_threadpool(data.pratinjau, req.query_params.get("sumber", ""), _indeks(req), n, urut))
 
 
 @perlu_login("pipeline")

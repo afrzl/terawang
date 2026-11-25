@@ -6,7 +6,9 @@ Konektor menimpa berkas di tempat, jadi yang tersedia hanya versi terakhir; vers
 """
 from __future__ import annotations
 
+import collections
 import csv
+import heapq
 import gzip
 import io
 import re
@@ -105,7 +107,34 @@ def _buka(p: Path):
     return gzip.open(p, "rt", encoding="utf-8-sig", newline="") if p.name.endswith(".gz") else open(p, encoding="utf-8-sig", newline="")
 
 
-def pratinjau(sid: str, i: int, n: int = 50) -> dict:
+TANGGAL = re.compile(r"^\d{4}-\d{2}(-\d{2})?")
+
+
+def _kunci_waktu(kolom: list[str], contoh: list[str] | None):
+    """Fungsi kunci urutan waktu untuk satu baris, beserta nama kolomnya: kolom tanggal ISO (mis. `tanggal`) atau
+    pasangan `tahun`/`bulan`. None kalau berkas tidak punya kolom waktu."""
+    if contoh:
+        for c, nama in enumerate(kolom):
+            if c < len(contoh) and TANGGAL.match(contoh[c] or ""):
+                return (lambda r, c=c: r[c][:10] if c < len(r) and TANGGAL.match(r[c] or "") else ""), nama
+    rendah = [k.strip().lower() for k in kolom]
+    if "tahun" in rendah:
+        ct, cb = rendah.index("tahun"), rendah.index("bulan") if "bulan" in rendah else None
+
+        def kunci(r):
+            try:
+                t = int(float(r[ct]))
+                b = int(float(r[cb])) if cb is not None and r[cb] else 0
+                return f"{t:04d}-{b:02d}" if b else f"{t:04d}"
+            except (ValueError, IndexError):
+                return ""
+        return kunci, "tahun" + ("/bulan" if cb is not None else "")
+    return None, None
+
+
+def pratinjau(sid: str, i: int, n: int = 50, urut: str = "terbaru") -> dict:
+    """n baris dari berkas. urut=terbaru: baris dengan waktu paling akhir dulu (kalau ada kolom tanggal/tahun, kalau
+    tidak ada: akhir berkas); urut=awal: baris pertama berkas. Juga mengembalikan rentang waktu seluruh berkas."""
     b = _ambil(sid, i)
     p: Path = b["_path"]
     n = max(1, min(int(n), BARIS_MAKS))
@@ -118,18 +147,47 @@ def pratinjau(sid: str, i: int, n: int = 50) -> dict:
         with _buka(p) as f:
             r = csv.reader(f)
             kolom = next(r, [])
-            hitung = b["ukuran"] * (5 if p.name.endswith(".gz") else 1) <= BATAS_HITUNG
-            baris, jumlah = [], 0
+            pindai = b["ukuran"] * (5 if p.name.endswith(".gz") else 1) <= BATAS_HITUNG
+            awal: list[tuple[int, list[str]]] = []
+            ekor: collections.deque = collections.deque(maxlen=n)
+            terbaru: list = []
+            kunci = nama_kunci = None
+            kmin = kmax = None
+            jumlah = 0
             for row in r:
                 jumlah += 1
-                if len(baris) < n:
-                    baris.append(row)
-                elif not hitung:
+                if jumlah == 1:
+                    kunci, nama_kunci = _kunci_waktu(kolom, row)
+                if len(awal) < n:
+                    awal.append((jumlah, row))
+                elif not pindai:
                     break
-            total = jumlah if hitung else None
+                if not pindai:
+                    continue
+                ekor.append((jumlah, row))
+                if kunci:
+                    k = kunci(row)
+                    if k:
+                        kmin = k if kmin is None or k < kmin else kmin
+                        kmax = k if kmax is None or k > kmax else kmax
+                    item = (k, jumlah, row)
+                    if len(terbaru) < n:
+                        heapq.heappush(terbaru, item)
+                    elif item > terbaru[0]:
+                        heapq.heapreplace(terbaru, item)
     except (UnicodeDecodeError, OSError, csv.Error) as e:
         raise GagalData(f"Berkas tidak bisa dibaca sebagai CSV: {e}")
-    return {**info, "jenis": "csv", "kolom": kolom, "baris": baris, "total": total}
+    if urut == "terbaru" and pindai:
+        if kunci:
+            pilih = [(no, row) for _, no, row in sorted(terbaru, reverse=True)]
+        else:
+            pilih = list(reversed(ekor))
+        urut_dipakai = "terbaru" if kunci else "akhir"
+    else:
+        pilih, urut_dipakai = awal, "awal"
+    return {**info, "jenis": "csv", "kolom": kolom, "baris": [row for _, row in pilih], "nomor": [no for no, _ in pilih],
+            "total": jumlah if pindai else None, "urut": urut_dipakai,
+            "rentang": {"kolom": nama_kunci, "min": kmin, "max": kmax} if kmin else None}
 
 
 def path_unduh(sid: str, i: int) -> Path:

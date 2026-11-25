@@ -511,6 +511,14 @@ async function muatData(s = sumberAktif) {
 }
 
 const ANGKA = /^-?\d+([.,]\d+)?$/;
+const fmtTglData = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+const fmtBlnData = new Intl.DateTimeFormat("id-ID", { month: "short", year: "numeric", timeZone: "UTC" });
+function tglData(v) {
+  if (!v) return "–";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return fmtTglData.format(new Date(v + "T00:00:00Z"));
+  if (/^\d{4}-\d{2}$/.test(v)) return fmtBlnData.format(new Date(v + "-01T00:00:00Z"));
+  return v;
+}
 async function bukaPratinjau(i, gulir = true) {
   const s = sumberAktif;
   pratinjauAktif = i;
@@ -523,21 +531,28 @@ async function bukaPratinjau(i, gulir = true) {
   $("#isi-pratinjau").replaceChildren();
   if (gulir && matchMedia("(max-width:1080px)").matches) panel.scrollIntoView({ behavior: "smooth", block: "start" });
   try {
-    const d = await api(`/data/pratinjau?sumber=${encodeURIComponent(s.id)}&i=${i}&n=${$("#jumlah-baris").value}`);
+    const d = await api(`/data/pratinjau?sumber=${encodeURIComponent(s.id)}&i=${i}&n=${$("#jumlah-baris").value}&urut=${$("#urut-baris").value}`);
     if (pratinjauAktif !== i || sumberAktif !== s) return;
     const [asal] = ASAL(d.asal);
     if (d.jenis === "json") {
       $("#jumlah-baris").hidden = true;
+      $("#urut-baris").hidden = true;
       $("#info-pratinjau").textContent = `JSON · ${ukuran(d.ukuran)} · asal ${asal}${d.terpotong ? " · ditampilkan 200 KB pertama" : ""}`;
       $("#isi-pratinjau").replaceChildren(el("pre", { class: "teks-data" }, d.teks));
       return;
     }
     $("#jumlah-baris").hidden = false;
-    $("#info-pratinjau").textContent = `${d.total != null ? d.total.toLocaleString("id-ID") + " baris" : "baris tidak dihitung (berkas besar)"} · ${d.kolom.length} kolom · ${ukuran(d.ukuran)} · asal ${asal} · menampilkan ${d.baris.length} baris pertama`;
+    $("#urut-baris").hidden = false;
+    const URUT = { terbaru: "terbaru", akhir: "terakhir di berkas", awal: "pertama di berkas" };
+    const rentang = d.rentang ? `data ${tglData(d.rentang.min)} s.d. ${tglData(d.rentang.max)} · ` : "";
+    $("#info-pratinjau").replaceChildren(
+      rentang ? el("b", {}, rentang) : "",
+      `${d.total != null ? d.total.toLocaleString("id-ID") + " baris" : "baris tidak dihitung (berkas besar)"} · ${d.kolom.length} kolom · ${ukuran(d.ukuran)}${d.asal ? " · asal " + asal : ""} · menampilkan ${d.baris.length} baris ${URUT[d.urut] || ""}`,
+      $("#urut-baris").value === "terbaru" && d.urut === "awal" ? " (berkas terlalu besar untuk diurutkan)" : "");
     const kanan = d.kolom.map((_, c) => d.baris.length > 0 && d.baris.every((r) => r[c] === "" || r[c] === undefined || ANGKA.test(r[c])));
     $("#isi-pratinjau").replaceChildren(el("div", { class: "tabel-data-wrap" }, el("table", { class: "tabel-data" },
       el("thead", {}, el("tr", {}, el("th", { class: "no" }, "#"), ...d.kolom.map((k, c) => el("th", { class: kanan[c] ? "r" : "" }, k)))),
-      el("tbody", {}, ...d.baris.map((r, n) => el("tr", {}, el("td", { class: "no" }, n + 1), ...d.kolom.map((_, c) => el("td", { class: kanan[c] ? "r" : "" }, r[c] ?? ""))))))));
+      el("tbody", {}, ...d.baris.map((r, n) => el("tr", {}, el("td", { class: "no" }, (d.nomor?.[n] ?? n + 1).toLocaleString("id-ID")), ...d.kolom.map((_, c) => el("td", { class: kanan[c] ? "r" : "" }, r[c] ?? ""))))))));
   } catch (e) {
     $("#info-pratinjau").textContent = e.message;
   }
@@ -749,7 +764,7 @@ pemuat.jejak = async () => {
 document.addEventListener("DOMContentLoaded", async () => {
   document.querySelectorAll("#menu a[data-hal]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); pilihHal(a.dataset.hal); }));
   document.querySelectorAll("#sub-tab-sumber button").forEach((b) => b.addEventListener("click", () => pilihSub(b.dataset.sub)));
-  $("#jumlah-baris").addEventListener("change", () => { if (pratinjauAktif != null) bukaPratinjau(pratinjauAktif, false); });
+  for (const id of ["#jumlah-baris", "#urut-baris"]) $(id).addEventListener("change", () => { if (pratinjauAktif != null) bukaPratinjau(pratinjauAktif, false); });
   $("#tombol-menu").addEventListener("click", () => laci(!document.body.classList.contains("laci-buka")));
   $("#tirai").addEventListener("click", () => laci(false));
   window.addEventListener("hashchange", () => { if (sesi) { const [h, sub] = location.hash.slice(1).split("/"); pilihHal(h || "pipeline", sub); } });
