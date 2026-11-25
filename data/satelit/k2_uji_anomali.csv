@@ -1,0 +1,12 @@
+skor,kejadian,n,jumlah_kejadian,auc,peluang_kuintil_teratas,peluang_sisanya,korelasi_spearman
+"ANOMALI 3 bln (usulan), 2022-2025",naik >= 2% / 28 hari,1824,394,0.501,0.2384,0.2104,
+"ANOMALI 3 bln (usulan), 2022-2025",naik >= 1% di atas median Jatim,1824,487,0.5094,0.2904,0.2611,
+"ANOMALI 3 bln (usulan), 2025",naik >= 2% / 28 hari,456,82,0.5086,0.2174,0.1703,
+"ANOMALI 3 bln (usulan), 2025",naik >= 1% di atas median Jatim,456,120,0.5236,0.2935,0.2555,
+"CAKUPAN STOK model sekarang, 2025",naik >= 2% / 28 hari,456,82,0.4327,0.1739,0.1813,
+"CAKUPAN STOK model sekarang, 2025",naik >= 1% di atas median Jatim,456,120,0.4314,0.2174,0.2747,
+"ANOMALI 1 bln, 2022-2025",naik >= 2% / 28 hari,1824,394,0.4999,0.211,0.2173,
+"ANOMALI 1 bln, 2022-2025",naik >= 1% di atas median Jatim,1824,487,0.4951,0.2658,0.2673,
+"ANOMALI 6 bln, 2022-2025",naik >= 2% / 28 hari,1824,394,0.5076,0.2164,0.2159,
+"ANOMALI 6 bln, 2022-2025",naik >= 1% di atas median Jatim,1824,487,0.5146,0.2904,0.2611,
+"ANOMALI 3 bln tingkat PROVINSI, 2022-2025",naik >= 2% / 28 hari,48,6,0.5913,0.1,0.1316,-0.1328

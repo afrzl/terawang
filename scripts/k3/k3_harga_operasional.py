@@ -1,6 +1,7 @@
 """TERAWANG K3a · Prediksi harga HARIAN per kab/kota (7, 14, 21, 28 hari) dan status terhadap HET.
 
-Model: harga hari terakhir (asal harian) + sebaran galat empiris jendela 365 hari terakhir (hanya galat yang targetnya sudah terjadi).
+Model: harga hari terakhir (asal harian) + sebaran galat empiris jendela 365 hari terakhir (hanya galat yang targetnya sudah terjadi),
+dibobot eksponensial dengan paruh waktu 60 hari (25 Nov 2026; sebelumnya bobot rata, lihat scripts/k3/uji_k3_varian.py).
   harga_prediksi = p0 x exp(median galat);  P10/P90 = kuantil galat;  P(harga > HET) = proporsi galat > log(HET/p0)
 Status (HET dari app.ambang_harga): SIAGA bila P(> 1,05 HET) >= ambang_siaga; WASPADA bila P(> HET) >= ambang_waspada; AMAN selainnya.
 Ambang per horizon dikalibrasi lewat backtest (sejak 22 Agu 2025, kab yang masih <= HET): ambang yang memaksimalkan F1 deteksi
@@ -21,6 +22,29 @@ import model_stok as ms  # noqa: E402
 
 HOR = (7, 14, 21, 28)
 JENDELA = 365
+PARUH = 60  # galat dibobot eksponensial (paruh waktu 60 hari); uji varian: Brier lebih baik 4-11%, pita lebih dekat nominal 80%
+
+
+def bobot(tgt, t):
+    """Bobot galat menurut umur targetnya terhadap tanggal asal t (scripts/k3/uji_k3_varian.py, varian EW60)."""
+    return np.exp(-np.log(2) * (t - tgt).dt.days.to_numpy() / PARUH)
+
+
+def sebaran(pool, t):
+    """Galat terurut + bobot kumulatif ternormalisasi."""
+    e, w = pool.y.to_numpy(), bobot(pool.tgt, t)
+    o = np.argsort(e)
+    return e[o], np.cumsum(w[o]) / w.sum()
+
+
+def p_lebih(e, cw, d):
+    """P(galat > d) dari sebaran berbobot."""
+    k = np.searchsorted(e, np.atleast_1d(d), side="right")
+    return 1 - np.where(k > 0, cw[np.maximum(k - 1, 0)], 0.0)
+
+
+def kuantil(e, cw, qs):
+    return np.array([e[min(np.searchsorted(cw, q), len(e) - 1)] for q in qs])
 MULAI_UJI = pd.Timestamp("2025-08-22")
 
 
@@ -53,8 +77,8 @@ def backtest(P, H, het):
         pe = np.zeros(len(te))
         for t, sub in te.groupby("tgl"):
             m = (kn.tgt <= t) & (kn.tgt > t - pd.Timedelta(days=JENDELA))
-            e = np.sort(kn[m].y.to_numpy())
-            pe[te.index.get_indexer(sub.index)] = 1 - np.searchsorted(e, sub.d.to_numpy(), side="right") / len(e)
+            e, cw = sebaran(kn[m], t)
+            pe[te.index.get_indexer(sub.index)] = p_lebih(e, cw, sub.d.to_numpy())
         ev = te.ev.to_numpy()
         best = (0, 0.3, 0, 0, 0)
         for th in np.arange(0.05, 0.75, 0.05):
@@ -88,12 +112,12 @@ def main():
         p0 = P.ffill().iloc[-1]
         for h in HOR:
             kn = galat(L, h)
-            e = kn[(kn.tgt <= tgl_acuan) & (kn.tgt > tgl_acuan - pd.Timedelta(days=JENDELA))].y.to_numpy()
-            q10, q50, q90 = np.quantile(e, [0.1, 0.5, 0.9])
+            e, cw = sebaran(kn[(kn.tgt <= tgl_acuan) & (kn.tgt > tgl_acuan - pd.Timedelta(days=JENDELA))], tgl_acuan)
+            q10, q50, q90 = kuantil(e, cw, (0.1, 0.5, 0.9))
             th_w = kal[h]["ambang"]
             for kab, p in p0.items():
-                pw = float((e > np.log(H / p)).mean())
-                ps = float((e > np.log(siaga / p)).mean())
+                pw = float(p_lebih(e, cw, np.log(H / p))[0])
+                ps = float(p_lebih(e, cw, np.log(siaga / p))[0])
                 st = "SIAGA" if ps >= max(th_w, 0.5) else ("WASPADA" if pw >= th_w else "AMAN")
                 rows.append((kom, kab, str(tgl_acuan.date()), h, p * np.exp(q50), p * np.exp(q10), p * np.exp(q90), st, pw))
     R = pd.DataFrame(rows, columns=["komoditas", "kab", "tanggal_acuan", "horizon_hari", "harga", "p10", "p90", "status", "p_di_atas_het"])
@@ -105,7 +129,7 @@ def main():
         print("  peluang melewati HET tertinggi (28 hari):", ", ".join(f"{r.kab} {r.p_di_atas_het * 100:.0f}%" for r in d28.itertuples()))
     R.to_csv("data/satelit/k3_harga_operasional.csv", index=False)
     if a.simpan:
-        par = {"model": "harga hari terakhir + sebaran galat empiris jendela 365 hari", "asal": "harian", "horizon_hari": list(HOR), "kalibrasi_ambang": kal_all,
+        par = {"model": "harga hari terakhir + sebaran galat empiris jendela 365 hari, dibobot eksponensial paruh 60 hari", "asal": "harian", "horizon_hari": list(HOR), "kalibrasi_ambang": kal_all,
                "uji": "backtest sejak 22 Agu 2025 (kab <= HET), ambang maks F1", "het": {int(k): int(v) for k, v in het.het.items()}}
         rid = int(ms.sql(f"insert into app.model_run (jenis, nama_versi, parameter, selesai_pada) values ('K3_HARGA','k3_harga_harian_365_2026_11','{json.dumps(par)}'::jsonb, now()) returning id").iloc[0, 0])
         vals = [f"({rid},{ids[r.kab]},{r.komoditas},'{r.tanggal_acuan}',{r.horizon_hari},{r.harga},{r.p10},{r.p90},'{r.status}','MODEL')" for r in R.itertuples()]

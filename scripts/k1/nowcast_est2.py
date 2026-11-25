@@ -97,6 +97,7 @@ def main():
     ap.add_argument("--mulai", default="2019-04")
     ap.add_argument("--akhir", default="2026-09")
     ap.add_argument("--sufiks", default="")
+    ap.add_argument("--lags", default="", help="daftar jeda genangan->panen (jendela 12 hari), mis. 7,8,9,10; satu berkas per jeda (sufiks _jedaN)")
     ap.add_argument("--akhir-latih", default="", help="batas data latih fusi dan peluang verifikasi (bawaan: 31 Des tahun sebelum citra terakhir)")
     a = ap.parse_args()
 
@@ -131,7 +132,8 @@ def main():
     th0, tm0 = (int(x) for x in a.mulai.split("-"))
     th1, tm1 = (int(x) for x in a.akhir.split("-"))
     bulan = [(y, m) for y in range(th0, th1 + 1) for m in range(1, 13) if (th0, tm0) <= (y, m) <= (th1, tm1)]
-    hasil = []
+    lags = [int(x) for x in a.lags.split(",")] if a.lags else [LAG]
+    hasil = {g: [] for g in lags}
     for (y, m) in bulan:
         t_abs = y * 12 + m
         C = dt.date(y, m, 1) - dt.timedelta(days=a.lead)
@@ -140,11 +142,16 @@ def main():
         if not sel or len(Wt) == 0:
             continue
         c = max(sel)
-        e_lo, e_hi = Wt.min() - LAG - 1, Wt.max() - LAG + 1
-        if c < e_lo:  # citra belum menjangkau jendela tanam yang relevan (data basi): JANGAN isi 0, biarkan kosong
-            print(f"  PERINGATAN {y}-{m:02d}: jendela citra terakhir {tgl[c]} belum mencakup masa tanam bulan target; taksiran dikosongkan", flush=True)
-            hasil += [(k, t_abs, np.nan, np.nan, np.nan) for k in kab_u]
+        lo_g = {g: Wt.min() - g - 1 for g in lags}
+        hi_g = {g: Wt.max() - g + 1 for g in lags}
+        basi = [g for g in lags if c < lo_g[g]]
+        for g in basi:  # citra belum menjangkau jendela tanam yang relevan (data basi): JANGAN isi 0, biarkan kosong
+            print(f"  PERINGATAN {y}-{m:02d} (jeda {g}): jendela citra terakhir {tgl[c]} belum mencakup masa tanam bulan target; taksiran dikosongkan", flush=True)
+            hasil[g] += [(k, t_abs, np.nan, np.nan, np.nan) for k in kab_u]
+        aktif = [g for g in lags if g not in basi]
+        if not aktif:
             continue
+        e_lo, e_hi = min(lo_g[g] for g in aktif), max(hi_g[g] for g in aktif)
         s0 = max(0, e_lo - 12)
         seg0 = max(0, min(s0, c) - 12)
         sl = slice(seg0, c + 1)
@@ -160,24 +167,29 @@ def main():
             Lf2[kosong] = bl[kosong] + ml.predict(X[kosong])
         Ef2, Lf2 = Ef2.reshape(E.shape), Lf2.reshape(L.shape)
         off = max(0, s0 - seg0)
-        acc_v, acc_p = np.zeros(len(kab_u)), np.zeros(len(kab_u))
+        acc_v = {g: np.zeros(len(kab_u)) for g in aktif}
+        acc_p = {g: np.zeros(len(kab_u)) for g in aktif}
         for i in range(N):
             for e, w, ver in deteksi(Lf2[i, off:], Ef2[i, off:], p):
                 e_abs = seg0 + off + e
-                if e_abs < e_lo or e_abs > e_hi:
-                    continue
-                for dk, wk in KERNEL:
-                    j = e_abs + LAG + dk
-                    if 0 <= j < len(bidx) and bidx[j] == t_abs:
-                        (acc_v if ver else acc_p)[kab_i[i]] += wk * w
-        hasil += [(k, t_abs, (acc_v[j] + acc_p[j]) * skala[j], acc_v[j] * skala[j], acc_p[j] * skala[j]) for j, k in enumerate(kab_u)]
+                for g in aktif:
+                    if e_abs < lo_g[g] or e_abs > hi_g[g]:
+                        continue
+                    for dk, wk in KERNEL:
+                        j = e_abs + g + dk
+                        if 0 <= j < len(bidx) and bidx[j] == t_abs:
+                            (acc_v if ver else acc_p)[g][kab_i[i]] += wk * w
+        for g in aktif:
+            av, apn = acc_v[g], acc_p[g]
+            hasil[g] += [(k, t_abs, (av[j] + apn[j]) * skala[j], av[j] * skala[j], apn[j] * skala[j]) for j, k in enumerate(kab_u)]
         if m == 12 or (y, m) == bulan[-1]:
             print(f"  lead {a.lead}: sampai {y}-{m:02d} ({time.time() - t0:.0f} detik)", flush=True)
-    out = pd.DataFrame(hasil, columns=["kabkota", "t", "est", "est_ver", "est_pend"])
-    path = os.path.join(os.environ.get("TERAWANG_K1_DIR", "data/satelit"), f"est_nowcast2_lead{a.lead}{a.sufiks}.csv")  # pipeline: di luar repo
-    out.to_csv(path, index=False)
-    print("tersimpan", path, len(out), "baris", flush=True)
-
+    for g in lags:
+        out = pd.DataFrame(hasil[g], columns=["kabkota", "t", "est", "est_ver", "est_pend"])
+        suf = a.sufiks + (f"_jeda{g}" if a.lags else "")
+        path = os.path.join(os.environ.get("TERAWANG_K1_DIR", "data/satelit"), f"est_nowcast2_lead{a.lead}{suf}.csv")  # pipeline: di luar repo
+        out.to_csv(path, index=False)
+        print("tersimpan", path, len(out), "baris", flush=True)
 
 if __name__ == "__main__":
     main()
