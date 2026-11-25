@@ -33,8 +33,14 @@ DIKENAL: dict[str, dict[str, dict]] = {
     "bot": {
         "OPENAI_API_KEY": {"label": "API key OpenAI", "secret": True, "uji": "openai",
                            "ket": "Untuk menjawab pesan bebas di bot WhatsApp. Kosong = bot hanya melayani perintah baku."},
-        "OPENAI_MODEL": {"label": "Model OpenAI", "ket": "Model kelas mini supaya hemat, mis. gpt-5-mini."},
-        "OPENAI_REASONING_EFFORT": {"label": "Tingkat penalaran", "pilihan": ["minimal", "low", "medium"]},
+        "OPENAI_MODEL": {"label": "Model OpenAI",
+                         "pilihan": ["gpt-5-nano", "gpt-6-luna", "gpt-4o-mini", "gpt-5.4-nano", "gpt-5.6-luna", "gpt-5-mini", "gpt-4.1-mini", "gpt-5.4-mini"],
+                         "ket": "Perkiraan biaya per pesan bebas (±2.500 token masuk, ±250 keluar; harga OpenAI Nov 2026) dan jumlah pesan per $5: "
+                                "gpt-5-nano ±$0,0002 (±22 rb) · gpt-6-luna ±$0,0004 (±13 rb) · gpt-4o-mini ±$0,0005 (±9 rb) · "
+                                "gpt-5.4-nano / gpt-5.6-luna ±$0,0008 (±6 rb) · gpt-5-mini ±$0,0011 (±4,5 rb, disarankan) · "
+                                "gpt-4.1-mini ±$0,0014 (±3,5 rb) · gpt-5.4-mini ±$0,003 (±1,6 rb). Perintah baku tidak memakai token."},
+        "OPENAI_REASONING_EFFORT": {"label": "Tingkat penalaran", "pilihan": ["none", "minimal", "low", "medium"],
+                                    "ket": "Hanya untuk model gpt-5/gpt-6. Makin tinggi makin mahal dan lambat. Kosongkan untuk gpt-4o/4.1."},
         "LLM_BATAS_HARIAN": {"label": "Batas pesan LLM per nomor per hari", "angka": True},
         "LLM_BATAS_10MENIT": {"label": "Batas pesan LLM per nomor per 10 menit", "angka": True, "ket": "Anti-spam. Lewat batas, bot hanya melayani perintah baku."},
         "LLM_TOKEN_HARIAN": {"label": "Anggaran token seluruh bot per hari", "angka": True, "secret": False,
