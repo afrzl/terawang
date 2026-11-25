@@ -10,6 +10,7 @@ Luas panen wall-to-wall sudah diuji (25 Nov sore, proyek GEE baru terawang-51580
 |---|---|---|---|
 | K1 | Jeda genangan-panen per kab (84/96/108/120 hari), dipilih dari 2019-2021 | Tidak lebih baik dari 96 hari tetap | **Tidak dipakai.** Opsi `--lags` tetap ada untuk uji |
 | K1 | Luas panen wall-to-wall (semua piksel sawah Sentinel-2) ganti 400 titik | Setara, tidak lebih baik | **Tidak dipakai.** Derau sampling ternyata bukan sumber galat utama |
+| K1 | Titik sampel ±2.000 per kab (60.203 titik baru) ganti 400 | Setara di jarak 0/28 hari, memburuk di 56 hari | **Tidak dipakai** |
 | K2 | Status = anomali neraca 3 bulan terhadap normal musiman (tanpa jangkar) | AUC 0,50-0,52 terhadap kenaikan harga; model sekarang 0,43 | **Belum dipasang.** Lebih jujur, tetapi belum terbukti memprediksi harga |
 | K3 | Galat dibobot eksponensial (paruh 60 hari) | Brier 4-11% lebih baik, F1 medium naik di semua horizon, pita lebih dekat 80% | **Dipakai** di `k3_harga_operasional.py` |
 | K3 | Sebaran bersyarat momentum / anomali FAO, conformal adaptif | Tambahan kecil atau tidak konsisten | Tidak dipakai |
@@ -59,7 +60,23 @@ Model gabungan (uji sama dengan bagian sebelumnya):
 
 Taksiran titik dan wall-to-wall sangat mirip: korelasi bulanan 0,98 (median per kab 0,96), selisih kab-bulan ±15%. Jadi derau sampling 400 titik hanya sekitar 15%, sedangkan galat terhadap BPS sekitar 41%. Kalau keduanya independen, menghapus derau sampling hanya menurunkan galat ke sekitar 38%, dan uji di atas menunjukkan perbaikan yang lebih kecil lagi.
 
-Kesimpulan: **wall-to-wall tidak dipakai**. Sisa galat berasal dari hal yang sama pada titik maupun wall-to-wall: aturan genangan dan jeda tetap 96 hari (waktu panen per petak tidak tepat), masker WorldCover yang mencampur tegalan, dan derau angka BPS bulanan sendiri (KSA). Menambah titik juga kemungkinan hanya memberi perbaikan kecil (uji 2.000 titik per kab menyusul). Arah yang lebih menjanjikan: tanggal tanam dari minimum VH per piksel (Manago 2020) dan kalibrasi ke titik KSA, bukan jumlah sampel.
+Kesimpulan: **wall-to-wall tidak dipakai**. Sisa galat berasal dari hal yang sama pada titik maupun wall-to-wall: aturan genangan dan jeda tetap 96 hari (waktu panen per petak tidak tepat), masker WorldCover yang mencampur tegalan, dan derau angka BPS bulanan sendiri (KSA). Menambah titik juga tidak membantu (bagian berikut). Arah yang lebih menjanjikan: tanggal tanam dari minimum VH per piksel (Manago 2020) dan kalibrasi ke titik KSA, bukan jumlah sampel.
+
+## K1: titik sampel ±2.000 per kab
+
+Skrip: `scripts/gee/tambah_titik.py` (1.600 titik baru per kab dari ESA WorldCover kelas 40, seed 101; 60.203 titik, deret sama dengan titik lama, 252 jendela s.d. 6 Nov 2026), lalu `TERAWANG_TITIK_TAMBAHAN=<folder> nowcast_est2.py --lead L --akhir 2026-12` dan `scripts/k1/uji_folder_est.py`. Berkas titik (±101 MB) disimpan di VPS (`~/.local/share/terawang/titik_tambahan`), tidak di-commit.
+
+| Varian | Citra saja WAPE kab-bulan 2022-25 (0 / 28 / 56) | Bergulir 2022-25 WAPE (0 / 28 / 56) | Uji Jan-Sep 2026 MAPE (0 / 28 / 56) | MAPE kota 2026 (28 hari) |
+|---|---|---|---|---|
+| **400 titik (sekarang)** | 39,7 / 41,7 / 43,5 | 28,8 / 29,3 / 31,0 | **13,2 / 14,3 / 15,1** | **26,8** |
+| ±2.000 titik | 38,8 / 40,7 / 53,3 | 28,4 / 29,4 / 34,7 | 13,8 / 15,8 / 15,5 | 34,5 |
+
+Pemeriksaan:
+- Kontrol: 400 titik dihitung ulang dengan kode dan data yang sama memberi angka **identik** dengan berkas operasional, jadi perbedaan berasal dari titik tambahan.
+- Kualitas data titik baru sama dengan titik lama: fraksi awan, sebaran VH/LSWI/EVI, laju genangan, keselarasan LSWI-EVI dan VH dalam satu titik, semuanya cocok sampai digit ketiga. Tidak ada salah urut atau geser jendela.
+- Di jarak 56 hari, bagian terverifikasi (est_ver) turun 5%, tetapi bagian belum terverifikasi (est_pend, berbobot peluang) naik 62%, terpusat di beberapa bulan (mis. Kediri Mar 2021, Tuban Mar 2021, Bojonegoro Mei 2026). Bagian ini bergantung pada jendela yang diisi model fusi (HistGradientBoosting) di dekat tanggal potong. Model fusi dilatih ulang pada sampel latih yang berbeda (560 ribu sel dari 75 ribu titik), jadi taksiran jarak 56 hari **tidak stabil** terhadap pelatihan ulang fusi. Ini perlu dicatat sebagai kelemahan, bukan diperbaiki dengan menambah titik.
+
+Kesimpulan: menambah titik tidak memperbaiki K1, sejalan dengan hasil wall-to-wall (derau sampling kecil). Tetap 400 titik.
 
 ## K2: status sebagai anomali musiman
 
