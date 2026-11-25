@@ -159,3 +159,19 @@ Semua varian lebih buruk atau sama. Catatan:
 - Puncak hanya sempat terlihat untuk 40% taksiran jarak 0, 2% jarak 28, 0% jarak 56: puncak terjadi ±1,5 bulan sebelum panen, jadi jangkar ini hanya bisa menolong bulan berjalan.
 - Puncak EVI berupa dataran (beberapa jendela hampir sama), sehingga posisinya bergeser ±1-2 jendela (12-24 hari) karena derau; awal genangan adalah kejadian tajam. Mensyaratkan puncak dari citra jernih (bukan tebakan fusi) tidak mengubah hasil, jadi masalahnya bukan awan.
 - Kesimpulan: tanpa label lapangan, genangan tetap penanda fase terbaik. Penentuan fase berikutnya menunggu label KSA. Skrip: scratchpad `kohort/fitur_puncak.py`, `banding_puncak.py`.
+
+## Uji 25 Nov 2026: sumber peta sawah (TIDAK diubah)
+
+**Luas sawah resmi per kab (LBS) menggantikan WorldCover:** tidak diuji karena secara matematis hampir tanpa efek. Luas sawah hanya pengali skala per kab, dan koefisien kalibrasi per kab (Σ BPS / Σ citra) membatalkan skala itu; yang tersisa hanya efek kecil dari penarikan koefisien ke rata-rata Jatim. (LBS Jatim total 1.206.475 ha menurut ATR/BPN; tabel per kab Kementan 2015-2019 belum diunduh.)
+
+**Masker padi dari riwayat citra:** skor titik = siklus padi terverifikasi per tahun (aturan genangan, deret terisi fusi, 2019-2025, tanpa label BPS). Median 0,57 siklus/tahun; 31% titik < 0,25 (praktis tidak pernah tanam padi: tebu, tegalan, kebun), 46% < 0,5. Titik di bawah ambang dibuang.
+
+| Ambang (siklus/thn) | Titik dibuang | Bulanan 0 / 28 / 56 | 3 bulan kab | kota | Jatim | Jan-Mar 2026 |
+|---|---|---|---|---|---|---|
+| 0 (sekarang) | 0% | 27,8 / 28,3 / 29,9 | 13,9 | 32,0 | 6,7 | -13,5% |
+| 0,25 | 31% | 27,6 / 28,1 / 29,7 | 13,8 | 30,6 | 6,6 | -13,8% |
+| 0,5 | 46% | 27,4 / 28,1 / 29,7 | 13,8 | 30,6 | 6,5 | -13,3% |
+| 0,75 | 56% | 27,8 / 28,6 / 29,9 | 14,1 | 31,2 | 6,8 | -13,2% |
+| 1,0 | 61% | 28,2 / 28,9 / 30,1 | 14,4 | 31,5 | 7,1 | -13,5% |
+
+Perbaikan paling banyak 0,4 poin (kota 1,4 poin). Titik bukan padi hampir tidak pernah memicu genangan terverifikasi, jadi kontribusinya memang sudah mendekati nol. Catatan: skor memakai citra 2019-2025 yang mencakup tahun uji (tanpa label, tetapi sedikit bocor), jadi angka di atas sedikit optimistis. Tidak diterapkan sekarang; layak dipasang saat titik sampel ditarik ulang (RTL: sebar titik sebanding luas sawah, hanya di titik padi). Skrip: scratchpad `kohort/masker_padi.py`, `banding_masker.py`.

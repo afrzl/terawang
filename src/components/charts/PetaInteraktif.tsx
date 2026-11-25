@@ -3,7 +3,7 @@ import { curveCatmullRom, line as d3line } from "d3-shape"
 import { Map as MlMap, Marker, ScaleControl, setWorkerUrl, type GeoJSONSource, type MapLayerMouseEvent, type ImageSource, type StyleSpecification } from "maplibre-gl"
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url"
 import "maplibre-gl/dist/maplibre-gl.css"
-import { Box, ChevronDown, ChevronUp, Compass, Crosshair, Map as MapIcon, Minus, Plus, RotateCcw, RotateCw } from "lucide-react"
+import { Box, ChevronDown, ChevronUp, Compass, Crosshair, Map as MapIcon, Minus, Plus, RotateCcw, RotateCw, Type } from "lucide-react"
 import { LAYERS, binColor, byName, type LayerKey, type Wilayah } from "@/lib/data"
 import { warnaSpec, type LayerSpec } from "@/lib/petaLayers"
 import { fallbackKab, loadGeeKab, type KabCollection } from "@/lib/geo"
@@ -156,8 +156,8 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
   const { basemap, fillOp, overlays, citra } = peta
   const arus = spec ? peta.arus : "off"
   const tiga = spec ? peta.dim === "3d" : false
-  // Halaman Ringkasan Peta (spec) tidak memakai lapisan GEE dan citra kabupaten.
-  const ov = spec ? "off" : peta.ov
+  // Lapisan GEE boleh tampil di semua halaman peta; citra kabupaten hanya di halaman lama (tanpa spec).
+  const ov = peta.ov
   const citraMode = spec ? "off" : peta.citraMode
   const { sel, select } = useSelection()
   const { lolos, mulai, akhir } = useFilter()
@@ -169,7 +169,7 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
   const val = spec ? spec.val : (getValue ?? d.val)
   const fmtVal = (k: Wilayah) => (spec ? spec.fmt(spec.val(k)) : d.na?.(k) ? "sawah < 1.500 ha" : d.fmt(val(k)))
   const warna = (k: Wilayah) => (spec ? warnaSpec(spec, k) : d.na?.(k) ? "var(--s0)" : binColor(layer, val(k)))
-  const labelNilai = spec ? spec.label : (valueLabel ?? d.title.split(",")[0])
+  const namaNilai = spec ? spec.label : (valueLabel ?? d.title.split(",")[0])
 
   // Data pendukung dari GEE (boleh belum ada).
   useEffect(() => {
@@ -248,7 +248,7 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
         <>
           <b>{k.n}</b>
           <br />
-          {labelNilai}: <span className="m">{fmtVal(k)}</span>
+          {namaNilai}: <span className="m">{fmtVal(k)}</span>
           <br />
           Harga kini <span className="m">{rp(k.pNow)}</span> · stok <span className="m">{nf(k.cov, 2)}</span> bln
         </>,
@@ -357,6 +357,8 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
     map.setFilter("kab-sel", ["==", ["get", "n"], fokus ? sel : ""])
     if (!fokus) {
       // Lepas fokus: kembali ke cakupan filter (atau seluruh Jawa Timur).
+      // Pemuatan awal sudah selesai, jadi klik pertama sesudahnya tidak boleh dilewati.
+      first.current = false
       lastFilter.current = 0
       fitFilter(map)
       return
@@ -403,6 +405,64 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, wKey, kab])
 
+
+  // Label nilai per wilayah (opsional): nama dan nilai di pusat daratan; label yang bertabrakan disembunyikan.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready || !spec || !peta.labelNilai) return
+    const items: { el: HTMLElement; mk: Marker; c: [number, number]; prio: number }[] = []
+    // Peringkat 3 tertinggi dan 3 terendah di antara wilayah yang lolos filter. Wilayah yang nilainya sama dengan batas peringkat dilewati agar tidak ada peringkat semu.
+    const urut = kab.features.map((f) => byName[f.properties.n]).filter((k): k is Wilayah => !!k && lolos(k)).map((k) => ({ n: k.n, v: val(k) })).sort((a, b) => b.v - a.v)
+    const peringkat = new Map<string, { atas: boolean; no: number }>()
+    if (urut.length >= 7) {
+      for (let i = 0; i < 3; i++) {
+        if (urut[i].v !== urut[3].v) peringkat.set(urut[i].n, { atas: true, no: i + 1 })
+        const j = urut.length - 1 - i
+        if (urut[j].v !== urut[urut.length - 4].v) peringkat.set(urut[j].n, { atas: false, no: i + 1 })
+      }
+    }
+    for (const f of kab.features) {
+      const k = byName[f.properties.n]
+      if (!k || !lolos(k)) continue
+      const el = document.createElement("div")
+      el.className = "nilai-lbl"
+      const pk = peringkat.get(k.n)
+      if (pk) {
+        el.classList.add(pk.atas ? "atas" : "bawah")
+        el.title = pk.atas ? `Peringkat ${pk.no} tertinggi` : `Peringkat ${pk.no} terendah`
+        const bd = document.createElement("i")
+        bd.textContent = `${pk.atas ? "▲" : "▼"}${pk.no}`
+        el.append(bd)
+      }
+      const nm = document.createElement("span")
+      nm.textContent = short(k.n)
+      const v = document.createElement("b")
+      v.textContent = fmtVal(k)
+      el.append(nm, v)
+      const c = pusatDaratan(f)
+      const mk = new Marker({ element: el, anchor: "center" }).setLngLat(c).addTo(map)
+      items.push({ el, mk, c, prio: k.n === sel ? 0 : pk ? 1 : 2 })
+    }
+    const susun = () => {
+      const pakai: { x: number; y: number; w: number; h: number }[] = []
+      for (const it of [...items].sort((a, b) => a.prio - b.prio)) {
+        const p = map.project(it.c)
+        const w = it.el.offsetWidth
+        const h = it.el.offsetHeight
+        const r = { x: p.x - w / 2, y: p.y - h / 2, w, h }
+        const bentrok = pakai.some((t) => r.x < t.x + t.w + 2 && r.x + r.w + 2 > t.x && r.y < t.y + t.h + 2 && r.y + r.h + 2 > t.y)
+        it.el.style.visibility = bentrok ? "hidden" : "visible"
+        if (!bentrok) pakai.push(r)
+      }
+    }
+    susun()
+    map.on("moveend", susun)
+    return () => {
+      map.off("moveend", susun)
+      for (const it of items) it.mk.remove()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, spec, spec?.key, peta.labelNilai, kab, dataKey, W, sel])
 
   // Garis arus beras: lengkung dari asal ke tujuan, tebal = volume, dasbor bergerak ke arah tujuan.
   useEffect(() => {
@@ -733,6 +793,10 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
             <button type="button" aria-pressed={tiga} onClick={() => peta.setDim("3d")} title="Peta 3D dengan menara">
               <Box size={15} />
               3D
+            </button>
+            <button type="button" aria-pressed={peta.labelNilai} onClick={() => peta.setLabelNilai(!peta.labelNilai)} title="Tampilkan nilai tiap wilayah di peta">
+              <Type size={15} />
+              Nilai
             </button>
           </div>
         )}

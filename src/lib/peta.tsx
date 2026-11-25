@@ -43,6 +43,9 @@ interface PetaValue {
   setOv: (id: string) => void
   citraMode: CitraMode
   setCitraMode: (m: CitraMode) => void
+  /** Tampilkan nilai tiap wilayah sebagai label di peta. */
+  labelNilai: boolean
+  setLabelNilai: (b: boolean) => void
   fillOp: number
   setFillOp: (n: number) => void
   overlays: GeeOverlay[]
@@ -62,6 +65,7 @@ export function PetaProvider({ children }: { children: React.ReactNode }) {
   const [basemap, setBasemap] = useState<Basemap>("satelit")
   const [ov, setOvState] = useState("off")
   const [citraMode, setCitraMode] = useState<CitraMode>("off")
+  const [labelNilai, setLabelNilai] = useState(true)
   const [fillOp, setFillOp] = useState(0.7)
   const [overlays, setOverlays] = useState<GeeOverlay[]>([])
   const [citra, setCitra] = useState<CitraKab[]>([])
@@ -88,8 +92,8 @@ export function PetaProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ layer, setLayer, kom, setKom, hor, setHor, dim, setDim, arus, setArus, basemap, setBasemap, ov, setOv, citraMode, setCitraMode, fillOp, setFillOp, overlays, citra }),
-    [layer, setLayer, kom, hor, dim, arus, basemap, ov, setOv, citraMode, fillOp, overlays, citra],
+    () => ({ layer, setLayer, kom, setKom, hor, setHor, dim, setDim, arus, setArus, basemap, setBasemap, ov, setOv, citraMode, setCitraMode, labelNilai, setLabelNilai, fillOp, setFillOp, overlays, citra }),
+    [layer, setLayer, kom, hor, dim, arus, basemap, ov, setOv, citraMode, labelNilai, fillOp, overlays, citra],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

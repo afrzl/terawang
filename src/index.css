@@ -812,6 +812,13 @@ main.full{flex:1;min-height:0;position:relative}
 .mdim button+button{border-left:1px solid var(--rule)}
 .mdim button[aria-pressed="true"]{background:var(--accent);color:var(--onaccent)}
 .mdim button:hover:not([aria-pressed="true"]){background:var(--panel-2);color:var(--ink)}
+.nilai-lbl{display:flex;flex-direction:column;align-items:center;line-height:1.15;padding:2px 6px;border-radius:5px;background:rgba(12,22,18,.72);color:#fff;font:600 10.5px var(--f-body);white-space:nowrap;pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.nilai-lbl i{font:700 9.5px var(--f-mono);font-style:normal;padding:0 4px;border-radius:3px;margin-bottom:1px;color:#10200f;background:#B9E39A}
+.nilai-lbl.bawah i{background:#F2C76B}
+.nilai-lbl.atas{box-shadow:0 0 0 1.5px #B9E39A}
+.nilai-lbl.bawah{box-shadow:0 0 0 1.5px #F2C76B}
+.nilai-lbl span{font-weight:500;opacity:.8;font-size:9.5px}
+.nilai-lbl b{font-weight:700;font-family:var(--f-mono)}
 .pmap:not(.emb) .mtools,.pmap:not(.emb) .mdim{right:352px}
 
 .pmap-arus{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
