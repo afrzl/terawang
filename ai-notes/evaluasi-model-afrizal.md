@@ -2,13 +2,14 @@
 
 Dasar: branch `k1-perbaikan-model` (PR #7, commit 72a61e1). Rekomendasi yang diuji berasal dari dokumen "Referensi metodologi model TERAWANG". Semua uji memakai data di repo, tanpa database, dan bisa diulang dengan perintah di akhir catatan ini.
 
-Perbaikan yang butuh GEE (peta padi 10 m, luas wall-to-wall, curah hujan CHIRPS) belum diuji karena kuota GEE habis. Perbaikan yang butuh data baru (titik KSA, ubinan, harga gabah petani, stok SCBN) juga belum.
+Luas panen wall-to-wall sudah diuji (25 Nov sore, proyek GEE baru terawang-515805), lihat bagian K1 kedua di bawah. Peta padi 10 m dan curah hujan CHIRPS belum diuji. Perbaikan yang butuh data baru (titik KSA, ubinan, harga gabah petani, stok SCBN) juga belum.
 
 ## Ringkasan
 
 | Kasus | Perbaikan yang diuji | Hasil | Keputusan |
 |---|---|---|---|
 | K1 | Jeda genangan-panen per kab (84/96/108/120 hari), dipilih dari 2019-2021 | Tidak lebih baik dari 96 hari tetap | **Tidak dipakai.** Opsi `--lags` tetap ada untuk uji |
+| K1 | Luas panen wall-to-wall (semua piksel sawah Sentinel-2) ganti 400 titik | Setara, tidak lebih baik | **Tidak dipakai.** Derau sampling ternyata bukan sumber galat utama |
 | K2 | Status = anomali neraca 3 bulan terhadap normal musiman (tanpa jangkar) | AUC 0,50-0,52 terhadap kenaikan harga; model sekarang 0,43 | **Belum dipasang.** Lebih jujur, tetapi belum terbukti memprediksi harga |
 | K3 | Galat dibobot eksponensial (paruh 60 hari) | Brier 4-11% lebih baik, F1 medium naik di semua horizon, pita lebih dekat 80% | **Dipakai** di `k3_harga_operasional.py` |
 | K3 | Sebaran bersyarat momentum / anomali FAO, conformal adaptif | Tambahan kecil atau tidak konsisten | Tidak dipakai |
@@ -30,7 +31,35 @@ Pemeriksaan: jeda 8 yang dihitung ulang memberi angka **persis sama** dengan ber
 
 Jeda terpilih per kab (jarak 28 hari): 84 hari 6 kab, 96 hari 22, 108 hari 7, 120 hari 3. Mayoritas tetap 96 hari. Perbedaan per kab paling banyak 0,5 poin dan tidak konsisten antar jarak, jadi **masih derau**.
 
-Kesimpulan: 96 hari tetap sudah tepat untuk data sekarang. Galat bulanan (±29%) memang berasal dari derau sampling 400 titik, bukan dari jeda. Prioritas K1 berikutnya tetap luas panen wall-to-wall + masker padi, yang butuh GEE.
+Kesimpulan: 96 hari tetap sudah tepat untuk data sekarang. Dugaan saat itu: galat bulanan (±29%) berasal dari derau sampling 400 titik. Dugaan ini diuji di bagian berikut dan **ternyata keliru**.
+
+## K1: luas panen wall-to-wall
+
+Skrip: `scripts/gee/genangan_w2w.py` (tarikan GEE, 38 wilayah x 252 jendela 12 hari, Agu 2018 s.d. Nov 2026, ±3,5 jam), `scripts/k1/nowcast_w2w.py` (taksiran luas panen per jarak), `scripts/k1/uji_w2w.py` (uji). Data: `data/satelit/genangan_w2w.csv.gz`.
+
+Cara kerja: aturan genangan sama dengan titik (LSWI + 0,05 >= EVI, EVI <= 0,35, diverifikasi EVI >= 0,5 pada 3-6 jendela sesudahnya, panen = genangan + 96 hari), tetapi dihitung di **semua piksel sawah** (ESA WorldCover kelas 40, 20 m) dengan Sentinel-2 saja. Jendela berawan dikoreksi dengan rasio taksiran fusi / taksiran optik pada titik sampel, per kab per bulan kalender, dari 2019-2021.
+
+Diagnosa citra saja (diskalakan per kab dari 2019-2021, dinilai 2022-2025, jarak 28 hari):
+
+| Taksiran | WAPE kab-bulan | Korelasi dengan BPS | WAPE total Jatim per bulan |
+|---|---|---|---|
+| 400 titik (sekarang) | 41,7% | 0,855 | 28,6% |
+| wall-to-wall, dikoreksi rasio | 41,2% | 0,855 | 28,7% |
+| wall-to-wall, optik saja | 41,4% | 0,855 | 28,6% |
+| rerata keduanya | 40,8% | 0,860 | 28,6% |
+
+Model gabungan (uji sama dengan bagian sebelumnya):
+
+| Varian | Bergulir 2022-25 WAPE (0 / 28 / 56) | Uji Jan-Sep 2026 MAPE (0 / 28 / 56) | MAPE kota 2026 (28 hari) |
+|---|---|---|---|
+| **400 titik (sekarang)** | 28,8 / 29,3 / 31,0 | **13,2 / 14,3 / 15,1** | 26,8 |
+| wall-to-wall, dikoreksi rasio | 28,3 / 29,1 / 31,2 | 13,8 / 15,2 / 15,5 | 27,6 |
+| wall-to-wall, optik saja | 28,2 / 29,2 / 31,3 | 13,1 / 15,1 / 15,7 | 27,1 |
+| rerata keduanya | 28,3 / 29,0 / 31,0 | 13,6 / 14,7 / 15,3 | 27,3 |
+
+Taksiran titik dan wall-to-wall sangat mirip: korelasi bulanan 0,98 (median per kab 0,96), selisih kab-bulan ±15%. Jadi derau sampling 400 titik hanya sekitar 15%, sedangkan galat terhadap BPS sekitar 41%. Kalau keduanya independen, menghapus derau sampling hanya menurunkan galat ke sekitar 38%, dan uji di atas menunjukkan perbaikan yang lebih kecil lagi.
+
+Kesimpulan: **wall-to-wall tidak dipakai**. Sisa galat berasal dari hal yang sama pada titik maupun wall-to-wall: aturan genangan dan jeda tetap 96 hari (waktu panen per petak tidak tepat), masker WorldCover yang mencampur tegalan, dan derau angka BPS bulanan sendiri (KSA). Menambah titik juga kemungkinan hanya memberi perbaikan kecil (uji 2.000 titik per kab menyusul). Arah yang lebih menjanjikan: tanggal tanam dari minimum VH per piksel (Manago 2020) dan kalibrasi ke titik KSA, bukan jumlah sampel.
 
 ## K2: status sebagai anomali musiman
 
@@ -89,4 +118,7 @@ python scripts/k1/nowcast_est2.py --lead 28 --akhir 2026-12 --lags 7,8,9,10   # 
 python scripts/k1/uji_jeda_per_kab.py <folder>
 python scripts/k2/uji_k2_anomali.py
 python scripts/k3/uji_k3_varian.py                                              # ±2 menit
+python scripts/gee/genangan_w2w.py --project <proyek GEE> --keluar <folder>       # ±3,5 jam, sudah ada di data/satelit/genangan_w2w.csv.gz
+python scripts/k1/nowcast_w2w.py <folder>/genangan_w2w.csv.gz                    # ±10 detik
+python scripts/k1/uji_w2w.py <folder>                                            # ±1 menit
 ```
