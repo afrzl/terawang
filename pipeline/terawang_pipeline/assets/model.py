@@ -1,16 +1,17 @@
 """Lapisan MODEL -> APP: memanggil fungsi model di terawang_models (milik Danang), menulis hasil ke schema app.
 
 Aset di sini tidak berisi logika model. Tugasnya: ambil masukan, panggil model, catat app.model_run, simpan keluaran.
-K1 dan K2 memanggil skrip asli Danang (scripts/k1, scripts/k2) lewat terawang_models.k1_produksi / k2_stok;
-K3 dan SPHP masih baseline di terawang_models.
+K1, K2, K3a (harga) dan K3b (SPHP) memanggil skrip asli Danang (scripts/k1, scripts/k2, scripts/k3) lewat terawang_models.
 """
 
+import json
 import os
 import shutil
 import sys
 from pathlib import Path
 
 import pandas as pd
+import sqlalchemy as sa
 from dagster import AssetExecutionContext, AssetKey, MaterializeResult, MetadataValue, asset
 
 from terawang_models import k1_produksi, k2_stok, k3_harga, sphp
@@ -19,7 +20,6 @@ from ..resources import Database, Repo, SumberCitra, folder_lapisan
 from ._app import model_run, sekarang, sisipkan
 
 GRUP = "model"
-HET_CADANGAN = {"beras_medium": 13500}  # BELUM DIVERIFIKASI (lihat ai-notes/01-aturan-data.md); dipakai kalau app.ambang_harga kosong
 
 
 def _md(df: pd.DataFrame, n: int = 10) -> MetadataValue:
@@ -106,48 +106,49 @@ def k2_estimasi_stok(context: AssetExecutionContext, repo: Repo, db: Database, s
                                  "catatan": "jangkar stok awal = asumsi (cakupan terendah Jatim 1,0 bulan); lihat ai-notes/metodologi-k2.md"})
     kons = h["konsumsi"].rename_axis("kab").reset_index()
     hari = pd.Series(h["hari_ke_defisit"], name="hari_ke_defisit", dtype=float).rename_axis("kab").reset_index()
-    return stok.merge(kons, on="kab").merge(hari, on="kab", how="left").assign(model_run_id=rid)
-
-
-def _het(db: Database) -> dict[int, float]:
-    kom = db.baca("select id, kode from ref.komoditas")
-    resmi = db.baca("select komoditas_id, het_rp_kg from app.ambang_harga where wilayah_id is null and berlaku_sampai is null")
-    het = dict(zip(resmi.komoditas_id, resmi.het_rp_kg.astype(float)))
-    for r in kom.itertuples():
-        if r.id not in het and r.kode in HET_CADANGAN:
-            het[r.id] = float(HET_CADANGAN[r.kode])
-    return het
+    sd = h["rinci"][["kab", "tahun", "bulan", "sd"]]  # simpangan cakupan, dipakai K3b
+    return stok.merge(kons, on="kab").merge(hari, on="kab", how="left").merge(sd, on=["kab", "tahun", "bulan"], how="left").assign(model_run_id=rid)
 
 
 @asset(group_name=GRUP, kinds={"python", "postgres"}, deps=[AssetKey("silver_harga")],
-       description="K3: prediksi harga 14 dan 28 hari + backtest MAPE -> app.prediksi_harga.")
-def k3_prediksi_harga(context: AssetExecutionContext, db: Database) -> pd.DataFrame:
-    harga = db.baca("""
-        select wilayah_id, komoditas_id, tanggal, harga_rata2_rp_kg as harga
-        from silver.harga_kabkota_harian where tanggal >= (select max(tanggal) from silver.harga_kabkota_harian) - interval '3 years'
-    """)
-    het = _het(db)
-    with model_run(db, "K3_HARGA", k3_harga.VERSI, {"horizon_hari": k3_harga.HORIZON_HARI, "het": het}) as (rid, metrik):
-        pred = k3_harga.prediksi_harga(harga)
-        pred["status"] = [k3_harga.status_harga(r.harga_prediksi, het.get(r.komoditas_id)) for r in pred.itertuples()]
-        metrik.update(k3_harga.backtest_naif(harga))
-        sisipkan(db, "app.prediksi_harga", pred.assign(model_run_id=rid, jenis_data=k3_harga.JENIS_DATA))
-    context.add_output_metadata({"model_run_id": rid, "versi": k3_harga.VERSI, "baris": len(pred), **metrik,
-                                 "tanggal_acuan": str(pred["tanggal_acuan"].max()), "contoh": _md(pred)})
+       description="K3a (Danang): prakiraan harga harian 7/14/21/28 hari, P10-P90 dari galat empiris 365 hari, status terhadap HET "
+                   "(scripts/k3/k3_harga_operasional.py) -> app.prediksi_harga.")
+def k3_prediksi_harga(context: AssetExecutionContext, repo: Repo, db: Database, sumber_citra: SumberCitra) -> pd.DataFrame:
+    wil = _wilayah(db)
+    with model_run(db, "K3_HARGA", k3_harga.VERSI_K3A, {"model": "scripts/k3/k3_harga_operasional.py"}) as (rid, metrik):
+        R, par = k3_harga.prediksi_harga_k3a(repo.path, _env_danang(repo, db, sumber_citra))
+        with db.engine().begin() as c:  # parameter (HET, kalibrasi ambang) dibaca dasbor
+            c.execute(sa.text("update app.model_run set parameter = cast(:p as jsonb) where id = :i"), {"i": rid, "p": json.dumps(par, default=str)})
+        pred = (R.merge(wil, on="kab")
+                 .rename(columns={"komoditas": "komoditas_id", "harga": "harga_prediksi", "p10": "batas_bawah", "p90": "batas_atas"}))
+        kolom = ["wilayah_id", "komoditas_id", "tanggal_acuan", "horizon_hari", "harga_prediksi", "batas_bawah", "batas_atas", "status"]
+        sisipkan(db, "app.prediksi_harga", pred[kolom].assign(model_run_id=rid, jenis_data=k3_harga.JENIS_DATA))
+        metrik.update({"tanggal_acuan": str(pred.tanggal_acuan.max()),
+                       **{f"h{h}_{s.lower()}": int(((pred.horizon_hari == h) & (pred.komoditas_id == 1) & (pred.status == s)).sum())
+                          for h in (7, 28) for s in ("WASPADA", "SIAGA")}})
+    context.add_output_metadata({"model_run_id": rid, "versi": k3_harga.VERSI_K3A, "baris": len(pred), **metrik, "contoh": _md(pred[["kab", *kolom[1:]]])})
     return pred.assign(model_run_id=rid)
 
 
-@asset(group_name=GRUP, kinds={"python", "postgres"}, deps=[AssetKey("silver_jarak")],
-       description="SPHP: rute penyaluran dari wilayah surplus ke defisit -> app.rekomendasi_sphp.")
-def k3_rekomendasi_sphp(context: AssetExecutionContext, db: Database, k2_estimasi_stok: pd.DataFrame) -> pd.DataFrame:
-    kini = sekarang()
-    s = k2_estimasi_stok
-    s = s[(s.skenario == "TENGAH") & (s.tahun == kini.year) & (s.bulan == kini.month)]
-    saldo = s.assign(saldo_ton=s.stok_ton - s.konsumsi_ton_bulan)[["wilayah_id", "saldo_ton"]]  # sisakan 1 bulan konsumsi
-    jarak = db.baca("select dari_id, ke_id, jarak_jalan_km from silver.jarak_antar_wilayah where dari_id <> ke_id")
-    with model_run(db, "K3_SPHP", sphp.VERSI, {"tahun": kini.year, "bulan": kini.month, "cadangan_bulan": 1}) as (rid, metrik):
-        rute = sphp.rekomendasi_sphp(saldo, jarak)
-        metrik.update({"rute": len(rute), "volume_ton": round(float(rute.volume_ton.sum()), 1) if len(rute) else 0.0})
-        sisipkan(db, "app.rekomendasi_sphp", rute.assign(model_run_id=rid, tahun=kini.year, bulan=kini.month, jenis_data=sphp.JENIS_DATA))
-    context.add_output_metadata({"model_run_id": rid, "versi": sphp.VERSI, **metrik})
+@asset(group_name=GRUP, kinds={"python", "postgres"}, deps=[AssetKey("silver_jarak"), AssetKey("silver_bulog")],
+       description="K3b (Danang): rencana penyaluran SPHP dari cabang Bulog ke kab/kota, bulan berjalan sampai +2, LP stokastik dari stok K2 "
+                   "dan peluang harga > HET K3a (scripts/k3/k3b_sphp.py) -> app.rekomendasi_sphp.")
+def k3_rekomendasi_sphp(context: AssetExecutionContext, repo: Repo, db: Database, sumber_citra: SumberCitra,
+                        k2_estimasi_stok: pd.DataFrame, k3_prediksi_harga: pd.DataFrame) -> pd.DataFrame:
+    hari_ini = sekarang().date()
+    tengah = k2_estimasi_stok[k2_estimasi_stok.skenario == "TENGAH"]
+    rinci = tengah[["kab", "tahun", "bulan", "stok_ton", "cakupan_bulan", "sd"]].rename(columns={"cakupan_bulan": "cak"})
+    k3 = k3_prediksi_harga.rename(columns={"komoditas_id": "komoditas"})
+    ids = _wilayah(db).set_index("kab").wilayah_id
+    with model_run(db, "K3_SPHP", sphp.VERSI_K3B, {"model": "scripts/k3/k3b_sphp.py", "hari_ini": hari_ini,
+                                                   "k2_model_run_id": int(k2_estimasi_stok.model_run_id.iloc[0]),
+                                                   "k3_model_run_id": int(k3_prediksi_harga.model_run_id.iloc[0])}) as (rid, metrik):
+        R, par = sphp.rekomendasi_k3b(repo.path, hari_ini, rinci, k3, _env_danang(repo, db, sumber_citra))
+        rute = R.assign(dari_id=R.dari.map(ids), ke_id=R.ke.map(ids)).rename(columns={"jarak_km": "jarak_jalan_km"})
+        kolom = ["tahun", "bulan", "dari_id", "ke_id", "volume_ton", "jarak_jalan_km"]
+        sisipkan(db, "app.rekomendasi_sphp", rute[kolom].assign(model_run_id=rid, jenis_data=sphp.JENIS_DATA_K3B))
+        metrik.update({"rute": len(rute), "volume_ton": round(float(rute.volume_ton.sum()), 1) if len(rute) else 0.0,
+                       "periode": par.get("periode"), "metrik_uji": par.get("metrik_uji")})
+    context.add_output_metadata({"model_run_id": rid, "versi": sphp.VERSI_K3B, "rute": metrik["rute"], "volume_ton": metrik["volume_ton"],
+                                 "periode": ", ".join(par.get("periode", [])), "contoh": _md(R.sort_values("volume_ton", ascending=False))})
     return rute

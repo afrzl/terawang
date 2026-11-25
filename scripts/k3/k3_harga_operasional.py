@@ -22,6 +22,8 @@ import model_stok as ms  # noqa: E402
 HOR = (7, 14, 21, 28)
 JENDELA = 365
 MULAI_UJI = pd.Timestamp("2025-08-22")
+# komoditas_id -> (HET Rp/kg, ambang siaga % di atas HET), dipakai bila app.ambang_harga kosong. Sama dengan konstanta dasbor (src/lib/data.ts).
+HET_CADANGAN = {1: (13500, 5.0), 2: (14900, 5.0)}
 
 
 def harian(kom):
@@ -67,12 +69,14 @@ def backtest(P, H, het):
     return hasil
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--simpan", action="store_true")
-    a = ap.parse_args()
-    ids = ms.sql("select id, nama_repo kab from ref.wilayah where level='KABKOTA'").set_index("kab").id
+def hitung(cetak=True):
+    """Prakiraan K3a untuk tanggal harga terakhir di database. Kembalikan (R, het, kalibrasi): R = satu baris per komoditas x kab x horizon."""
+    log = print if cetak else (lambda *a, **k: None)
     het = ms.sql("select komoditas_id k, het_rp_kg het, ambang_siaga_pct sg from app.ambang_harga where wilayah_id is null order by berlaku_dari").groupby("k").last()
+    for kom, (h, sg) in HET_CADANGAN.items():  # app.ambang_harga belum terisi: pakai HET cadangan (belum diverifikasi ke teks resmi)
+        if kom not in het.index:
+            het.loc[kom] = [h, sg]
+            log(f"HET komoditas {kom} tidak ada di app.ambang_harga; dipakai cadangan Rp{h:,} (siaga +{sg}%)")
     rows, kal_all = [], {}
     for kom, nm in ((1, "medium"), (2, "premium")):
         P = harian(kom)
@@ -81,9 +85,9 @@ def main():
         siaga = H * (1 + het.loc[kom, "sg"] / 100)
         kal = backtest(P, None, H)
         kal_all[nm] = kal
-        print(f"\nKalibrasi ambang WASPADA, beras {nm} (HET Rp{H:,.0f}):")
+        log(f"\nKalibrasi ambang WASPADA, beras {nm} (HET Rp{H:,.0f}):")
         for h, v in kal.items():
-            print(f"  {h:2d} hari: ambang {v['ambang']:.2f} | F1 {v['f1']:.2f} | terdeteksi {v['terdeteksi']}/{v['kejadian']}, alarm palsu {v['alarm_palsu']}")
+            log(f"  {h:2d} hari: ambang {v['ambang']:.2f} | F1 {v['f1']:.2f} | terdeteksi {v['terdeteksi']}/{v['kejadian']}, alarm palsu {v['alarm_palsu']}")
         tgl_acuan = P.index.max()
         p0 = P.ffill().iloc[-1]
         for h in HOR:
@@ -97,6 +101,20 @@ def main():
                 st = "SIAGA" if ps >= max(th_w, 0.5) else ("WASPADA" if pw >= th_w else "AMAN")
                 rows.append((kom, kab, str(tgl_acuan.date()), h, p * np.exp(q50), p * np.exp(q10), p * np.exp(q90), st, pw))
     R = pd.DataFrame(rows, columns=["komoditas", "kab", "tanggal_acuan", "horizon_hari", "harga", "p10", "p90", "status", "p_di_atas_het"])
+    return R, het, kal_all
+
+
+def parameter_run(het, kal_all):
+    return {"model": "harga hari terakhir + sebaran galat empiris jendela 365 hari", "asal": "harian", "horizon_hari": list(HOR), "kalibrasi_ambang": kal_all,
+            "uji": "backtest sejak 22 Agu 2025 (kab <= HET), ambang maks F1", "het": {int(k): int(v) for k, v in het.het.items()}}
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--simpan", action="store_true")
+    a = ap.parse_args()
+    ids = ms.sql("select id, nama_repo kab from ref.wilayah where level='KABKOTA'").set_index("kab").id
+    R, het, kal_all = hitung()
     for kom, nm in ((1, "medium"), (2, "premium")):
         d = R[R.komoditas == kom]
         print(f"\nBeras {nm}: jumlah kab per status")
@@ -105,8 +123,7 @@ def main():
         print("  peluang melewati HET tertinggi (28 hari):", ", ".join(f"{r.kab} {r.p_di_atas_het * 100:.0f}%" for r in d28.itertuples()))
     R.to_csv("data/satelit/k3_harga_operasional.csv", index=False)
     if a.simpan:
-        par = {"model": "harga hari terakhir + sebaran galat empiris jendela 365 hari", "asal": "harian", "horizon_hari": list(HOR), "kalibrasi_ambang": kal_all,
-               "uji": "backtest sejak 22 Agu 2025 (kab <= HET), ambang maks F1", "het": {int(k): int(v) for k, v in het.het.items()}}
+        par = parameter_run(het, kal_all)
         rid = int(ms.sql(f"insert into app.model_run (jenis, nama_versi, parameter, selesai_pada) values ('K3_HARGA','k3_harga_harian_365_2026_11','{json.dumps(par)}'::jsonb, now()) returning id").iloc[0, 0])
         vals = [f"({rid},{ids[r.kab]},{r.komoditas},'{r.tanggal_acuan}',{r.horizon_hari},{r.harga},{r.p10},{r.p90},'{r.status}','MODEL')" for r in R.itertuples()]
         res = subprocess.run(["psql", "-d", "terawang", "-v", "ON_ERROR_STOP=1", "-c", "insert into app.prediksi_harga (model_run_id,wilayah_id,komoditas_id,tanggal_acuan,horizon_hari,harga_prediksi,batas_bawah,batas_atas,status,jenis_data) values " + ",".join(vals)], capture_output=True, text=True)

@@ -1,12 +1,13 @@
 import { JARAK_JALAN_KM, NAMA_JARAK } from "./jarak"
-import { API_AKTIF, K2, K3A, K3B } from "./api"
+import { API_AKTIF, CITRA_API, K2, K3A, K3B } from "./api"
 import { K3B_RUTE } from "./k3b"
 import geoJson from "./jatim.json"
 import geeJson from "./gee_wilayah.json"
 import { DAY, NOW, clamp, hash, nf, rng, rp } from "./format"
 
 /* Angka satelit (penduduk, luas sawah, produksi, fase tumbuh, petak tertinggal, proyeksi panen, profil VH)
-   berasal dari Google Earth Engine — lihat scripts/gee/terawang_wilayah.py → ./gee_wilayah.json.
+   berasal dari Google Earth Engine — lihat scripts/gee/terawang_wilayah.py. Versi terbaru dibaca dari API (/api/citra, keluaran
+   aset bronze_citra di pipeline); ./gee_wilayah.json hanya cadangan bila API mati.
    Harga dan stok tidak teramati satelit: modelnya didorong produksi & penduduk GEE, harga dasar masih simulasi. */
 
 export interface GeeWilayah {
@@ -25,7 +26,11 @@ export interface GeeWilayah {
   vhAvg: (number | null)[]
   pusat: [number, number] | null
 }
-export const GEE = geeJson as unknown as { dibuat: string; acuan: string; sumber: string; wilayah: GeeWilayah[] }
+type GeeData = { dibuat: string; acuan: string; sumber: string; wilayah: GeeWilayah[] }
+const geeSah = (x: unknown): x is GeeData => !!x && Array.isArray((x as GeeData).wilayah) && (x as GeeData).wilayah.length > 0
+export const GEE: GeeData = geeSah(CITRA_API) ? CITRA_API : (geeJson as unknown as GeeData)
+/** Olahan citra berasal dari pipeline (bukan salinan bundle). */
+export const GEE_DARI_API = geeSah(CITRA_API)
 const geeBy: Record<string, GeeWilayah> = Object.fromEntries(GEE.wilayah.map((w) => [w.n, w]))
 
 export interface GeoShape {
@@ -274,6 +279,10 @@ if (K2) {
     if (c != null) k.cov = c
     const st = w.status[10]
     if (st && STATUS_STOK[st]) k.ss = STATUS_STOK[st]
+    // Proyeksi pekan ke-1..4 = akhir bulan depan, pekan ke-5..8 = akhir dua bulan lagi (K2 bulanan; dipakai kartu Ringkasan dan lapisan "stok").
+    const c1 = w.cakupan[11]
+    const c2 = w.cakupan[12]
+    if (c1 != null && c2 != null) k.covP = [c1, c1, c1, c1, c2, c2, c2, c2]
   }
 }
 export const byName: Record<string, Wilayah> = Object.fromEntries(WILAYAH.map((k) => [k.n, k]))

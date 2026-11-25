@@ -24,15 +24,23 @@ SD_JANGKAR = 0.4
 PARAM = dict(beta=0.25, gamma=1.0, h=0.3, lam=1 / 2000, eps=0.01, Rtot=0.15, Rbln=0.10, frac=(0.3, 1.0, 1.0), hold=0.02, S=100, kab_surplus=False, surplus_batas=1.5, deterministik=False)
 
 
-def muat():
+def bulan_dari(hari_ini):
+    """Bulan berjalan dan dua bulan sesudahnya, mis. 2026-11-25 -> [(2026, 11), (2026, 12), (2027, 1)]."""
+    y, m = hari_ini.year, hari_ini.month
+    return [(y + (m - 1 + i) // 12, (m - 1 + i) % 12 + 1) for i in range(3)]
+
+
+def muat(k2_rinci=None, k3_harga=None):
+    """k2_rinci: rincian K2 (kab, tahun, bulan, stok_ton, cak, sd); k3_harga: keluaran K3a (komoditas, kab, horizon_hari, p_di_atas_het).
+    Tanpa argumen dibaca dari CSV di data/satelit (jalankan k2_operasional.py --keluar dan k3_harga_operasional.py dulu)."""
     w, P, C, D, bl = ms.muat()
     kab = list(w.index)
-    R = pd.read_csv("data/satelit/k2_operasional_2026.csv")
+    R = pd.read_csv("data/satelit/k2_operasional_2026.csv") if k2_rinci is None else k2_rinci
     k2 = {b: R[(R.tahun == b[0]) & (R.bulan == b[1])].set_index("kab").reindex(kab) for b in BULAN}
-    nov = k2[(2026, 11)]
-    K = pd.read_csv("data/satelit/k3_harga_operasional.csv")
+    nov = k2[BULAN[0]]
+    K = pd.read_csv("data/satelit/k3_harga_operasional.csv") if k3_harga is None else k3_harga
     K = K[K.komoditas == 1]
-    ph = {b: K[K.horizon_hari == (7 if b == (2026, 11) else 28)].set_index("kab").p_di_atas_het.reindex(kab).fillna(0) for b in BULAN}
+    ph = {b: K[K.horizon_hari == (7 if b == BULAN[0] else 28)].set_index("kab").p_di_atas_het.reindex(kab).fillna(0) for b in BULAN}
     peng = ms.sql("select cabang_id, sum(volume_kg) v from silver.pengadaan_bulog where tahun=2025 group by 1")
     pj = peng.assign(kab=peng.cabang_id.map(CABANG)).groupby("kab").v.sum()
     return dict(kab=kab, C=(nov.stok_ton / nov.cak).to_numpy(), D=D.loc[kab, kab].to_numpy(), k2=k2, ph=ph, nodes=list(pj.index),
@@ -166,14 +174,40 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--simpan", action="store_true")
     a = ap.parse_args()
-    M = muat()
+    R, M, p, met = hitung()
+    print("Anggaran rilis Bulog: %.0f rb ton (%.0f%% stok proksi %.0f rb ton); rencana %.0f rb ton, jarak rata-rata %.0f km" % (p["Rtot"] * M["S0"], p["Rtot"] * 100, M["S0"], R.volume_ton.sum() / 1e3, (R.volume_ton * R.jarak_km).sum() / R.volume_ton.sum()))
+    print("Per bulan (rb ton):", R.groupby("bulan").volume_ton.sum().div(1e3).round(1).to_dict(), "| rute:", len(R), "| kab penerima:", R.ke.nunique())
+    print("Kekurangan berbobot turun %.1f%%; peluang cakupan < 0,75 turun %.1f%% -> %.1f%% (skenario uji K2)" % (met["kurang_berbobot_turun_pct"], met["defisit_sebelum_pct"], met["defisit_sesudah_pct"]))
+    print(R.sort_values("volume_ton", ascending=False).head(10).round(0).to_string(index=False))
+    R.to_csv("data/satelit/k3b_rekomendasi_sphp.csv", index=False)
+    ids = M["w"].id.to_dict()
+    if a.simpan:
+        par = parameter_run(M, p, met)
+        rid = int(ms.sql(f"insert into app.model_run (jenis, nama_versi, parameter, selesai_pada) values ('K3_SPHP','k3b_lp_stokastik_2026_11','{json.dumps(par)}'::jsonb, now()) returning id").iloc[0, 0])
+        vals = [f"({rid},{r.tahun},{r.bulan},{ids[r.dari]},{ids[r.ke]},{r.volume_ton},{r.jarak_km},'DUMMY')" for r in R.itertuples()]
+        res = subprocess.run(["psql", "-d", "terawang", "-v", "ON_ERROR_STOP=1", "-c", "insert into app.rekomendasi_sphp (model_run_id,tahun,bulan,dari_id,ke_id,volume_ton,jarak_jalan_km,jenis_data) values " + ",".join(vals)], capture_output=True, text=True)
+        if res.returncode:
+            raise SystemExit("gagal menyimpan: " + res.stderr[:400])
+        print(f"tersimpan: model_run {rid}, {len(vals)} rute di app.rekomendasi_sphp (jenis_data DUMMY: bergantung anggaran rilis dan stok Bulog proksi)")
+
+
+def parameter_run(M, p, met):
+    return {"model": "LP stokastik berbasis skenario (S=150) dari stok K2 + peluang harga > HET K3a", "periode": [f"{t}-{b:02d}" for t, b in BULAN], "param": {k: (list(v) if isinstance(v, tuple) else v) for k, v in p.items()},
+            "stok_bulog_proksi_rb_ton": M["S0"], "asumsi": "stok Bulog 2026 = proksi akhir Okt 2025; anggaran rilis 15% stok; lokasi cabang dipetakan ke kab (asumsi)", "metrik_uji": {k: float(v) for k, v in met.items()}}
+
+
+def hitung(hari_ini=None, k2_rinci=None, k3_harga=None):
+    """Rencana SPHP bulan berjalan sampai +2. Kembalikan (R, M, p, metrik): R = tahun, bulan, dari, ke (nama kab), volume_ton, jarak_km."""
+    global BULAN
+    if hari_ini is not None:
+        BULAN = bulan_dari(hari_ini)
+    M = muat(k2_rinci, k3_harga)
     p = dict(PARAM, S=150)
     A, ph, nz = instans(M, p, 1)
     x, sloc, nb = solusi(M, p, A, ph, nz)
     te = instans(M, dict(p, S=500), 4242)[2]
     met = evaluasi(M, p, A, ph, te, x, sloc, nb)
     kab, D = M["kab"], M["D"]
-    ids = M["w"].id.to_dict()
     n, T = len(kab), len(BULAN)
     rows = []
     for i in range(nb):
@@ -182,20 +216,7 @@ def main():
                 if x[i, j, t] >= 50:  # abaikan kiriman < 50 ton
                     rows.append((BULAN[t][0], BULAN[t][1], M["nodes"][i], kab[j], x[i, j, t], D[sloc[i], j]))
     R = pd.DataFrame(rows, columns=["tahun", "bulan", "dari", "ke", "volume_ton", "jarak_km"]).groupby(["tahun", "bulan", "dari", "ke"], as_index=False).agg(volume_ton=("volume_ton", "sum"), jarak_km=("jarak_km", "first"))
-    R.to_csv("data/satelit/k3b_rekomendasi_sphp.csv", index=False)
-    print("Anggaran rilis Bulog: %.0f rb ton (%.0f%% stok proksi %.0f rb ton); rencana %.0f rb ton, jarak rata-rata %.0f km" % (p["Rtot"] * M["S0"], p["Rtot"] * 100, M["S0"], R.volume_ton.sum() / 1e3, (R.volume_ton * R.jarak_km).sum() / R.volume_ton.sum()))
-    print("Per bulan (rb ton):", R.groupby("bulan").volume_ton.sum().div(1e3).round(1).to_dict(), "| rute:", len(R), "| kab penerima:", R.ke.nunique())
-    print("Kekurangan berbobot turun %.1f%%; peluang cakupan < 0,75 turun %.1f%% -> %.1f%% (skenario uji K2)" % (met["kurang_berbobot_turun_pct"], met["defisit_sebelum_pct"], met["defisit_sesudah_pct"]))
-    print(R.sort_values("volume_ton", ascending=False).head(10).round(0).to_string(index=False))
-    if a.simpan:
-        par = {"model": "LP stokastik berbasis skenario (S=150) dari stok K2 + peluang harga > HET K3a", "periode": ["2026-11", "2026-12", "2027-01"], "param": {k: (list(v) if isinstance(v, tuple) else v) for k, v in p.items()},
-               "stok_bulog_proksi_rb_ton": M["S0"], "asumsi": "stok Bulog 2026 = proksi akhir Okt 2025; anggaran rilis 15% stok; lokasi cabang dipetakan ke kab (asumsi)", "metrik_uji": {k: float(v) for k, v in met.items()}}
-        rid = int(ms.sql(f"insert into app.model_run (jenis, nama_versi, parameter, selesai_pada) values ('K3_SPHP','k3b_lp_stokastik_2026_11','{json.dumps(par)}'::jsonb, now()) returning id").iloc[0, 0])
-        vals = [f"({rid},{r.tahun},{r.bulan},{ids[r.dari]},{ids[r.ke]},{r.volume_ton},{r.jarak_km},'DUMMY')" for r in R.itertuples()]
-        res = subprocess.run(["psql", "-d", "terawang", "-v", "ON_ERROR_STOP=1", "-c", "insert into app.rekomendasi_sphp (model_run_id,tahun,bulan,dari_id,ke_id,volume_ton,jarak_jalan_km,jenis_data) values " + ",".join(vals)], capture_output=True, text=True)
-        if res.returncode:
-            raise SystemExit("gagal menyimpan: " + res.stderr[:400])
-        print(f"tersimpan: model_run {rid}, {len(vals)} rute di app.rekomendasi_sphp (jenis_data DUMMY: bergantung anggaran rilis dan stok Bulog proksi)")
+    return R, M, p, met
 
 
 if __name__ == "__main__":

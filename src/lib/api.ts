@@ -63,8 +63,16 @@ export interface K3aData {
   wilayah: Record<string, { medium: K3aSeri; premium: K3aSeri }>
 }
 
-/** Hasil K1 (produksi), K2 (stok), K3a (harga) dan K3b (SPHP) dari database; null bila API mati. Dimuat sekali sebelum aplikasi tampil. */
-const [k1, k2, k3a, k3b] = await Promise.all([muat<K1Data>("/api/produksi"), muat<K2Data>("/api/stok"), muat<K3aData>("/api/harga"), muat<K3bData>("/api/sphp")])
+/** Hasil K1 (produksi), K2 (stok), K3a (harga), K3b (SPHP) dan olahan citra GEE dari backend; null bila API mati. Dimuat sekali sebelum aplikasi tampil. */
+const [k1, k2, k3a, k3b, citra] = await Promise.all([
+  muat<K1Data>("/api/produksi"),
+  muat<K2Data>("/api/stok"),
+  muat<K3aData>("/api/harga"),
+  muat<K3bData>("/api/sphp"),
+  muat<unknown>("/api/citra", 4000),
+])
+/** Isi gee_wilayah.json terbaru keluaran pipeline (aset bronze_citra); null = pakai salinan di bundle (src/lib/gee_wilayah.json). */
+export const CITRA_API: unknown = citra
 export const K1: K1Data | null = k1
 export const K2: K2Data | null = k2
 export const K3A: K3aData | null = k3a
