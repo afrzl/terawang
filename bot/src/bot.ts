@@ -86,7 +86,7 @@ async function jalankan(p: Perintah, w: Wilayah | null, k: kontak.Kontak, arg: s
 
 const BUTUH_WILAYAH: Perintah[] = ["harga", "stok", "sphp", "langganan"]
 
-async function denganWilayah(nomor: string, k: kontak.Kontak, p: Perintah, arg: string): Promise<Balasan> {
+async function denganWilayah(nomor: string, k: kontak.Kontak, p: Perintah, arg: string, teksAsli = ""): Promise<Balasan> {
   const daftar = await semuaWilayah()
   const wajib = BUTUH_WILAYAH.includes(p)
   if (!arg) {
@@ -103,6 +103,13 @@ async function denganWilayah(nomor: string, k: kontak.Kontak, p: Perintah, arg: 
   if (c.jenis === "ambigu") {
     tunda.set(nomor, { jenis: "pilih", perintah: p, pilihan: c.pilihan, sampai: Date.now() + 10 * MENIT })
     return { teks: teksPilihWilayah(c.pilihan, labelWilayah), intent: p, wilayahId: null }
+  }
+  // "harga beras bulan depan kira2 brp ya di malang": ini kalimat, bukan nama wilayah.
+  // Kalimat panjang diteruskan ke jalur pesan bebas (OpenAI); tanpa LLM, cari wilayah di dalam kalimat.
+  if (teksAsli && normal(arg).split(" ").length > 2) {
+    if (llmAktif()) return pesanBebas(k, teksAsli)
+    const di = cariDiKalimat(arg, daftar)
+    if (di.jenis === "pas") return jalankan(p, di.wilayah, k, arg)
   }
   return { teks: `Wilayah "${arg}" tidak ditemukan. TERAWANG mencakup 38 kab/kota di Jawa Timur, misalnya Malang, Jember, Kota Surabaya.`, intent: p, wilayahId: null }
 }
@@ -240,7 +247,7 @@ async function proses(nomor: string, k: kontak.Kontak, teks: string): Promise<Ba
   if (cmd) {
     tunda.delete(nomor)
     if (cmd.perintah === "lapor") return laporHarga(k, cmd.mentah)
-    return denganWilayah(nomor, k, cmd.perintah, cmd.arg)
+    return denganWilayah(nomor, k, cmd.perintah, cmd.arg, teks)
   }
   return pesanBebas(k, teks)
 }
