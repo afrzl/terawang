@@ -6,6 +6,8 @@ import * as kontak from "./kontak.ts"
 import { q } from "./db.ts"
 import { jawabBebas, llmAktif } from "./llm.ts"
 import * as pagar from "./pagar.ts"
+import { pantau } from "./pantau.ts"
+import { jawabIstilah } from "./istilah.ts"
 import { cariDiKalimat, cocokkan, labelWilayah, normal, semuaWilayah, type Wilayah } from "./wilayah.ts"
 
 type Perintah = "harga" | "stok" | "sphp" | "peringatan" | "langganan" | "berhenti" | "lapor" | "bantuan"
@@ -162,6 +164,8 @@ async function pesanBebas(k: kontak.Kontak, teks: string): Promise<Balasan> {
     await kontak.ingatWilayah(k.id, hanya.wilayah.id)
     return jalankan("harga", hanya.wilayah, k, teks)
   }
+  const istilah = jawabIstilah(teks)
+  if (istilah) return { teks: istilah, intent: "istilah", wilayahId: null }
   if (!llmAktif()) return { teks: `Maaf, aku belum paham pesannya.\n\n${BANTUAN}`, intent: "tidak_dikenal", wilayahId: null }
 
   // guard rail sebelum OpenAI: panjang, injeksi prompt, topik
@@ -181,6 +185,7 @@ async function pesanBebas(k: kontak.Kontak, teks: string): Promise<Balasan> {
   try {
     const r = await jawabBebas(teks, await riwayat(k.id), ingat)
     pagar.catatToken(r.token)
+    pantau.llm = { ...pantau.llm, terakhir: Date.now(), ok: true, galat: "", token: r.token }
     console.log(`[llm] kontak=${k.id} token=${r.token} alat=${r.pakaiAlat} hari_ini=${pagar.pemakaianHariIni().token}`)
     const jawaban = pagar.rapikanJawaban(r.jawaban)
     if (!jawaban || pagar.angkaTanpaData(jawaban, r.pakaiAlat)) {
@@ -191,6 +196,7 @@ async function pesanBebas(k: kontak.Kontak, teks: string): Promise<Balasan> {
     return { teks: jawaban, intent: "llm", wilayahId: r.wilayahId ?? null }
   } catch (e) {
     console.error("[llm] gagal:", e)
+    pantau.llm = { ...pantau.llm, terakhir: Date.now(), terakhirGagal: Date.now(), ok: false, galat: String((e as Error).message).slice(0, 300) }
     return { teks: `Maaf, layanan tanya-jawab sedang gangguan. Coba perintah baku dulu:\n\n${BANTUAN}`, intent: "llm_gagal", wilayahId: null }
   }
 }

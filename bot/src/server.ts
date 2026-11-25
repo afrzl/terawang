@@ -4,7 +4,9 @@ import { tanggapi } from "./bot.ts"
 import { config } from "./config.ts"
 import { pool } from "./db.ts"
 import { kirim, sehat, tandaTanganSah, uraiWebhook } from "./gowa.ts"
-import { pemakaianHariIni } from "./pagar.ts"
+import { pemakaianHariIni, muatTokenHariIni } from "./pagar.ts"
+import { catatWebhook, pantau } from "./pantau.ts"
+import { q } from "./db.ts"
 import { mulaiPenjadwal } from "./siaran.ts"
 import { semuaWilayah } from "./wilayah.ts"
 
@@ -37,7 +39,16 @@ function proses(jid: string, nomor: string, nama: string | undefined, teks: stri
   const kini = sebelum
     .then(async () => {
       const b = await tanggapi(nomor, nama, teks)
-      await kirim(jid, b.teks)
+      try {
+        await kirim(jid, b.teks)
+        pantau.balasan.terakhirOk = Date.now()
+        pantau.balasan.jumlahOk++
+      } catch (e) {
+        pantau.balasan.terakhirGagal = Date.now()
+        pantau.balasan.jumlahGagal++
+        pantau.balasan.galat = String((e as Error).message).slice(0, 300)
+        throw e
+      }
       console.log(`[pesan] ${nomor.slice(0, 4)}…${nomor.slice(-3)} intent=${b.intent}`)
     })
     .catch((e) => console.error("[pesan] gagal:", e))
@@ -57,7 +68,11 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST" && url.pathname === "/webhook/wa") {
       const mentah = await bacaBody(req)
-      if (!tandaTanganSah(mentah, req.headers["x-hub-signature-256"] as string | undefined)) return json(res, 401, { ok: false })
+      if (!tandaTanganSah(mentah, req.headers["x-hub-signature-256"] as string | undefined)) {
+        pantau.webhook.tandaTanganGagal++
+        pantau.webhook.terakhirGagalTanda = Date.now()
+        return json(res, 401, { ok: false })
+      }
       json(res, 200, { ok: true })
       let body: unknown
       try {
@@ -65,9 +80,11 @@ const server = createServer(async (req, res) => {
       } catch {
         return
       }
+      catatWebhook(String((body as { event?: unknown })?.event ?? "message"))
       if (process.env.LOG_WEBHOOK === "1") console.log("[webhook]", mentah.toString("utf8").slice(0, 2000))
       const m = uraiWebhook(body)
       if (!m) return
+      pantau.webhook.pesanTerakhir = Date.now()
       if (m.id) {
         if (sudah.has(m.id)) return
         sudah.set(m.id, Date.now())
@@ -75,6 +92,34 @@ const server = createServer(async (req, res) => {
       }
       proses(m.jid, m.nomor, m.nama, m.teks)
       return
+    }
+
+    // Status untuk halaman admin: GET /api/status dengan Authorization: Bearer <BOT_API_TOKEN>
+    if (req.method === "GET" && url.pathname === "/api/status") {
+      if (!config.apiToken || req.headers.authorization !== `Bearer ${config.apiToken}`) return json(res, 401, { ok: false })
+      const [wa, db] = await Promise.all([
+        sehat(),
+        q<{ intent: string | null; jumlah: number; terakhir: string }>(
+          `select p.intent, count(*)::int as jumlah, max(p.dibuat_pada)::text as terakhir
+             from app.percakapan_bot p join app.kontak_warga k on k.id = p.kontak_id
+            where p.arah = 'KELUAR' and p.dibuat_pada > now() - interval '24 hours' and k.nomor_wa !~ '^(sim-|uji-)'
+            group by 1 order by 2 desc`,
+        ).catch(() => []),
+      ])
+      const kontak = await q<{ n: number; langganan: number }>(
+        `select count(*)::int as n, count(*) filter (where opt_in)::int as langganan from app.kontak_warga where nomor_wa !~ '^(sim-|uji-)'`,
+      ).catch(() => [{ n: 0, langganan: 0 }])
+      return json(res, 200, {
+        ok: true,
+        mulai: pantau.mulai,
+        gowa: { terjangkau: wa.ok, url: config.gowa.url, deviceId: config.gowa.deviceId || null },
+        webhook: pantau.webhook,
+        balasan: pantau.balasan,
+        llm: { aktif: Boolean(config.openai.apiKey), model: config.openai.model, ...pemakaianHariIni(), terakhir: pantau.llm },
+        perangkat: pantau.perangkat,
+        intent24j: db,
+        kontak: kontak[0],
+      })
     }
 
     // Simulator di dasbor: POST /api/tanya { "teks": "HARGA MALANG", "sesi": "demo-1" } dengan header Authorization: Bearer <BOT_API_TOKEN>
@@ -94,6 +139,7 @@ const server = createServer(async (req, res) => {
   }
 })
 
+await muatTokenHariIni().catch(() => {})
 await semuaWilayah().then((w) => console.log(`[bot] ${w.length} kab/kota dimuat`))
 server.listen(config.port, () => console.log(`[bot] mendengar di :${config.port}, model ${config.openai.model}, LLM ${config.openai.apiKey ? "aktif" : "nonaktif"}`))
 mulaiPenjadwal()

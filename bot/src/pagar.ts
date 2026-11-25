@@ -83,6 +83,21 @@ export function catatToken(n: number) {
   tokenTerpakai += n
 }
 
+/**
+ * Penghitung token disimpan di memori. Saat bot dinyalakan ulang, pemakaian hari ini diperkirakan dari jumlah
+ * jawaban LLM hari ini di app.percakapan_bot (±2.000 token per jawaban), supaya anggaran harian tidak kembali ke nol.
+ */
+export async function muatTokenHariIni() {
+  const { q } = await import("./db.ts")
+  const r = await q<{ n: number }>(
+    `select count(*)::int as n from app.percakapan_bot
+      where arah = 'KELUAR' and intent = 'llm'
+        and dibuat_pada >= date_trunc('day', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`,
+  )
+  hariToken = hariWib()
+  tokenTerpakai = (r[0]?.n ?? 0) * 2000
+}
+
 export const pemakaianHariIni = () => ({ hari: hariToken || hariWib(), token: tokenTerpakai, batas: config.openai.tokenHarian })
 
 // ---- cache jawaban

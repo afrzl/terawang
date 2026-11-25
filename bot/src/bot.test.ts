@@ -45,3 +45,12 @@ test("urai webhook GoWA bentuk baru dan lama", () => {
   assert.equal(uraiWebhook({ event: "message", payload: { chat_id: "62812@s.whatsapp.net", body: "x", is_from_me: true } }), null)
   assert.equal(uraiWebhook({ event: "message.ack", payload: {} }), null)
 })
+
+import { jawabIstilah } from "./istilah.ts"
+test("jawaban istilah tanpa LLM", () => {
+  assert.match(jawabIstilah("apa itu SPHP?") ?? "", /Stabilisasi/)
+  assert.match(jawabIstilah("HET itu apa ya") ?? "", /Harga Eceran Tertinggi/)
+  assert.match(jawabIstilah("datanya dari mana?") ?? "", /Sumber data/)
+  assert.equal(jawabIstilah("beras SPHP di jember ada di mana"), null)
+  assert.equal(jawabIstilah("harga di malang naik?"), null)
+})
