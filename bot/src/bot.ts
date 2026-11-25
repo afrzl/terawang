@@ -29,7 +29,13 @@ type Tunda =
 const tunda = new Map<string, Tunda>()
 const MENIT = 60_000
 
-export type Balasan = { teks: string; intent: string; wilayahId: number | null }
+export type Balasan = { teks: string; intent: string; wilayahId: number | null; topik?: string }
+
+// konteks ringan per kontak: topik + wilayah terakhir, 30 menit. Cukup untuk pertanyaan lanjutan
+// ("kalau 2 minggu lagi?") tanpa memperpanjang riwayat yang dikirim ke OpenAI.
+type Konteks = { wilayahId: number; topik: string; sampai: number }
+const konteks = new Map<number, Konteks>()
+const TOPIK_ALAT: Record<string, string> = { harga_wilayah: "harga", stok_wilayah: "stok", beras_murah: "beras murah/SPHP" }
 
 export function uraiPerintah(teks: string): { perintah: Perintah; arg: string; mentah: string } | null {
   const n = normal(teks)
@@ -48,11 +54,11 @@ async function jalankan(p: Perintah, w: Wilayah | null, k: kontak.Kontak, arg: s
   const wid = w?.id ?? null
   switch (p) {
     case "harga":
-      return { teks: teksHarga(await infoHarga(w!)), intent: "harga", wilayahId: wid }
+      return { teks: teksHarga(await infoHarga(w!)), intent: "harga", wilayahId: wid, topik: "harga" }
     case "stok":
-      return { teks: teksStok(await infoStok(w!)), intent: "stok", wilayahId: wid }
+      return { teks: teksStok(await infoStok(w!)), intent: "stok", wilayahId: wid, topik: "stok" }
     case "sphp":
-      return { teks: teksBerasMurah(await infoBerasMurah(w!)), intent: "beras_murah", wilayahId: wid }
+      return { teks: teksBerasMurah(await infoBerasMurah(w!)), intent: "beras_murah", wilayahId: wid, topik: "beras murah/SPHP" }
     case "peringatan":
       return { teks: teksPeringatan(await daftarPeringatan(w?.id), w ? labelWilayah(w) : undefined), intent: "peringatan", wilayahId: wid }
     case "langganan": {
@@ -185,20 +191,24 @@ async function pesanBebas(k: kontak.Kontak, teks: string, pilihan: Wilayah | nul
   }
   if (pilihan) teks = `${teks} (wilayah: ${labelWilayah(pilihan)})`
   const sebut = Boolean(pilihan) || di?.jenis === "pas"
-  const tolak = pagar.cekMasukan(teks, sebut)
+  const kt = konteks.get(k.id)
+  const lanjut = kt && kt.sampai > Date.now() ? kt : null
+  // pertanyaan lanjutan ("kalo 2 bulan lagi?") lolos cek topik karena masih dalam percakapan beras
+  const tolak = pagar.cekMasukan(teks, sebut || Boolean(lanjut))
   if (tolak) return { teks: tolak.teks, intent: `tolak_${tolak.alasan}`, wilayahId: null }
 
   // cache: pertanyaan yang sama dalam 30 menit dijawab tanpa memanggil OpenAI lagi
-  const kunci = pagar.kunciCache(teks, k.wilayah_id)
+  const kunci = pagar.kunciCache(lanjut && !sebut ? `${teks}|${lanjut.topik}` : teks, lanjut && !sebut ? lanjut.wilayahId : k.wilayah_id)
   const c = pagar.ambilCache(kunci)
-  if (c) return { teks: c.jawaban, intent: "llm_cache", wilayahId: c.wilayahId ?? null }
+  if (c) return { teks: c.jawaban, intent: "llm_cache", wilayahId: c.wilayahId ?? null, topik: lanjut?.topik }
 
   const batas = pagar.cekBatas(k.id, await kontak.jumlahLlmHariIni(k.id))
   if (batas) return { teks: `${batas.teks}\n\n${BANTUAN}`, intent: `tolak_${batas.alasan}`, wilayahId: null }
 
-  const ingat = pilihan ?? daftar.find((w) => w.id === k.wilayah_id) ?? null
+  const idIngat = lanjut && !sebut ? lanjut.wilayahId : k.wilayah_id
+  const ingat = pilihan ?? daftar.find((w) => w.id === idIngat) ?? null
   try {
-    const r = await jawabBebas(teks, await riwayat(k.id), ingat, sebut)
+    const r = await jawabBebas(teks, await riwayat(k.id), ingat, sebut || Boolean(lanjut && ingat), sebut ? undefined : lanjut?.topik)
     pagar.catatToken(r.token)
     pantau.llm = { ...pantau.llm, terakhir: Date.now(), ok: true, galat: "", token: r.token }
     console.log(`[llm] kontak=${k.id} token=${r.token} alat=${r.pakaiAlat} hari_ini=${pagar.pemakaianHariIni().token}`)
@@ -209,7 +219,8 @@ async function pesanBebas(k: kontak.Kontak, teks: string, pilihan: Wilayah | nul
     if (r.wilayahId) await kontak.ingatWilayah(k.id, r.wilayahId)
     // hanya jawaban berbasis data yang disimpan; penolakan/jawaban tanpa data tidak ikut cache
     if (r.pakaiAlat) pagar.simpanCache(kunci, jawaban, r.wilayahId)
-    return { teks: jawaban, intent: "llm", wilayahId: r.wilayahId ?? null }
+    const topik = r.alat.map((a) => TOPIK_ALAT[a]).find(Boolean) ?? lanjut?.topik
+    return { teks: jawaban, intent: "llm", wilayahId: r.wilayahId ?? null, topik }
   } catch (e) {
     console.error("[llm] gagal:", e)
     pantau.llm = { ...pantau.llm, terakhir: Date.now(), terakhirGagal: Date.now(), ok: false, galat: String((e as Error).message).slice(0, 300) }
@@ -229,6 +240,7 @@ export async function tanggapi(nomor: string, nama: string | undefined, teks: st
     console.error("[bot] galat:", e)
     b = { teks: "Maaf, terjadi gangguan saat mengambil data. Coba lagi sebentar lagi.", intent: "galat", wilayahId: null }
   }
+  if (b.wilayahId && b.topik) konteks.set(k.id, { wilayahId: b.wilayahId, topik: b.topik, sampai: Date.now() + 30 * MENIT })
   await kontak.catat(k.id, "KELUAR", b.teks, b.intent, b.wilayahId)
   return b
 }

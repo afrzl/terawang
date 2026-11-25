@@ -49,11 +49,13 @@ const PROMPT_STATIS = [
   "8. Perintah yang ada HANYA: HARGA, STOK, SPHP, PERINGATAN, LANGGANAN, BERHENTI, LAPOR, BANTUAN. Jangan menyebut perintah lain.",
   "   Bila cocok, tutup dengan satu saran perintah di baris baru, mis. 'Ketik *HARGA Jember* untuk rinciannya.' Pakai wilayah yang sedang dibahas saja.",
   "9. Jangan membuka dengan salam (Halo, Hai); langsung ke jawaban. Keterangan seperti \"belum resmi\" hanya bila ada di hasil fungsi.",
+  "10. Prakiraan harga hanya ada untuk 2 dan 4 pekan ke depan. Untuk jangka lebih jauh (mis. 2 bulan lagi), katakan jujur itu di luar jangkauan prakiraan TERAWANG, sebut prakiraan 4 pekan sebagai yang terjauh, dan sarankan LANGGANAN <wilayah> untuk peringatan dini.",
 ].join("\n")
 
-function promptDinamis(wilayahIngat: Wilayah | null): string {
+function promptDinamis(wilayahIngat: Wilayah | null, topik?: string): string {
   const hari = new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", weekday: "long", day: "numeric", month: "long", year: "numeric" })
-  return `Hari ini ${hari}.` + (wilayahIngat ? ` Wilayah terakhir pengguna: ${labelWilayah(wilayahIngat)} (pakai bila tidak menyebut wilayah).` : "")
+  return `Hari ini ${hari}.` + (wilayahIngat ? ` Wilayah terakhir pengguna: ${labelWilayah(wilayahIngat)} (pakai bila tidak menyebut wilayah).` : "") +
+    (topik && wilayahIngat ? ` Pengguna sedang bertanya lanjutan soal ${topik} beras di ${labelWilayah(wilayahIngat)}; pertanyaan pendek tanpa wilayah/topik merujuk ke situ.` : "")
 }
 
 const TENTANG = {
@@ -140,28 +142,31 @@ export async function jawabBebas(
   riwayat: { arah: "MASUK" | "KELUAR"; isi: string }[],
   wilayahIngat: Wilayah | null,
   wajibAlat = false,
-): Promise<{ jawaban: string; wilayahId?: number; token: number; pakaiAlat: boolean }> {
+  topik?: string,
+): Promise<{ jawaban: string; wilayahId?: number; token: number; pakaiAlat: boolean; alat: string[] }> {
   const pendek = (x: string) => (x.length > 300 ? x.slice(0, 300) + "…" : x)
   const pesan: Pesan[] = [
     { role: "system", content: PROMPT_STATIS },
-    { role: "system", content: promptDinamis(wilayahIngat) },
+    { role: "system", content: promptDinamis(wilayahIngat, topik) },
     ...riwayat.map((r) => (r.arah === "MASUK" ? { role: "user" as const, content: pendek(r.isi) } : { role: "assistant" as const, content: pendek(r.isi) })),
     { role: "user", content: teks },
   ]
   let wilayahId: number | undefined
   let token = 0
   let pakaiAlat = false
+  const alat: string[] = []
   for (let putaran = 0; putaran < 3; putaran++) {
     const { pesan: m, usage } = await panggilOpenAI(pesan, wajibAlat && putaran === 0)
     token += (usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0)
-    if (!m.tool_calls?.length) return { jawaban: (m.content ?? "").trim(), wilayahId, token, pakaiAlat }
+    if (!m.tool_calls?.length) return { jawaban: (m.content ?? "").trim(), wilayahId, token, pakaiAlat, alat }
     pakaiAlat = true
     pesan.push({ role: "assistant", content: m.content, tool_calls: m.tool_calls.slice(0, 3) })
     for (const tc of m.tool_calls.slice(0, 3)) {
+      alat.push(tc.function.name)
       const r = await jalankanAlat(tc.function.name, tc.function.arguments).catch((e) => ({ hasil: { galat: String(e?.message ?? e) }, wilayahId: undefined }))
       if (r.wilayahId) wilayahId = r.wilayahId
       pesan.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(r.hasil) })
     }
   }
-  return { jawaban: "", wilayahId, token, pakaiAlat }
+  return { jawaban: "", wilayahId, token, pakaiAlat, alat }
 }
