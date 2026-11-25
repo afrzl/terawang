@@ -37,7 +37,7 @@ DIKENAL: dict[str, dict[str, dict]] = {
         "OPENAI_REASONING_EFFORT": {"label": "Tingkat penalaran", "pilihan": ["minimal", "low", "medium"]},
         "LLM_BATAS_HARIAN": {"label": "Batas pesan LLM per nomor per hari", "angka": True},
         "LLM_BATAS_10MENIT": {"label": "Batas pesan LLM per nomor per 10 menit", "angka": True, "ket": "Anti-spam. Lewat batas, bot hanya melayani perintah baku."},
-        "LLM_TOKEN_HARIAN": {"label": "Anggaran token seluruh bot per hari", "angka": True,
+        "LLM_TOKEN_HARIAN": {"label": "Anggaran token seluruh bot per hari", "angka": True, "secret": False,
                              "ket": "Lewat dari ini pesan bebas ditolak sampai besok. Batas keras tetap pasang di dasbor OpenAI (Settings > Limits)."},
         "LLM_MAKS_KELUARAN": {"label": "Token keluaran maks. per panggilan", "angka": True},
         "LLM_MAKS_MASUKAN": {"label": "Panjang pesan maks. ke LLM (karakter)", "angka": True},
