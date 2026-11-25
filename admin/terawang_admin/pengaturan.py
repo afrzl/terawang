@@ -35,3 +35,8 @@ BOT_DIR = _path("TERAWANG_BOT_DIR", RUMAH / "terawang-bot/bot")
 # Cookie Secure hanya kalau lewat HTTPS (Traefik). Isi 0 untuk uji lokal http.
 COOKIE_SECURE = os.environ.get("TERAWANG_ADMIN_COOKIE_SECURE", "1") == "1"
 UKURAN_MAKS_UNGGAH = int(os.environ.get("TERAWANG_ADMIN_UKURAN_MAKS_MB", "200")) * 1024 * 1024
+# GoWA dan bot WhatsApp, dibaca dari host (port hanya di 127.0.0.1). Kredensial diambil dari .env bot.
+GOWA_URL = os.environ.get("TERAWANG_GOWA_URL", "http://127.0.0.1:3091").rstrip("/")
+BOT_URL = os.environ.get("TERAWANG_BOT_URL", "http://127.0.0.1:8091").rstrip("/")
+# ID slot device GoWA untuk bot (dipakai kalau GOWA_DEVICE_ID di .env bot kosong)
+BOT_DEVICE_BAWAAN = os.environ.get("TERAWANG_BOT_DEVICE", "terawang-bot")

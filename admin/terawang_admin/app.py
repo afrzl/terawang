@@ -17,7 +17,7 @@ from starlette.responses import FileResponse, JSONResponse, RedirectResponse, Re
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
-from . import akun, dagster, data, envfile, jejak, pengaturan, sumber, uji
+from . import akun, dagster, data, envfile, jejak, pengaturan, sumber, uji, whatsapp
 
 STATIC = Path(__file__).parent / "static"
 HEADER_CSRF = "x-terawang-admin"
@@ -48,6 +48,8 @@ def perlu_login(hak: str | None = None):
             try:
                 return await fn(req)
             except dagster.GalatDagster as e:
+                return galat(str(e), 502)
+            except whatsapp.GalatWa as e:
                 return galat(str(e), 502)
             except (sumber.GagalUnggah, akun.GalatAkun, data.GagalData) as e:
                 return galat(str(e), 400)
@@ -396,6 +398,45 @@ async def lihat_jejak(req: Request):
     return JSONResponse({"jejak": await run_in_threadpool(jejak.baca, 300)})
 
 
+# ---------- WhatsApp (GoWA + bot) ----------
+
+@perlu_login("pipeline")
+async def wa_status(req: Request):
+    return JSONResponse(await run_in_threadpool(whatsapp.status))
+
+
+@perlu_login("konfigurasi")
+async def wa_aksi(req: Request):
+    aksi = req.path_params["aksi"]
+    try:
+        data = await req.json()
+    except ValueError:
+        data = {}
+    device = str(data.get("device") or "")[:80]
+    ip = ip_klien(req)
+    if aksi == "buat":
+        d = await run_in_threadpool(whatsapp.buat_device)
+        jejak.catat("wa_buat_device", req.state.pengguna, ip, device=d)
+        return JSONResponse({"pesan": f"Device {d} dibuat. Lanjutkan dengan QR atau kode pairing.", "device": d})
+    if aksi == "qr":
+        r = await run_in_threadpool(whatsapp.login_qr, device)
+        jejak.catat("wa_login", req.state.pengguna, ip, device=device, cara="qr")
+        return JSONResponse(r)
+    if aksi == "kode":
+        r = await run_in_threadpool(whatsapp.login_kode, device, str(data.get("nomor") or ""))
+        jejak.catat("wa_login", req.state.pengguna, ip, device=device, cara="kode")
+        return JSONResponse(r)
+    if aksi in ("reconnect", "logout", "lepas"):
+        pesan = await run_in_threadpool(whatsapp.aksi_device, device, aksi)
+        jejak.catat("wa_" + aksi, req.state.pengguna, ip, device=device)
+        return JSONResponse({"pesan": pesan})
+    if aksi == "uji":
+        r = await run_in_threadpool(whatsapp.uji_alur, str(data.get("teks") or ""))
+        jejak.catat("wa_uji_alur", req.state.pengguna, ip, intent=r.get("intent"))
+        return JSONResponse(r)
+    return galat("Aksi tidak dikenal.")
+
+
 # ---------- halaman ----------
 
 async def halaman(req: Request):
@@ -451,6 +492,8 @@ routes = [
     Route(f"{API}/sumber/{{sumber}}/{{nama}}", tarik, methods=["DELETE"]),
     Route(f"{API}/sumber/{{sumber}}/{{nama}}/contoh", templat),
     Route(f"{API}/jejak", lihat_jejak),
+    Route(f"{API}/wa", wa_status),
+    Route(f"{API}/wa/{{aksi}}", wa_aksi, methods=["POST"]),
     Mount("/admin/static", StaticFiles(directory=STATIC), name="static"),
 ]
 
