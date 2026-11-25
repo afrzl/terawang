@@ -102,7 +102,7 @@ export default function Ringkasan() {
         <Legenda spec={spec} />
         {arus !== "off" && (
           <div className="legend">
-            <span className="ttl">{arus === "sphp" ? "Rekomendasi SPHP" : "Perdagangan antarwilayah, 25 jalur terbesar"}</span>
+            <span className="ttl">{arus === "sphp" ? "Rekomendasi SPHP" : "Pola pasokan, 25 pasangan terbesar"}</span>
             <span>{dim === "3d" ? "Tebal garis = volume. Lingkaran = asal, panah = tujuan" : "Tebal garis = volume, bergerak dari asal ke tujuan"}</span>
             {arus === "sphp" && (
               <span>

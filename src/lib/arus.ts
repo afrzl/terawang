@@ -88,17 +88,23 @@ function buildTrade(bulan: number): Trade[] {
   return out.sort((a, b) => b.ton - a.ton)
 }
 
-/** Arus dari model K2 (LP jarak jalan atas neraca tahunan 2025, ton/bulan): K2 memakai arus ini sebagai pasokan masuk tiap bulan,
- *  jadi besarnya sama untuk semua bulan. Kosong bila API mati atau run K2 lama; saat itu dipakai model gravitasi di bawah (simulasi). */
-const ARUS_K2: Trade[] = (K2?.meta.arus ?? [])
+/** Alokasi tahunan K2 (LP jarak jalan atas neraca 2025): ton per tahun per rute. Kosong bila API mati atau run K2 lama;
+ *  saat itu dipakai model gravitasi buildTrade (simulasi). */
+const ALOKASI_K2 = (K2?.meta.arus ?? [])
   .filter((a) => byName[a.dari] && byName[a.ke] && a.ton_bulan >= 1)
-  .map((a) => ({ from: byName[a.dari], to: byName[a.ke], ton: Math.round(a.ton_bulan / 10) * 10, km: dist(a.dari, a.ke) }))
-  .sort((a, b) => b.ton - a.ton)
+  .map((a) => ({ from: byName[a.dari], to: byName[a.ke], tonTahun: a.ton_bulan * 12, km: dist(a.dari, a.ke) }))
 /** Arus beras berasal dari hasil pemodelan K2 (bukan simulasi). */
-export const ARUS_DARI_MODEL = ARUS_K2.length > 0
+export const ARUS_DARI_MODEL = ALOKASI_K2.length > 0
+
+/** Alokasi bulanan K2: alokasi tahunan ÷ 12, sama untuk semua bulan (pasokan yang diterima wilayah defisit di neraca K2).
+ *  Uji 25 Nov 2026: menskalakan rute dengan pola panen pemasok membuat bulan paceklik/estimasi nyaris tanpa arus; untuk MVP dipakai rata. */
+const ARUS_K2: Trade[] = ALOKASI_K2.map((a) => ({ from: a.from, to: a.to, ton: Math.round(a.tonTahun / 12 / 10) * 10, km: a.km }))
+  .filter((x) => x.ton >= 10)
+  .sort((x, y) => y.ton - x.ton)
 
 const CACHE = new Map<number, Trade[]>()
-/** Arus perdagangan untuk bulan `i` (0 = Jan 2026): hasil K2 bila ada, selain itu estimasi gravitasi. */
+/** Arus beras bulan `i` (0 = Jan 2026), ton/bulan. Dengan K2: alokasi tahunan neraca 2025 ÷ 12 (sama tiap bulan).
+ *  Tanpa K2: estimasi gravitasi atas neraca bulan itu (simulasi). */
 export function tradeFor(i: number): Trade[] {
   if (ARUS_DARI_MODEL) return ARUS_K2
   const b = Math.max(0, Math.min(IDX_AKHIR, Math.round(i)))

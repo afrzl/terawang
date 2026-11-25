@@ -78,3 +78,38 @@ Temuan:
 
 Diterapkan 25 Nov 2026 (versi `k2-neraca-lp-kalman-2026.11b`, varian "RT + 2,8 kg/kap/bln sama rata"): K2 model_run 15 (Nov 1/1/19/17, Des 5/5/15/13, Jan 10/7/16/5), K3b model_run 16 (47 rute, 136 rb ton, 21 kab penerima, 87 km; kekurangan berbobot turun 30,0%; peluang cakupan < 0,75 dari 31,7% ke 23,8%).
 Arus perdagangan di dashboard (`src/lib/arus.ts`) memakai konsumsi K2 lewat API (`data.ts` menimpa `k.C`), jadi ikut berubah; simulasi cadangan tanpa API kini juga 6,39 + 2,80 kg/kapita.
+
+## Uji 25 Nov 2026: harga per kab dan asumsi arus
+
+Skrip di luar repo: `scratchpad/kohort/harga_arus.py`, `uji_arus.py` (K1 run 12, konsumsi 11b).
+
+Harga konsumen beras medium SISKAPERBAPO per kab (2022-2026) tidak membawa sinyal arus lokal: sd harga rata-rata 2025 antar kab Rp 305 (±2,5%); harga bayangan LP vs harga ρ = −0,2; surplus/kapita vs harga ≈ 0; korelasi perubahan harga bulanan antar pasangan (sesudah buang gerak provinsi) ≈ 0 di semua jarak; pola musim lumbung = kab defisit. Pasar Jatim terpadu, jadi harga eceran tidak bisa menyetel β gravitasi atau porsi timbun.
+
+Kepekaan status (D/T/C/S; ubah = kab berubah status vs dasar; ρ = korelasi peringkat cakupan):
+
+| Varian | Nov 2026 | Des 2026 | Jan 2027 |
+|---|---|---|---|
+| Dasar (LP, kirim saat panen) | 1/1/19/17 | 5/5/15/13 | 10/7/16/5 |
+| Kolam provinsi (tanpa jarak) | sama persis | sama persis | sama persis |
+| Timbun 30-50%, lepas 2-4 bln | ubah 3-6, ρ 0,78-0,86 | ubah 7-9, ρ 0,88-0,93 | ubah 7-10, ρ 0,92-0,98; defisit 11-13 |
+| Masuk kab defisit ikut musim kiriman | ubah 14, ρ 0,47 | ubah 19, ρ 0,66 | ubah 5, ρ 1,00 |
+
+Temuan:
+- Pemilihan rute tidak memengaruhi status K2 sama sekali: kab defisit selalu menerima sebesar defisitnya dan kab surplus selalu melepas sebesar surplusnya, siapa pun pasangannya. Rute hanya memengaruhi K3b dan halaman arus (rerata jarak 89 km LP vs 166 km kolam).
+- Yang berpengaruh adalah waktu: timbun di lumbung menggeser 3-10 kab, daftar rawan beda 2-5 kab, peringkat tetap kuat (ρ ≥ 0,78; Jan ≥ 0,92).
+- Masuk ke kab defisit mengikuti musim panen mengubah Nov-Des besar, tapi kurang realistis: pengecer di kab defisit tidak menyimpan berbulan-bulan, simpanan ada di hulu (penggilingan, pedagang di lumbung). Rentang yang relevan: dasar sampai timbun 50%.
+- Belum diterapkan.
+
+## Uji 25 Nov 2026: struktur arus dari neraca 12 bulan terakhir (Des 2025-Nov 2026)
+
+Skrip: `scratchpad/kohort/uji_neraca12.py`. Neraca 12 bulan = Des 2025 (BPS) + Jan-Sep 2026 (K1 diskalakan BPS) + Okt-Nov 2026 (K1); konsumsi 2026.
+
+- Struktur hampir sama dengan 2025: 20 surplus / 18 defisit, tidak ada kab berganti peran, 26 dari 28 pasangan sama, arus antar kab 80,9 vs 81,5 rb ton/bln, perubahan kiriman masuk per kab < 700 ton/bln.
+- Tetapi status berubah besar: Nov 15 kab (ρ 0,50), Des 25 kab (ρ 0,12; 1/4/33/0), Jan 2027 19 kab (19 defisit).
+- Sebab: kalibrasi arus dan θ pada bulan yang sama dengan lintasan stok membuat neraca tiap kab tertutup sendiri (Σ(P − C + masuk − keluar) ≈ 0 sepanjang jendela). Setiap kab kembali ke stok awal di akhir jendela; sebaran cakupan Nov menyempit (sd 0,53 → 0,33) dan status mendekati jangkar. Selisih antar kab yang tersisa hanya pola musim, bukan surplus/defisit tahun berjalan.
+- Kesimpulan: jendela yang tumpang tindih dengan periode stok bersifat melingkar. Tidak diterapkan. Pilihan yang konsisten: struktur dari tahun lengkap sebelumnya (2025 untuk 2026; diganti 2026 saat data BPS 2026 lengkap).
+
+## Tampilan arus per bulan di dasbor (25 Nov 2026)
+
+Halaman Arus beras (`src/lib/arus.ts` `tradeFor`) kini menampilkan kiriman dari panen baru per bulan: alokasi tahunan LP tiap rute × porsi kelebihan panen pemasok (Jan-Des 2026, K1) di bulan itu. Total setahun tiap rute = hasil LP; kiriman Jatim Mar ±285, Jul ±170, Nov ±4 rb ton. KPI "Pasokan ke wilayah defisit" tetap 81,5 rb ton/bulan (asumsi neraca K2) dengan rincian dari panen baru dan dari stok tersimpan (selisih; tidak dimodelkan per kab, belum diukur). Neraca stok K2 tidak berubah. K2 run 17 (Dagster) menyimpan `arus_antar_kab`.
+Dibatalkan (25 Nov 2026, keputusan pengguna untuk MVP): tampilan per bulan membuat bulan estimasi/paceklik nyaris tanpa arus (Okt-Jan 3-10 rb ton). Dasbor kembali menampilkan alokasi neraca 2025 ÷ 12, sama tiap bulan (81,5 rb ton/bln).

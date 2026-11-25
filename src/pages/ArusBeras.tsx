@@ -7,7 +7,7 @@ import { MatriksArus } from "@/components/charts/MatriksArus"
 import { SankeyArus } from "@/components/charts/SankeyArus"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
-import { ARUS_DARI_MODEL, REGIONS, neracaBulan, regionOf, regionStatsFor, tradeFor, matrixOf, type Trade } from "@/lib/arus"
+import { ARUS_DARI_MODEL, REGIONS, regionOf, regionStatsFor, tradeFor, matrixOf, type Trade } from "@/lib/arus"
 import { byName, type Wilayah } from "@/lib/data"
 import { nf, scale, short } from "@/lib/format"
 import { bulanLabel, useFilter } from "@/lib/filter"
@@ -18,7 +18,7 @@ import { useTooltip } from "@/lib/tooltip"
 export default function ArusBeras() {
   return (
     <section className="view">
-      <ViewHeader icon={ArrowLeftRight} title="Estimasi Arus Perdagangan" />
+      <ViewHeader icon={ArrowLeftRight} title="Pola Pasokan Antarwilayah" />
       <Perdagangan />
     </section>
   )
@@ -32,20 +32,25 @@ function Perdagangan() {
   const total = trade.reduce((a, t) => a + t.ton, 0) || 1
   const antar = trade.filter((t) => regionOf[t.from.n] !== regionOf[t.to.n]).reduce((a, t) => a + t.ton, 0)
   const kmAvg = trade.reduce((a, t) => a + t.ton * t.km, 0) / total
-  const nSur = W.filter((k) => neracaBulan(k, akhir) > 0).length
+  // Pemasok dihitung dari arus yang sama dengan peta, supaya tidak bertentangan dengan arus.
+  const nPemasok = new Set(trade.map((t) => t.from.n)).size
 
   return (
     <>
       <KpiStrip
         items={[
-          { k: "Arus antarwilayah", v: `${nf(total / 1000, 1)} rb ton`, t: ARUS_DARI_MODEL ? "per bulan, LP neraca K2" : "estimasi per bulan (simulasi)" },
+          ARUS_DARI_MODEL
+            ? { k: "Pasokan ke wilayah defisit", v: `${nf(total / 1000, 1)} rb ton`, t: "rata-rata per bulan, neraca 2025" }
+            : { k: "Kebutuhan pasokan antarwilayah", v: `${nf(total / 1000, 1)} rb ton`, t: "per bulan" },
           { k: "Lintas kawasan", v: `${nf((antar / total) * 100, 0)}%`, t: `${nf(antar / 1000, 1)} rb ton` },
-          { k: "Wilayah surplus", v: `${nSur} dari ${W.length}`, t: "produksi > konsumsi" },
-          { k: "Jarak tempuh rata-rata", v: `${nf(kmAvg)} km`, t: "per ton beras" },
+          { k: "Wilayah pemasok", v: `${nPemasok} dari ${W.length}`, t: ARUS_DARI_MODEL ? "surplus setahun, memasok dalam alokasi" : "surplus bulan terpilih" },
+          ARUS_DARI_MODEL
+            ? { k: "Jarak minimum rata-rata", v: `${nf(kmAvg)} km`, t: "per ton; rute nyata lebih jauh" }
+            : { k: "Jarak rata-rata", v: `${nf(kmAvg)} km`, t: "per ton beras" },
         ]}
       />
       <div className="grid-21">
-        <Panel title="Peta arus utama" className="panel-flex">
+        <Panel title="Peta alokasi pasokan" className="panel-flex">
           <div className="map">
             <PetaJatim
               layer="stokK2"
@@ -62,7 +67,7 @@ function Perdagangan() {
         <Corridors trade={trade} />
       </div>
       <Panel
-        title="Aliran beras antar kabupaten"
+        title="Alokasi pasokan antarkabupaten"
         actions={
           <div className="seg seg-s" role="group" aria-label="Tampilan aliran">
             <button type="button" aria-pressed={mode === "sankey"} onClick={() => setMode("sankey")}>
@@ -96,7 +101,7 @@ function Perdagangan() {
         )}
       </Panel>
       <div className="grid-2">
-        <Panel title="Aliran beras antarkawasan">
+        <Panel title="Alokasi pasokan antarkawasan">
           <div className="pb chart" style={{ maxWidth: 680, margin: "0 auto" }}>
             <ChordArus matrix={matrixOf(semua)} />
           </div>
@@ -119,10 +124,10 @@ function Insight({ k, trade, out, inn }: { k: Wilayah; trade: Trade[]; out: numb
     <div className="ins">
       <div className="ins-h">
         <b>{k.n}</b>
-        <span className={`ins-tag ${peran.toLowerCase()}`}>{peran}</span>
+        <span className={`ins-tag ${peran.toLowerCase()}`}>{peran === "Seimbang" ? "Tanpa kiriman" : peran}</span>
       </div>
       {peran === "Seimbang" ? (
-        <p className="ins-t">Produksi dan konsumsi hampir seimbang, arus keluar masuk kecil.</p>
+        <p className="ins-t">Tidak memasok atau menerima beras dalam alokasi antarkabupaten.</p>
       ) : (
         <>
           <div className="ins-v">
@@ -228,7 +233,7 @@ function Corridors({ trade }: { trade: Trade[] }) {
   const out = trade.filter((t) => t.from.n === k.n).reduce((a, t) => a + t.ton, 0)
   const inn = trade.filter((t) => t.to.n === k.n).reduce((a, t) => a + t.ton, 0)
   return (
-    <Panel title="Jalur terbesar">
+    <Panel title="Pasangan pemasok–penerima terbesar">
       <div className="corr">
         {top.map((t) => (
           <div key={t.from.n + t.to.n} className="corr-row" onClick={() => select(t.to.n)}>

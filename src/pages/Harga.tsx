@@ -166,16 +166,17 @@ function LegendaJenis() {
   )
 }
 
-/** Peta panas harga: satu jenis langsung ditampilkan; bila dua jenis dipilih, pilihan jenis ada di panel. */
+/** Heatmap harga: satu jenis langsung ditampilkan; bila dua jenis dipilih, pilihan jenis ada di panel. */
 function PanelPeta({ jenis }: { jenis: Komoditas[] }) {
   const [pilih, setPilih] = useState<Komoditas>("medium")
   const aktif = jenis.length > 1 ? (jenis.includes(pilih) ? pilih : jenis[0]) : jenis[0]
+  const nWil = useWilayah().length
   return (
     <Panel
-      title="Peta panas harga 38 wilayah"
+      title={`Heatmap harga ${nWil} wilayah, 26 pekan terakhir`}
       actions={
         jenis.length > 1 ? (
-          <div className="seg seg-s" role="group" aria-label="Jenis beras pada peta panas">
+          <div className="seg seg-s" role="group" aria-label="Jenis beras pada heatmap">
             {jenis.map((j) => (
               <button key={j} type="button" aria-pressed={aktif === j} onClick={() => setPilih(j)} style={{ textTransform: "capitalize" }}>
                 {j}

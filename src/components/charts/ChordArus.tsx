@@ -100,7 +100,8 @@ export function ChordArus({ matrix = REGION_MATRIX, nodes = NODE_KAWASAN }: { ma
         const out = matrix[g.index].reduce((a, b) => a + b, 0) - dalam
         const inn = matrix.reduce((a, row) => a + row[g.index], 0) - dalam
         const { lx, ly } = label[g.index]
-        const anchor = Math.abs(lx) < 30 ? "middle" : lx > 0 ? "start" : "end"
+        // Rata menurut sisi (bukan tengah) agar dua label berdekatan di puncak lingkaran tidak saling menimpa.
+        const anchor = lx > 0 ? "start" : "end"
         return (
           <g
             key={r.key}

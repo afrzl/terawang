@@ -91,7 +91,7 @@ function PetaSet({ lapisan }: { lapisan: boolean }) {
               options={[
                 { value: "off", label: "Tidak ada" },
                 ...(sphp ? [{ value: "sphp" as ArusMode, label: "Rekomendasi SPHP" }] : []),
-                { value: "dagang", label: "Perdagangan antarwilayah" },
+                { value: "dagang", label: "Pola pasokan" },
               ]}
               value={p.arus}
               onChange={p.setArus}

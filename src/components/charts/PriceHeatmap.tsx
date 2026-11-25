@@ -13,7 +13,7 @@ const kelas = (het: number): [number, string, string][] => [
   [Infinity, "--d1", `≥ ${nf(Math.round(het * SIAGA_KALI))} (di atas HET +5%)`],
 ]
 
-/** Peta panas harga beras: 38 wilayah × 26 pekan riwayat + 4 pekan prakiraan. Premium: selisih tetap dari medium (DUMMY). */
+/** Heatmap harga beras: 38 wilayah × 26 pekan riwayat + 4 pekan prakiraan. Premium: selisih tetap dari medium (DUMMY). */
 export function PriceHeatmap({ kom }: { kom: "medium" | "premium" }) {
   const wil = useWilayah()
   const { sel, select } = useSelection()
@@ -34,7 +34,7 @@ export function PriceHeatmap({ kom }: { kom: "medium" | "premium" }) {
 
   return (
     <>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Peta panas harga beras per wilayah dan pekan" className="heat">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Heatmap harga beras per wilayah dan pekan" className="heat">
         {dates.map((d, i) =>
           (i < HIST && i % 3 === 0) || i === HIST ? (
             <text key={i} x={cx(i) + cw / 2} y={14} textAnchor="middle" className={i >= HIST ? "lab-b" : undefined}>

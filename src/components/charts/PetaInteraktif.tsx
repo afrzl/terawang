@@ -20,7 +20,7 @@ setWorkerUrl(workerUrl)
 
 
 /** Tinggi menara 3D untuk kelas tertinggi (meter). */
-const TINGGI_MAKS = 18000
+const TINGGI_MAKS = 24000
 const JATIM_BOUNDS: [[number, number], [number, number]] = [
   [110.85, -8.85],
   [114.65, -6.65],
@@ -205,12 +205,13 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
     map.on("load", () => {
       map.addSource("kab", { type: "geojson", data: { type: "FeatureCollection", features: [] } })
       map.addLayer({ id: "kab-fill", type: "fill", source: "kab", paint: { "fill-color": ["get", "fill"], "fill-opacity": 0.7 } })
+      map.addSource("kab-bar", { type: "geojson", data: { type: "FeatureCollection", features: [] } })
       map.addLayer({
         id: "kab-3d",
         type: "fill-extrusion",
-        source: "kab",
+        source: "kab-bar",
         layout: { visibility: "none" },
-        paint: { "fill-extrusion-color": ["get", "fill"], "fill-extrusion-height": ["get", "h"], "fill-extrusion-base": 0, "fill-extrusion-opacity": 0.88 },
+        paint: { "fill-extrusion-color": ["get", "fill"], "fill-extrusion-height": ["get", "h"], "fill-extrusion-base": 0, "fill-extrusion-opacity": 1 },
       })
       map.addLayer({
         id: "kab-line",
@@ -269,14 +270,18 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
         onPickRef.current?.(n)
       }
     }
-    const lid = tiga ? "kab-3d" : "kab-fill"
-    map.on("mousemove", lid, move)
-    map.on("mouseleave", lid, leave)
-    map.on("click", lid, click)
+    const lids = tiga ? ["kab-3d", "kab-fill"] : ["kab-fill"]
+    for (const lid of lids) {
+      map.on("mousemove", lid, move)
+      map.on("mouseleave", lid, leave)
+      map.on("click", lid, click)
+    }
     return () => {
-      map.off("mousemove", lid, move)
-      map.off("mouseleave", lid, leave)
-      map.off("click", lid, click)
+      for (const lid of lids) {
+        map.off("mousemove", lid, move)
+        map.off("mouseleave", lid, leave)
+        map.off("click", lid, click)
+      }
     }
   }, [ready, d, val, valueLabel, spec, tiga, show, hide, select])
 
@@ -303,6 +308,21 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
         }),
       }
       ;(map.getSource("kab") as GeoJSONSource | undefined)?.setData(data as unknown as Parameters<GeoJSONSource["setData"]>[0])
+      // Mode 3D: satu batang (bar chart) per wilayah, diletakkan di daratan utama wilayah itu.
+      const bar = {
+        type: "FeatureCollection",
+        features: data.features.map((f) => {
+          const [cx, cy] = pusatDaratan(f)
+          const [[w, s], [e, n]] = bboxOf(f)
+          const r = Math.max(0.012, Math.min(0.05, 0.25 * Math.min(e - w, n - s)))
+          return {
+            type: "Feature",
+            properties: f.properties,
+            geometry: { type: "Polygon", coordinates: [[[cx - r, cy - r], [cx + r, cy - r], [cx + r, cy + r], [cx - r, cy + r], [cx - r, cy - r]]] },
+          }
+        }),
+      }
+      ;(map.getSource("kab-bar") as GeoJSONSource | undefined)?.setData(bar as unknown as Parameters<GeoJSONSource["setData"]>[0])
       map.setPaintProperty("kab-sel", "line-color", cssVar("var(--ink)"))
       map.setPaintProperty("kab-line", "line-color", basemap === "satelit" ? "#ffffff" : cssVar("var(--panel)"))
     })
@@ -316,7 +336,7 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
     const map = mapRef.current
     if (!map || !ready) return
     map.setLayoutProperty("kab-3d", "visibility", tiga ? "visible" : "none")
-    map.setPaintProperty("kab-fill", "fill-opacity", tiga ? 0 : fillOp)
+    map.setPaintProperty("kab-fill", "fill-opacity", tiga ? Math.min(fillOp, 0.4) : fillOp)
     if (tiga) map.dragRotate.enable()
     else map.dragRotate.disable()
     map.easeTo({ pitch: tiga ? 58 : 0, bearing: tiga ? -14 : 0, duration: 900 })
@@ -327,7 +347,7 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
   useEffect(() => {
     const map = mapRef.current
     if (!map || !ready) return
-    map.setPaintProperty("kab-3d", "fill-extrusion-opacity", arus !== "off" ? 0.6 : 0.88)
+    map.setPaintProperty("kab-3d", "fill-extrusion-opacity", arus !== "off" ? 0.85 : 1)
     map.setPaintProperty("kab-3d", "fill-extrusion-height", ["*", ["get", "h"], arus !== "off" ? 0.28 : 1])
   }, [ready, arus])
 
@@ -344,8 +364,8 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
   useEffect(() => {
     const map = mapRef.current
     if (!map || !ready) return
-    map.setPaintProperty("kab-fill", "fill-opacity", tiga ? 0 : fillOp)
-    map.setPaintProperty("kab-3d", "fill-extrusion-opacity", arus !== "off" ? 0.6 : Math.max(0.35, fillOp + 0.18))
+    map.setPaintProperty("kab-fill", "fill-opacity", tiga ? Math.min(fillOp, 0.4) : fillOp)
+    map.setPaintProperty("kab-3d", "fill-extrusion-opacity", arus !== "off" ? 0.85 : 1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, fillOp])
 
@@ -790,7 +810,7 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
               <MapIcon size={15} />
               2D
             </button>
-            <button type="button" aria-pressed={tiga} onClick={() => peta.setDim("3d")} title="Peta 3D dengan menara">
+            <button type="button" aria-pressed={tiga} onClick={() => peta.setDim("3d")} title="Peta 3D dengan batang">
               <Box size={15} />
               3D
             </button>
