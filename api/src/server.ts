@@ -6,10 +6,12 @@
  *   GET /api/harga     hasil K3a terbaru (app.prediksi_harga 7/14/21/28 hari + riwayat harga mingguan silver.harga_kabkota_harian)
  *   GET /api/sphp      hasil K3b terbaru (app.rekomendasi_sphp), hanya untuk akun berhak `dasbor_sphp` (dicek ke layanan admin)
  *   GET /api/citra     olahan citra per wilayah (gee_wilayah.json keluaran aset bronze_citra), bila berkasnya ada
+ *   GET /api/deret     deret EVI/LSWI/VH per wilayah (deret_satelit.json keluaran aset deret_satelit_wilayah)
+ *   GET /api/bulog     stok Bulog Jatim bulanan dan pengadaan per kantor cabang (silver.stok_bulog_bulanan, silver.pengadaan_bulog)
  *   GET /api/status    ringkas: model_run terakhir per jenis (untuk cek kesehatan)
  *
- * Semua deret bulanan memakai indeks 0 = Jan 2026 sampai 12 = Jan 2027 (kontrak dasbor saat ini).
- * Env: DATABASE_URL (wajib), API_HOST (bawaan 127.0.0.1), API_PORT (3072), ADMIN_URL (http://127.0.0.1:3071), TERAWANG_GEE_JSON.
+ * Deret bulanan memakai indeks 0 = Jan 2026 sampai bulan kini + 2 (horizon K2), sama dengan dasbor (src/lib/api.ts).
+ * Env: DATABASE_URL (wajib), API_HOST (bawaan 127.0.0.1), API_PORT (3072), ADMIN_URL (http://127.0.0.1:3071), TERAWANG_GEE_JSON, TERAWANG_DERET_JSON.
  *
  *   npm run api
  */
@@ -22,7 +24,11 @@ import pg from "pg"
 
 const AWAL_TAHUN = 2026
 const AWAL_BULAN = 1
-const JUMLAH_BULAN = 13
+/** Jumlah bulan dalam jendela: Jan 2026 sampai bulan kini + 2. */
+const jumlahBulan = () => {
+  const d = new Date()
+  return Math.max(1, (d.getFullYear() - AWAL_TAHUN) * 12 + d.getMonth() - (AWAL_BULAN - 1) + 3)
+}
 const HORIZON = [7, 14, 21, 28]
 const PEKAN_RIWAYAT = 26
 const KOMODITAS = { medium: "beras_medium", premium: "beras_premium" } as const
@@ -39,7 +45,7 @@ const pool = new pg.Pool({ connectionString: urlPg(process.env.DATABASE_URL), ma
 const q = async <T = Record<string, unknown>>(sql: string, args: unknown[] = []) => (await pool.query(sql, args)).rows as T[]
 
 const idxBulan = (tahun: number, bulan: number) => (tahun - AWAL_TAHUN) * 12 + (bulan - AWAL_BULAN)
-const kosong = <T>() => Array<T | null>(JUMLAH_BULAN).fill(null)
+const kosong = <T>(n: number) => Array<T | null>(n).fill(null)
 const angka = (v: unknown) => (v === null || v === undefined ? null : Number(v))
 const tgl = (d: unknown) => (d instanceof Date ? d.toISOString() : d === null || d === undefined ? null : String(d))
 /** Tanggal kolom `date` dibaca pg sebagai Date tengah malam waktu lokal; ambil Y-M-D lokalnya. */
@@ -90,11 +96,12 @@ async function produksi() {
      where w.level = 'KABKOTA' and p.tahun = 2025 and p.granularitas = 'BULANAN' and p.bulan_awal = p.bulan_akhir
      order by w.id, p.bulan_awal, (p.status_angka = 'TETAP') desc, p.sumber_id desc`,
   )
+  const N = jumlahBulan()
   const wilayah: Record<string, { k1: (number | null)[]; p10: (number | null)[]; p90: (number | null)[]; bps2025: (number | null)[] }> = {}
-  const ambil = (kab: string) => (wilayah[kab] ??= { k1: kosong(), p10: kosong(), p90: kosong(), bps2025: Array(12).fill(null) })
+  const ambil = (kab: string) => (wilayah[kab] ??= { k1: kosong(N), p10: kosong(N), p90: kosong(N), bps2025: Array(12).fill(null) })
   for (const r of rows) {
     const i = idxBulan(r.tahun, r.bulan)
-    if (i < 0 || i >= JUMLAH_BULAN) continue
+    if (i < 0 || i >= N) continue
     const w = ambil(r.kab)
     w.k1[i] = angka(r.v)
     w.p10[i] = angka(r.lo)
@@ -102,7 +109,7 @@ async function produksi() {
   }
   for (const r of bps) if (r.bulan >= 1 && r.bulan <= 12) ambil(r.kab).bps2025[r.bulan - 1] = angka(r.v)
   return {
-    meta: { ...metaRun(run, rows[0]?.jd ?? null), awal: `${AWAL_TAHUN}-${String(AWAL_BULAN).padStart(2, "0")}`, bulan: JUMLAH_BULAN, satuan: "ton beras" },
+    meta: { ...metaRun(run, rows[0]?.jd ?? null), awal: `${AWAL_TAHUN}-${String(AWAL_BULAN).padStart(2, "0")}`, bulan: N, satuan: "ton beras" },
     wilayah,
   }
 }
@@ -116,11 +123,12 @@ async function stok() {
     [run.id],
   )
   type W = { cakupan: (number | null)[]; p10: (number | null)[]; p90: (number | null)[]; stok: (number | null)[]; status: (string | null)[]; konsumsi: number | null }
+  const N = jumlahBulan()
   const wilayah: Record<string, W> = {}
   for (const r of rows) {
     const i = idxBulan(r.tahun, r.bulan)
-    if (i < 0 || i >= JUMLAH_BULAN) continue
-    const w = (wilayah[r.kab] ??= { cakupan: kosong(), p10: kosong(), p90: kosong(), stok: kosong(), status: kosong(), konsumsi: null })
+    if (i < 0 || i >= N) continue
+    const w = (wilayah[r.kab] ??= { cakupan: kosong(N), p10: kosong(N), p90: kosong(N), stok: kosong(N), status: kosong(N), konsumsi: null })
     const cak = angka(r.cak)
     if (r.sk === "TENGAH") {
       w.cakupan[i] = cak
@@ -137,6 +145,8 @@ async function stok() {
       jangkar_bulan_konsumsi: angka(m.jangkar_bulan_konsumsi),
       hari_ke_defisit: (m.hari_ke_defisit as Record<string, number>) ?? {},
       sudah_defisit: (m.sudah_defisit as string[]) ?? [],
+      /** Arus antar kab (LP jarak jalan) yang dipakai neraca K2, ton per bulan. */
+      arus: (m.arus_antar_kab as { dari: string; ke: string; ton_bulan: number }[]) ?? [],
     },
     wilayah,
   }
@@ -183,7 +193,9 @@ async function harga() {
   const het = (run.parameter?.het as Record<string, number> | undefined) ?? null
   const kom = await q<{ id: number; kode: string }>(`select id, kode from ref.komoditas`)
   const hetNama = het ? Object.fromEntries(kom.filter((k) => het[k.id] != null && jenis(k.kode)).map((k) => [jenis(k.kode) as string, Number(het[k.id])])) : null
-  return { meta: { ...metaRun(run, rows[0]?.jd ?? null), tanggal_acuan: acuan, het: hetNama }, wilayah }
+  // Kalibrasi ambang WASPADA per jenis beras dan horizon (F1, AUC peluang melewati HET pada backtest).
+  const kalibrasi = (run.parameter?.kalibrasi_ambang as Record<string, Record<string, unknown>> | undefined) ?? null
+  return { meta: { ...metaRun(run, rows[0]?.jd ?? null), tanggal_acuan: acuan, het: hetNama, kalibrasi }, wilayah }
 }
 
 async function sphp() {
@@ -218,6 +230,25 @@ async function berhak(req: Request, hak: string) {
 }
 
 const GEE_JSON = process.env.TERAWANG_GEE_JSON ?? path.join(os.homedir(), ".local/share/terawang/gee_wilayah.json")
+const DERET_JSON = process.env.TERAWANG_DERET_JSON ?? path.join(os.homedir(), ".local/share/terawang/deret_satelit.json")
+
+async function bulog() {
+  const stok = await q<{ tahun: number; bulan: number; awal: number; masuk: number; keluar: number; akhir: number; jd: string }>(
+    `select s.tahun, s.bulan, s.persediaan_awal_kg awal, s.pemasukan_kg masuk, s.pengeluaran_kg keluar, s.persediaan_akhir_kg akhir, s.jenis_data::text jd
+     from silver.stok_bulog_bulanan s join silver.kantor_wilayah_bulog k on k.id = s.kanwil_id
+     where k.nama ilike '%jawa timur%' order by s.tahun, s.bulan`,
+  )
+  const pengadaan = await q<{ cabang: string; tahun: number; kg: number }>(
+    `select c.nama cabang, p.tahun, sum(p.volume_kg) kg from silver.pengadaan_bulog p join silver.kantor_cabang_bulog c on c.id = p.cabang_id
+     group by 1, 2 order by 2, 1`,
+  )
+  if (!stok.length && !pengadaan.length) return null
+  const rb = (kg: number) => Math.round(Number(kg) / 1e5) / 10 // kg -> ribu ton, 1 desimal
+  return {
+    stok: stok.map((r) => ({ tahun: r.tahun, bulan: r.bulan, awal: rb(r.awal), masuk: rb(r.masuk), keluar: rb(r.keluar), akhir: rb(r.akhir), jenis_data: r.jd })),
+    pengadaan: pengadaan.map((r) => ({ cabang: r.cabang, tahun: r.tahun, ton: rb(r.kg) })),
+  }
+}
 
 /** Cache singkat agar dasbor yang dibuka banyak orang tidak memukul database tiap muat. */
 const cache = new Map<string, { t: number; v: unknown }>()
@@ -260,6 +291,15 @@ app.get("/api/citra", async (_req, res) => {
     res.status(404).json({ galat: "berkas olahan citra belum ada" })
   }
 })
+app.get("/api/deret", async (_req, res) => {
+  try {
+    const isi = await fs.readFile(DERET_JSON, "utf8")
+    res.set("Cache-Control", "no-store").type("application/json").send(isi)
+  } catch {
+    res.status(404).json({ galat: "berkas deret satelit belum ada" })
+  }
+})
+app.get("/api/bulog", kirim("bulog", bulog))
 app.get("/api/status", kirim("status", async () => ({
   runs: await q(`select distinct on (jenis) jenis::text, id, nama_versi, status::text, dibuat_pada, selesai_pada from app.model_run order by jenis, id desc`),
   harga_terakhir: (await q<{ t: Date }>(`select max(tanggal) t from silver.harga_kabkota_harian`))[0]?.t ?? null,

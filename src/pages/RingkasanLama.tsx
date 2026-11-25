@@ -304,7 +304,7 @@ function KabCard() {
             {rp(k.pNow)} <small>→ {rp(k.p4)}</small>
           </span>
           <Sparkline vals={k.price.slice(-12)} color="var(--ink-2)" fc={k.fc.map((f) => f.m)} />
-          <span className="sub">HET Rp13.500 · premium {rp(k.prem)}</span>
+          <span className="sub">HET {rp(HET)} · premium {rp(k.prem)}</span>
         </div>
         <div className="fact has-spark">
           <span className="k">Cakupan stok, kini → +4 pekan</span>

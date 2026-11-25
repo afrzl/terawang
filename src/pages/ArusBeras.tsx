@@ -7,7 +7,7 @@ import { MatriksArus } from "@/components/charts/MatriksArus"
 import { SankeyArus } from "@/components/charts/SankeyArus"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
-import { REGIONS, neracaBulan, regionOf, regionStatsFor, tradeFor, matrixOf, type Trade } from "@/lib/arus"
+import { ARUS_DARI_MODEL, REGIONS, neracaBulan, regionOf, regionStatsFor, tradeFor, matrixOf, type Trade } from "@/lib/arus"
 import { byName, type Wilayah } from "@/lib/data"
 import { nf, scale, short } from "@/lib/format"
 import { bulanLabel, useFilter } from "@/lib/filter"
@@ -38,7 +38,7 @@ function Perdagangan() {
     <>
       <KpiStrip
         items={[
-          { k: "Arus antarwilayah", v: `${nf(total / 1000, 1)} rb ton`, t: "estimasi per bulan" },
+          { k: "Arus antarwilayah", v: `${nf(total / 1000, 1)} rb ton`, t: ARUS_DARI_MODEL ? "per bulan, LP neraca K2" : "estimasi per bulan (simulasi)" },
           { k: "Lintas kawasan", v: `${nf((antar / total) * 100, 0)}%`, t: `${nf(antar / 1000, 1)} rb ton` },
           { k: "Wilayah surplus", v: `${nSur} dari ${W.length}`, t: "produksi > konsumsi" },
           { k: "Jarak tempuh rata-rata", v: `${nf(kmAvg)} km`, t: "per ton beras" },

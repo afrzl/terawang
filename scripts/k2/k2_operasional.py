@@ -186,7 +186,7 @@ def hitung(hari_ini=HARI_INI, prod=None, sd_prod=None):
     # membesar sebanding produksi, sehingga penanda itu menyorot kab lumbung, bukan kab yang stoknya menipis. hari_ke_defisit_p10
     # disimpan untuk diagnosis saja.
     return {"R": R, "C": C, "prod": prod, "sd_prod": sd_prod, "theta": theta, "a_jangkar": a_jangkar, "hit": hit, "hit_p10": hit_p10,
-            "bulan": BULAN, "ini": ini, "ids": w.id.to_dict()}
+            "bulan": BULAN, "ini": ini, "ids": w.id.to_dict(), "arus": F}
 
 
 def skenario(R, C):

@@ -1,6 +1,7 @@
 import { Warehouse } from "lucide-react"
 import { BulogCabang } from "@/components/charts/BulogCabang"
 import { BulogStok } from "@/components/charts/BulogStok"
+import { TAHUN_STOK_BULOG } from "@/lib/bulog"
 import { DeficitCountdown } from "@/components/charts/DeficitCountdown"
 import { LineChart } from "@/components/charts/LineChart"
 import { DataTable, type Column } from "@/components/ui/DataTable"
@@ -56,8 +57,8 @@ export default function Stok() {
         </div>
       ),
     },
-    { head: "Des 2026", right: true, num: true, cell: (k) => nf(covBulan(k, 11), 2), sort: (k) => covBulan(k, 11) },
-    { head: "Jan 2027", right: true, num: true, cell: (k) => nf(covBulan(k, 12), 2), sort: (k) => covBulan(k, 12) },
+    { head: bulanLabel(BULAN_KINI + 1), right: true, num: true, cell: (k) => nf(covBulan(k, BULAN_KINI + 1), 2), sort: (k) => covBulan(k, BULAN_KINI + 1) },
+    { head: bulanLabel(BULAN_KINI + 2), right: true, num: true, cell: (k) => nf(covBulan(k, BULAN_KINI + 2), 2), sort: (k) => covBulan(k, BULAN_KINI + 2) },
     { head: "Status", cell: (k) => <StokPill s={statusOf(covBulan(k, akhir))} />, sort: (k) => SS[statusOf(covBulan(k, akhir))] * 100 - covBulan(k, akhir) },
     {
       head: `Neraca ${bulanLabel(akhir)}`,
@@ -98,13 +99,13 @@ export default function Stok() {
         </div>
       </Panel>
       <div className="grid-21">
-        <Panel title="Stok Bulog Jawa Timur" note="Tingkat provinsi, 2026">
+        <Panel title="Stok Bulog Jawa Timur" note={`Tingkat provinsi, ${TAHUN_STOK_BULOG} (data terakhir yang tersedia)`}>
           <div className="pb chart">
             <BulogStok />
           </div>
         </Panel>
-        <Panel title="Stok per Kantor Cabang Bulog">
-          <BulogCabang bulan={akhir} />
+        <Panel title="Pengadaan per Kantor Cabang Bulog" note="stok per cabang tidak dipublikasikan">
+          <BulogCabang />
         </Panel>
       </div>
     </section>

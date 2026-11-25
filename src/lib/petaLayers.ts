@@ -1,5 +1,5 @@
 import { HET, HET_PREMIUM, HIST, fcHarga, flowsBulan, statusDari, statusK3a, type HargaStatus, type Wilayah } from "@/lib/data"
-import { K1, K2 } from "@/lib/api"
+import { BULAN_KINI, IDX_AKHIR, K1, K2 } from "@/lib/api"
 import { nf, rp, sum } from "@/lib/format"
 
 /**
@@ -42,7 +42,7 @@ const BERAS_PER_GKG = 0.6402
 
 export const hetOf = (kom: Komoditas) => (kom === "medium" ? HET : HET_PREMIUM)
 
-const bln = (i: number) => Math.min(12, Math.max(0, i))
+const bln = (i: number) => Math.min(IDX_AKHIR, Math.max(0, i))
 /** Hasil K1 dari database tersedia (bukan simulasi). */
 export const dataK1 = K1 !== null
 
@@ -63,7 +63,8 @@ export const produksiRentang = (k: Wilayah, a: number, b: number) => {
 export const produksiPrev = (k: Wilayah, i: number) => {
   if (K1) {
     const w = K1.wilayah[k.n]
-    return i <= 11 ? (w?.bps2025[bln(i)] ?? 0) : (w?.k1[0] ?? 0)
+    // 2026: BPS 2025 bulan yang sama; sesudahnya: K1 bulan yang sama setahun sebelumnya.
+    return i <= 11 ? (w?.bps2025[bln(i)] ?? 0) : (w?.k1[bln(i) - 12] ?? 0)
   }
   return produksiBeras(k, i) / (1 + k.yoy)
 }
@@ -114,11 +115,11 @@ export const luasPanen = (k: Wilayah, i: number) => produksiBeras(k, i) / PROD_H
 
 /** Cakupan stok akhir bulan i (bulan konsumsi). */
 export function covBulan(k: Wilayah, i: number) {
-  if (K2) return K2.wilayah[k.n]?.cakupan[Math.min(12, Math.max(0, i))] ?? k.cov
-  if (i >= 12) return k.covP[7]
-  if (i === 11) return k.covP[3]
-  if (i === 10) return k.cov
-  return k.covH[Math.max(0, HIST - 1 - (10 - i) * 4)]
+  if (K2) return K2.wilayah[k.n]?.cakupan[bln(i)] ?? k.cov
+  if (i >= BULAN_KINI + 2) return k.covP[7]
+  if (i === BULAN_KINI + 1) return k.covP[3]
+  if (i === BULAN_KINI) return k.cov
+  return k.covH[Math.max(0, HIST - 1 - (BULAN_KINI - i) * 4)]
 }
 
 /** Hasil K2 dari database tersedia (bukan simulasi). */
@@ -128,7 +129,7 @@ export const dataK2 = K2 !== null
 export const cakupanBatas = (k: Wilayah, i: number) => {
   if (!K2) return null
   const w = K2.wilayah[k.n]
-  const j = Math.min(12, Math.max(0, i))
+  const j = bln(i)
   return w && w.p10[j] != null && w.p90[j] != null ? { lo: w.p10[j] as number, hi: w.p90[j] as number } : null
 }
 

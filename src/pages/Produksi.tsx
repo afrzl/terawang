@@ -1,3 +1,4 @@
+import { DERET } from "@/lib/api"
 import { useMemo, useState } from "react"
 import { Sprout } from "lucide-react"
 import { LineChart } from "@/components/charts/LineChart"
@@ -78,7 +79,7 @@ export default function Produksi() {
         </Panel>
       </div>
       <h2 className="sub-h">
-        Citra pendukung <span>Sentinel-1/2 · data simulasi</span>
+        Citra pendukung <span>Sentinel-1/2</span>
       </h2>
       <div className="grid-2">
         <SatPanel wilayah={citraWil} onPilih={setCw} kandidat={nama} />
@@ -184,7 +185,7 @@ const SINYAL: [Sinyal, string][] = [
 ]
 const NPOS = 15
 
-/** DUMMY: deret EVI dan LSWI per 12 hari (Jun–Nov). Bentuknya mengikuti metodologi: LSWI naik saat sawah digenangi, lalu EVI naik setelah tanam. Ganti dengan s2_titik_12harian_kabkota. */
+/** Cadangan bila /api/deret tidak ada. DUMMY: deret EVI dan LSWI per 12 hari (Jun–Nov). Bentuknya mengikuti metodologi: LSWI naik saat sawah digenangi, lalu EVI naik setelah tanam. Ganti dengan s2_titik_12harian_kabkota. */
 function deretSpektral(k: Wilayah) {
   const R = rng(hash(k.n + "spektral"))
   const berdiri = (k.ph[2] + k.ph[3]) / 100
@@ -211,8 +212,10 @@ function ProfilSatelit({ wilayah }: { wilayah?: string }) {
 function ProfilIsi({ wilayah }: { wilayah: string }) {
   const k = byName[wilayah]
   const [sin, setSin] = useState<Sinyal>("evi")
-  const N = NPOS
-  const dates = [...Array(N)].map((_, i) => new Date(2026, 5, 1 + i * 12))
+  // Deret dari pipeline (median titik sawah, 15 akuisisi terakhir) bila ada; selain itu VH dari olahan citra + EVI/LSWI ilustrasi.
+  const dr = DERET?.wilayah[k.n]
+  const N = dr ? DERET!.tanggal.length : NPOS
+  const dates = dr ? DERET!.tanggal.map((t) => new Date(t + "T00:00:00")) : [...Array(N)].map((_, i) => new Date(2026, 5, 1 + i * 12))
   const trim = (xs: (number | null)[]) => {
     const out = xs.slice(0, N)
     while (out.length && out[out.length - 1] == null) out.pop()
@@ -220,8 +223,8 @@ function ProfilIsi({ wilayah }: { wilayah: string }) {
   }
   const sp = useMemo(() => deretSpektral(k), [k])
   const sampai = trim(k.vh).length
-  const cur: (number | null)[] = sin === "vh" ? trim(k.vh) : sp.ini[sin].slice(0, sampai)
-  const avg: (number | null)[] = sin === "vh" ? trim(k.vhAvg) : sp.rata[sin].slice(0, sampai)
+  const cur: (number | null)[] = dr ? dr[sin] : sin === "vh" ? trim(k.vh) : sp.ini[sin].slice(0, sampai)
+  const avg: (number | null)[] = dr ? dr[`${sin}Avg`] : sin === "vh" ? trim(k.vhAvg) : sp.rata[sin].slice(0, sampai)
   const vals = [...cur, ...avg].filter((v): v is number => v != null)
   const desimal = sin === "vh" ? 1 : 2
   const lo = sin === "vh" ? Math.floor(Math.min(...vals) - 0.5) : Math.max(0, Math.floor((Math.min(...vals) - 0.03) * 10) / 10)
@@ -255,7 +258,7 @@ function ProfilIsi({ wilayah }: { wilayah: string }) {
             ]}
             tip={(i) => (
               <>
-                <b>{dfmt(dates[i])} 2026</b>
+                <b>{dfmt(dates[i])} {dates[i].getFullYear()}</b>
                 <br />
                 Musim ini <span className="m">{fmt(cur[i])}</span>
                 <br />

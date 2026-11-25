@@ -97,7 +97,9 @@ def k2_estimasi_stok(context: AssetExecutionContext, repo: Repo, db: Database, s
         segera = sorted((v, k) for k, v in h["hari_ke_defisit"].items() if v not in (None, 0))
         metrik.update({"jangkar_bulan_konsumsi": round(h["jangkar"], 3), **{f"wilayah_{s.lower()}": int((kini.status == s).sum()) for s in ("SURPLUS", "CUKUP", "TIPIS", "DEFISIT")},
                        "sudah_defisit": [k for k, v in h["hari_ke_defisit"].items() if v == 0],
-                       "hari_ke_defisit": {k: round(float(v)) for v, k in segera}, "parameter": h["parameter"]})
+                       "hari_ke_defisit": {k: round(float(v)) for v, k in segera}, "parameter": h["parameter"],
+                       # arus beras antar kab (LP jarak jalan) yang dipakai neraca K2, ton per bulan; dibaca halaman Arus beras
+                       "arus_antar_kab": [{"dari": r.dari, "ke": r.ke, "ton_bulan": round(float(r.ton_bulan), 1)} for r in h["arus"].itertuples()]})
         kolom = ["wilayah_id", "tahun", "bulan", "skenario", "stok_ton", "cakupan_bulan", "status", "surplus_ton", "kebutuhan_ton"]
         sisipkan(db, "app.estimasi_stok", stok[kolom].assign(model_run_id=rid, jenis_data=k2_stok.JENIS_DATA))
     context.add_output_metadata({"model_run_id": rid, "versi": k2_stok.VERSI, "baris": len(stok),
@@ -152,3 +154,55 @@ def k3_rekomendasi_sphp(context: AssetExecutionContext, repo: Repo, db: Database
     context.add_output_metadata({"model_run_id": rid, "versi": sphp.VERSI_K3B, "rute": metrik["rute"], "volume_ton": metrik["volume_ton"],
                                  "periode": ", ".join(par.get("periode", [])), "contoh": _md(R.sort_values("volume_ton", ascending=False))})
     return rute
+
+
+def berkas_deret() -> Path:
+    """Deret satelit per kab/kota untuk dasbor (dibaca API /api/deret)."""
+    return Path(os.environ.get("TERAWANG_DERET_JSON", Path.home() / ".local/share/terawang/deret_satelit.json"))
+
+
+@asset(group_name=GRUP, kinds={"json"}, deps=[AssetKey("bronze_titik_satelit")],
+       description="Deret 12-harian EVI, LSWI (Sentinel-2) dan VH (Sentinel-1) per kab/kota: median titik sawah, 15 akuisisi terakhir "
+                   "+ rata-rata tanggal yang sama tahun-tahun sebelumnya -> deret_satelit.json (grafik profil sinyal di halaman Produksi).")
+def deret_satelit_wilayah(context: AssetExecutionContext, repo: Repo, sumber_citra: SumberCitra) -> MaterializeResult:
+    folder = sumber_citra.folder_titik(repo)
+    s2 = pd.read_csv(folder / "s2_titik_12harian_kabkota.csv.gz")
+    vh = pd.read_csv(folder / "vh_titik_12harian_kabkota.csv.gz")
+    seri = {}
+    for nama, df, awalan in (("evi", s2, "evi_"), ("lswi", s2, "lswi_"), ("vh", vh, "")):
+        kol = [c for c in df.columns if c.startswith(awalan) and c[len(awalan):len(awalan) + 2] == "20"]
+        m = df.groupby("kabkota")[kol].median()
+        m.columns = pd.to_datetime([c[len(awalan):] for c in kol])
+        seri[nama] = m
+    n = 15
+    tanggal = sorted(set(seri["evi"].columns) & set(seri["vh"].columns))[-n:] or sorted(seri["evi"].columns)[-n:]
+
+    def nilai(m: pd.DataFrame, kab: str, t: pd.Timestamp):
+        if kab not in m.index:
+            return None
+        cols = m.columns[(abs((m.columns - t).days) <= 6)]
+        v = m.loc[kab, cols].dropna() if len(cols) else pd.Series(dtype=float)
+        return round(float(v.mean()), 3) if len(v) else None
+
+    def rata_riwayat(m: pd.DataFrame, kab: str, t: pd.Timestamp):
+        xs = [nilai(m, kab, t - pd.DateOffset(years=y)) for y in (1, 2, 3)]
+        xs = [x for x in xs if x is not None]
+        return round(sum(xs) / len(xs), 3) if xs else None
+
+    wilayah = {}
+    for kab in seri["evi"].index.union(seri["vh"].index):
+        w = {}
+        for nama, m in seri.items():
+            w[nama] = [nilai(m, kab, t) for t in tanggal]
+            w[nama + "Avg"] = [rata_riwayat(m, kab, t) for t in tanggal]
+        wilayah[kab] = w
+    keluar = berkas_deret()
+    keluar.parent.mkdir(parents=True, exist_ok=True)
+    data = {"dibuat": sekarang().isoformat(timespec="seconds"), "tanggal": [t.date().isoformat() for t in tanggal],
+            "sumber": "median titik sawah (scripts/gee, Sentinel-1 VH dB; Sentinel-2 EVI/LSWI), rata-rata = tanggal sama 1-3 tahun sebelumnya",
+            "wilayah": wilayah}
+    tmp = keluar.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False))
+    tmp.replace(keluar)
+    return MaterializeResult(metadata={"berkas": str(keluar), "wilayah": len(wilayah), "tanggal_awal": data["tanggal"][0],
+                                       "tanggal_akhir": data["tanggal"][-1]})

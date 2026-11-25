@@ -106,7 +106,7 @@ export function PriceRidgeline({ jenis }: { jenis: Jenis[] }) {
               show(
                 <>
                   <b>
-                    {dfmt(w0.d)} 2026{w0.fc ? ", prakiraan" : ""}
+                    {dfmt(w0.d)} {w0.d.getFullYear()}{w0.fc ? ", prakiraan" : ""}
                   </b>
                   {seri.map((q) => {
                     const w = q.weeks[wi]

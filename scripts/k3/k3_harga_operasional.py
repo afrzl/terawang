@@ -39,6 +39,15 @@ def galat(L, h):
     return y.dropna()
 
 
+def _auc(skor, label):
+    """AUC (Mann-Whitney, peringkat rata-rata untuk nilai seri). None bila hanya ada satu kelas."""
+    pos, neg = int(label.sum()), int(len(label) - label.sum())
+    if not pos or not neg:
+        return None
+    r = pd.Series(skor).rank().to_numpy()
+    return round(float((r[label == 1].sum() - pos * (pos + 1) / 2) / (pos * neg)), 3)
+
+
 def backtest(P, H, het):
     """Per horizon: peluang melewati HET (jendela 365 hari) untuk kab <= HET; pilih ambang waspada ber-F1 maksimum."""
     L = np.log(P)
@@ -65,7 +74,8 @@ def backtest(P, H, het):
             f1 = 2 * tp / max(2 * tp + fp + fn, 1)
             if f1 > best[0]:
                 best = (f1, th, tp, fp, fn)
-        hasil[h] = dict(ambang=round(float(best[1]), 2), f1=round(float(best[0]), 3), terdeteksi=int(best[2]), alarm_palsu=int(best[3]), kejadian=int(ev.sum()))
+        hasil[h] = dict(ambang=round(float(best[1]), 2), f1=round(float(best[0]), 3), terdeteksi=int(best[2]), alarm_palsu=int(best[3]), kejadian=int(ev.sum()),
+                        auc=_auc(pe, ev))
     return hasil
 
 

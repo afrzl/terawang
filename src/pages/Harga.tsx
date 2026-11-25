@@ -1,3 +1,4 @@
+import { K3A } from "@/lib/api"
 import { TrendingUp } from "lucide-react"
 import { useState } from "react"
 import { LineChart } from "@/components/charts/LineChart"
@@ -22,6 +23,21 @@ const flowColumns: Column<Flow>[] = [
   { head: "Volume", right: true, num: true, cell: (f) => `${nf(f.ton)} ton`, sort: (f) => f.ton },
   { head: "Jarak tempuh", right: true, num: true, cell: (f) => (f.km ? `${nf(f.km)} km` : "lokal"), sort: (f) => f.km },
 ]
+
+/** Kartu hasil uji K3a: AUC peluang melewati HET pada backtest (kab yang saat itu masih di bawah HET), beras medium 28 hari; dari parameter model_run. */
+function ujiHet() {
+  const kal = K3A?.meta.kalibrasi?.medium
+  const auc = (h: number) => kal?.[String(h)]?.auc
+  const a28 = auc(28)
+  if (a28 == null) return { k: "Uji peluang melewati HET", v: "–", t: "hasil uji K3a belum tersedia" }
+  const lain = [7, 14, 21].map(auc).filter((v): v is number => v != null)
+  const k28 = kal?.["28"]
+  return {
+    k: "Uji peluang melewati HET",
+    v: `AUC ${nf(a28, 2)}`,
+    t: `medium 28 hari${lain.length ? ` (7–21 hari ${nf(Math.min(...lain), 2)}–${nf(Math.max(...lain), 2)})` : ""}${k28 ? `, terdeteksi ${k28.terdeteksi}/${k28.kejadian}` : ""}`,
+  }
+}
 
 export default function Harga() {
   const wil = useWilayah()
@@ -72,7 +88,7 @@ export default function Harga() {
           sphp
             ? { k: "Rekomendasi SPHP", v: `${nf(sum(flows, (f) => f.ton))} ton`, t: `${flows.length} rute, ${periode}` }
             : { k: "Rekomendasi SPHP", v: "Terbatas", t: "untuk akun dinas dan perusahaan" },
-          { k: "Uji peluang melewati HET", v: "AUC 0,98", t: "0,88–0,92 di bawah HET" },
+          ujiHet(),
         ]}
       />
       <div className="grid-2">
@@ -241,7 +257,7 @@ function PricePanel({ jenis }: { jenis: Komoditas[] }) {
           tip={(i) => (
             <>
               <b>
-                {dfmt(dates[i])} 2026{i >= HIST ? ", prakiraan" : ""}
+                {dfmt(dates[i])} {dates[i].getFullYear()}{i >= HIST ? ", prakiraan" : ""}
               </b>
               {data.map((d) => (
                 <span key={d.kom}>

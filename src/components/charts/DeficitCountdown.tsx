@@ -1,3 +1,4 @@
+import { BULAN_KINI, K2 } from "@/lib/api"
 import { type Wilayah } from "@/lib/data"
 import { DAY, dfmt, nf } from "@/lib/format"
 import { covBulan } from "@/lib/petaLayers"
@@ -5,15 +6,25 @@ import { useSelection } from "@/lib/selection"
 import { useWilayah } from "@/lib/filter"
 
 const DEF = 0.75
-/** Tanggal acuan K2: hitung mundur dihitung dari 19 Nov 2026. */
-const ACUAN = new Date(2026, 10, 19)
+/** Tanggal acuan hitung mundur: tanggal run K2 (model menghitung dari "hari ini" saat run); tanpa API = hari ini. */
+const ACUAN = (() => {
+  const t = K2?.meta.dibuat ? new Date(K2.meta.dibuat) : new Date()
+  return new Date(t.getFullYear(), t.getMonth(), t.getDate())
+})()
 
-/** Hari dari tanggal acuan sampai cakupan turun di bawah ambang defisit; interpolasi linear antar akhir bulan (Okt, Nov, Des, Jan). Null bila tidak dalam prakiraan. */
+/** Hari sampai cakupan stok turun di bawah ambang defisit. Dari keluaran K2 (hari_ke_defisit, sudah_defisit) bila API tersambung;
+ *  selain itu interpolasi linear antar akhir bulan (bulan lalu sampai bulan kini + 2). Null bila tidak dalam prakiraan. */
 function daysToDeficit(k: Wilayah): { d: number; cov: number } | null {
-  const akhirOkt = new Date(2026, 9, 31)
-  const titik = [9, 10, 11, 12].map((i) => ({ t: +new Date(2026, i + 1, 0), c: covBulan(k, i) }))
+  if (K2) {
+    const cov = covBulan(k, BULAN_KINI)
+    if (K2.meta.sudah_defisit.includes(k.n)) return { d: 0, cov }
+    const h = K2.meta.hari_ke_defisit[k.n]
+    return h != null ? { d: Math.round(h), cov } : null
+  }
+  const idx = [BULAN_KINI - 1, BULAN_KINI, BULAN_KINI + 1, BULAN_KINI + 2]
+  const titik = idx.map((i) => ({ t: +new Date(2026, i + 1, 0), c: covBulan(k, i) }))
   const t0 = +ACUAN
-  const awal = titik[0].c + ((titik[1].c - titik[0].c) * (t0 - +akhirOkt)) / (titik[1].t - titik[0].t)
+  const awal = titik[0].c + ((titik[1].c - titik[0].c) * (t0 - titik[0].t)) / (titik[1].t - titik[0].t)
   if (awal < DEF) return { d: 0, cov: awal }
   let prevT = t0
   let prevC = awal
@@ -59,7 +70,7 @@ export function DeficitCountdown() {
           </button>
         )
       })}
-      {shown.length === 0 && <div className="method">Tidak ada wilayah yang diperkirakan defisit sampai Januari.</div>}
+      {shown.length === 0 && <div className="method">Tidak ada wilayah yang diperkirakan defisit dalam horizon prakiraan.</div>}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { STOK_BULOG_2026 } from "@/lib/bulog"
+import { STOK_BULOG, TAHUN_STOK_BULOG } from "@/lib/bulog"
 import { BULAN_NAMA } from "@/lib/filter"
 import { nf, scale, ticks } from "@/lib/format"
 import { useTooltip } from "@/lib/tooltip"
@@ -7,10 +7,10 @@ const W = 760
 const H = 500
 const M = { l: 52, r: 16, t: 16, b: 30 }
 
-/** Stok Bulog Jawa Timur per bulan, 2026: persediaan akhir (garis) dengan pemasukan dan pengeluaran (batang), ribu ton. Tingkat provinsi. */
+/** Stok Bulog Jawa Timur per bulan, tahun terakhir yang ada datanya: persediaan akhir (garis) dengan pemasukan dan pengeluaran (batang), ribu ton. Tingkat provinsi. */
 export function BulogStok() {
   const { show, hide } = useTooltip()
-  const d = STOK_BULOG_2026
+  const d = STOK_BULOG
   const ymax = Math.max(...d.map((r) => Math.max(r.akhir, r.masuk, r.keluar))) * 1.1
   const y = scale(0, ymax, H - M.b, M.t)
   const SLOT = 12
@@ -21,7 +21,7 @@ export function BulogStok() {
 
   return (
     <>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Stok beras Bulog Jawa Timur per bulan, 2026">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Stok beras Bulog Jawa Timur per bulan, ${TAHUN_STOK_BULOG}`}>
         <g className="grid">
           {ticks(0, ymax, 5).map((t) => (
             <g key={t}>
@@ -61,7 +61,7 @@ export function BulogStok() {
             onMouseMove={(e) =>
               show(
                 <>
-                  <b>{BULAN_NAMA[i]} 2026</b>
+                  <b>{BULAN_NAMA[r.bulan - 1]} {TAHUN_STOK_BULOG}</b>
                   <br />
                   Persediaan akhir <span className="m">{nf(r.akhir, 1)} rb ton</span>
                   <br />

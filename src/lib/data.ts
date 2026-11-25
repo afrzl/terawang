@@ -1,5 +1,5 @@
 import { JARAK_JALAN_KM, NAMA_JARAK } from "./jarak"
-import { API_AKTIF, CITRA_API, K2, K3A, K3B } from "./api"
+import { API_AKTIF, BULAN_KINI, CITRA_API, K2, K3A, K3B } from "./api"
 import { K3B_RUTE } from "./k3b"
 import geoJson from "./jatim.json"
 import geeJson from "./gee_wilayah.json"
@@ -41,10 +41,11 @@ export interface GeoShape {
 }
 export const GEO = geoJson as unknown as Record<string, GeoShape>
 
-/** Harga Eceran Tertinggi beras medium (Rp/kg), berlaku sejak 22 Agu 2025. Sumber: pemberitaan Kepbadan 299/2025, belum diverifikasi ke teks resmi (lihat metodologi K3a). */
-export const HET = 13500
-/** HET beras premium (Rp/kg), berlaku sejak 22 Agu 2025. */
-export const HET_PREMIUM = 14900
+/** Harga Eceran Tertinggi beras medium (Rp/kg): HET yang dipakai model K3a (parameter model_run) bila API tersambung;
+ *  cadangan Rp13.500 (berlaku sejak 22 Agu 2025, pemberitaan Kepbadan 299/2025, belum diverifikasi ke teks resmi). */
+export const HET = K3A?.meta.het?.medium ?? 13500
+/** HET beras premium (Rp/kg), dari K3a bila ada; cadangan Rp14.900. */
+export const HET_PREMIUM = K3A?.meta.het?.premium ?? 14900
 /** Pengali HET untuk status Siaga di K3a (P(harga > 1,05·HET)). */
 export const SIAGA_KALI = 1.05
 /** Harga Siaga: HET × 1,05. */
@@ -268,20 +269,20 @@ export const pNowHarga = (k: Wilayah, kom: "medium" | "premium") => (kom === "pr
 /** Status K3a tersimpan pada horizon `hor` (1–4); null bila tidak ada hasil K3a. */
 export const statusK3a = (k: Wilayah, hor: number, kom: "medium" | "premium"): HargaStatus | null => k.harga?.[kom].status[hor - 1] ?? null
 
-/** Bila hasil K2 tersedia dari API: konsumsi, cakupan, dan status stok bulan berjalan (Nov 2026) diambil dari model, bukan simulasi. */
+/** Bila hasil K2 tersedia dari API: konsumsi, cakupan, dan status stok bulan berjalan diambil dari model, bukan simulasi. */
 if (K2) {
   const STATUS_STOK: Record<string, StokStatus> = { DEFISIT: "defisit", TIPIS: "tipis", CUKUP: "cukup", SURPLUS: "surplus" }
   for (const k of WILAYAH) {
     const w = K2.wilayah[k.n]
     if (!w) continue
     if (w.konsumsi) k.C = w.konsumsi / 1000
-    const c = w.cakupan[10]
+    const c = w.cakupan[BULAN_KINI]
     if (c != null) k.cov = c
-    const st = w.status[10]
+    const st = w.status[BULAN_KINI]
     if (st && STATUS_STOK[st]) k.ss = STATUS_STOK[st]
     // Proyeksi pekan ke-1..4 = akhir bulan depan, pekan ke-5..8 = akhir dua bulan lagi (K2 bulanan; dipakai kartu Ringkasan dan lapisan "stok").
-    const c1 = w.cakupan[11]
-    const c2 = w.cakupan[12]
+    const c1 = w.cakupan[BULAN_KINI + 1]
+    const c2 = w.cakupan[BULAN_KINI + 2]
     if (c1 != null && c2 != null) k.covP = [c1, c1, c1, c1, c2, c2, c2, c2]
   }
 }
@@ -306,7 +307,7 @@ export interface Flow {
   from: Wilayah
   ton: number
   km: number
-  /** Indeks bulan (0 = Jan 2026): 10 = Nov 2026, 11 = Des 2026, 12 = Jan 2027. */
+  /** Indeks bulan (0 = Jan 2026), mis. 10 = Nov 2026, 12 = Jan 2027. */
   bulan: number
 }
 
@@ -368,7 +369,7 @@ export const LAYERS: Record<LayerKey, Layer> = {
     fmt: (v) => nf(v, 0) + "%",
   },
   produksi: {
-    title: "Proyeksi panen Nov 2026 – Jan 2027, ribu ton GKG",
+    title: "Proyeksi panen 3 bulan ke depan (citra), ribu ton GKG",
     label: "Proyeksi panen",
     val: (k) => k.est,
     bins: [[0, 10, "--s1", "< 10"], [10, 30, "--s2", "10–30"], [30, 50, "--s3", "30–50"], [50, 90, "--s4", "50–90"], [90, 1e9, "--s5", "≥ 90"]],
@@ -390,7 +391,7 @@ export const LAYERS: Record<LayerKey, Layer> = {
     fmt: (v) => nf(v, 2) + " bln",
   },
   harga: {
-    title: "Prakiraan harga 4 pekan terhadap HET Rp13.500/kg",
+    title: `Prakiraan harga 4 pekan terhadap HET ${rp(HET)}/kg`,
     label: "Harga prakiraan",
     val: (k) => k.p4,
     bins: [[0, HET, "--ok-map", "Di bawah HET"], [HET, SIAGA + 0.0001, "--warn", "HET sampai HET +5%"], [SIAGA + 0.0001, 1e9, "--crit", "Di atas HET +5%"]],

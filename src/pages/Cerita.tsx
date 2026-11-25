@@ -6,7 +6,7 @@ import { REGIONS, regionOf, tradeFor } from "@/lib/arus"
 import { FLOWS, WILAYAH, type LayerKey, type Wilayah } from "@/lib/data"
 import { useSesi } from "@/lib/sesi"
 import { NOW, dfmt, nf, short, sum } from "@/lib/format"
-import { BULAN_KINI } from "@/lib/filter"
+import { BULAN_KINI, bulanLabel } from "@/lib/filter"
 import { covBulan, produksiPrevRentang, produksiRentang, statusHargaAt } from "@/lib/petaLayers"
 
 interface Step {
@@ -73,7 +73,7 @@ const STEPS: Step[] = [
     layer: "produksi",
     getValue: (k) => produksiRentang(k, AWAL, AKHIR) / 1000,
     valueLabel: "Produksi beras Nov–Jan",
-    legend: "Produksi beras Nov 2026 sampai Jan 2027, ribu ton",
+    legend: `Produksi beras ${bulanLabel(AWAL)} sampai ${bulanLabel(AKHIR)}, ribu ton`,
   },
   {
     key: "panen",
@@ -89,7 +89,7 @@ const STEPS: Step[] = [
     layer: "produksi",
     getValue: (k) => produksiRentang(k, AWAL, AKHIR) / 1000,
     valueLabel: "Produksi beras Nov–Jan",
-    legend: "Produksi beras Nov 2026 sampai Jan 2027, ribu ton",
+    legend: `Produksi beras ${bulanLabel(AWAL)} sampai ${bulanLabel(AKHIR)}, ribu ton`,
   },
   {
     key: "stok",
@@ -106,7 +106,7 @@ const STEPS: Step[] = [
     layer: "stokK2",
     getValue: (k) => covBulan(k, DES),
     valueLabel: "Cakupan stok akhir Des",
-    legend: "Cakupan stok non-Bulog, akhir Des 2026",
+    legend: `Cakupan stok non-Bulog, akhir ${bulanLabel(DES)}`,
   },
   {
     key: "arus",
@@ -122,7 +122,7 @@ const STEPS: Step[] = [
     layer: "stokK2",
     getValue: (k) => covBulan(k, AWAL),
     valueLabel: "Cakupan stok akhir Nov",
-    legend: "Cakupan stok non-Bulog, akhir Nov 2026",
+    legend: `Cakupan stok non-Bulog, akhir ${bulanLabel(AWAL)}`,
     muted: true,
     arcs: arusBulan.slice(0, 22).map((t) => ({ from: t.from.n, to: t.to.n, ton: t.ton, color: regionOf[t.from.n].color })),
   },
@@ -193,7 +193,7 @@ export default function Cerita() {
         <div className="story-hero-txt">
           <div className="story-kicker">
             <span>Laporan pekan</span>
-            <span>Data per {dfmt(NOW)} 2026</span>
+            <span>Data per {dfmt(NOW)} {NOW.getFullYear()}</span>
           </div>
           <h1>Dari sawah ke pasar</h1>
           <p className="story-dek">

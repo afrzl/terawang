@@ -73,7 +73,7 @@ export function PriceHeatmap({ kom }: { kom: "medium" | "premium" }) {
                       <>
                         <b>{k.n}</b>
                         <br />
-                        {dfmt(dates[i])} 2026{i >= HIST ? " · prakiraan" : ""}
+                        {dfmt(dates[i])} {dates[i].getFullYear()}{i >= HIST ? " · prakiraan" : ""}
                         <br />
                         <span style={{ textTransform: "capitalize" }}>{kom}</span> <span className="m">{rp(v)}/kg</span> ({v >= het ? "+" : "−"}
                         {nf(Math.abs((v / het - 1) * 100), 1)}% thd HET)

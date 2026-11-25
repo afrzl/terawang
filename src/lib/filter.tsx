@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react"
 import { useLocation } from "react-router-dom"
+import { BULAN_KINI, N_BULAN } from "@/lib/api"
 import { REGIONS, type RegionKey } from "@/lib/arus"
 import { WILAYAH, byName, type HargaStatus, type StokStatus, type Wilayah } from "@/lib/data"
 import { statusHargaAt, type Komoditas } from "@/lib/petaLayers"
@@ -46,11 +47,9 @@ const TIDAK: Tersedia = { waktu: false, wilayah: false, hs: false, ss: false }
 
 export type Panel = "buka" | "tutup"
 
-/** Bulan yang bisa dipilih: Jan 2026 sampai Jan 2027. Indeks 0 = Jan 2026. */
+/** Bulan yang bisa dipilih: Jan 2026 sampai bulan kini + 2. Indeks 0 = Jan 2026. Bulan kini mengikuti tanggal hari ini (lihat api.ts). */
 export const BULAN_NAMA = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
-export const N_BULAN = 13
-/** Bulan berjalan (Nov 2026). */
-export const BULAN_KINI = 10
+export { BULAN_KINI, N_BULAN } from "@/lib/api"
 export const bulanLabel = (i: number) => `${BULAN_NAMA[i % 12]} ${2026 + Math.floor(i / 12)}`
 
 interface FilterContextValue extends FilterState {

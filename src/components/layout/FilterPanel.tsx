@@ -17,7 +17,7 @@ const PINTASAN: { t: string; a: number; b: number }[] = [
   { t: "3 bulan terakhir", a: BULAN_KINI - 2, b: BULAN_KINI },
   { t: "Riwayat", a: 0, b: BULAN_KINI - 1 },
   { t: "Estimasi", a: BULAN_KINI, b: N_BULAN - 1 },
-  { t: "Tahun 2026", a: 0, b: 11 },
+  { t: `Tahun ${2026 + Math.floor(BULAN_KINI / 12)}`, a: BULAN_KINI - (BULAN_KINI % 12), b: Math.min(BULAN_KINI - (BULAN_KINI % 12) + 11, N_BULAN - 1) },
 ]
 
 /** Pilihan waktu: satu bulan atau rentang bulan. */

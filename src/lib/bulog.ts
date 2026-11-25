@@ -1,3 +1,5 @@
+import { BULOG } from "./api"
+
 /** Stok beras Bulog Jawa Timur per bulan, 2025 (ribu ton). ASLI: BPS, Provinsi Jawa Timur Dalam Angka 2026, Tabel 10.1.3 (sumber asli Kanwil Perum Bulog Jatim). Hanya tingkat provinsi. */
 export interface StokBulogBulan {
   bulan: number
@@ -39,25 +41,24 @@ export const PENGADAAN_CABANG_2025: { cabang: string; ton: number }[] = [
   { cabang: "Ponorogo", ton: 58.9 },
 ]
 
-/** Stok Bulog Jatim per bulan, 2026 (ribu ton), sampai Okt 2026 (bulan terakhir yang sudah selesai). DUMMY: dilanjutkan dari persediaan akhir Des 2025, pemasukan 85% dan pengeluaran 105% dari pola 2025. Ganti dengan data Kanwil Bulog Jatim 2026. */
-export const STOK_BULOG_2026: StokBulogBulan[] = (() => {
-  let awal = STOK_BULOG_2025[STOK_BULOG_2025.length - 1].akhir
-  return STOK_BULOG_2025.slice(0, 10).map((r) => {
-    const masuk = Math.round(r.masuk * 0.85 * 10) / 10
-    const keluar = Math.round(r.keluar * 1.05 * 10) / 10
-    const akhir = Math.round((awal + masuk - keluar) * 10) / 10
-    const out = { bulan: r.bulan, awal, masuk, keluar, akhir }
-    awal = akhir
-    return out
-  })
-})()
+/* Data yang dipakai dasbor: dari database (silver.stok_bulog_bulanan, silver.pengadaan_bulog) lewat /api/bulog bila API tersambung,
+   selain itu salinan 2025 di atas. Hanya data asli: tidak ada ekstrapolasi tahun berjalan. Stok per kantor cabang tidak dipublikasikan;
+   yang ada per cabang hanya pengadaan. Data tahun baru masuk lewat unggahan manual atau konektor Bulog di panel admin. */
 
-/** Persediaan akhir bulan `i` (0 = Jan 2026) per kantor cabang (ribu ton). DUMMY: data stok per cabang belum ada, stok provinsi dibagi menurut porsi pengadaan 2025. */
-export function stokPerCabang(i: number) {
-  const total = PENGADAAN_CABANG_2025.reduce((a, c) => a + c.ton, 0)
-  const stokProv = STOK_BULOG_2026[Math.min(STOK_BULOG_2026.length - 1, Math.max(0, i))].akhir
-  return PENGADAAN_CABANG_2025.map((c) => ({ ...c, porsi: c.ton / total, stok: (c.ton / total) * stokProv }))
-}
+const tahunStok = BULOG?.stok.length ? Math.max(...BULOG.stok.map((r) => r.tahun)) : 2025
+/** Tahun terakhir yang punya data stok Bulog bulanan. */
+export const TAHUN_STOK_BULOG = tahunStok
+/** Stok Bulog Jatim per bulan pada tahun terakhir yang tersedia (ribu ton). */
+export const STOK_BULOG: StokBulogBulan[] = BULOG?.stok.length
+  ? BULOG.stok.filter((r) => r.tahun === tahunStok).map(({ bulan, awal, masuk, keluar, akhir }) => ({ bulan, awal, masuk, keluar, akhir }))
+  : STOK_BULOG_2025
 
-/** Indeks bulan terakhir yang punya data Bulog 2026 (0 = Jan). */
-export const BULOG_BULAN_TERAKHIR = STOK_BULOG_2026.length - 1
+const tahunPeng = BULOG?.pengadaan.length ? Math.max(...BULOG.pengadaan.map((r) => r.tahun)) : 2025
+/** Tahun terakhir yang punya data pengadaan per cabang. */
+export const TAHUN_PENGADAAN = tahunPeng
+/** Pengadaan per kantor cabang (ribu ton): tahun terakhir dan tahun sebelumnya (null bila tidak ada). */
+export const PENGADAAN_CABANG: { cabang: string; ton: number; tonLalu: number | null }[] = BULOG?.pengadaan.length
+  ? BULOG.pengadaan
+      .filter((r) => r.tahun === tahunPeng)
+      .map((r) => ({ cabang: r.cabang, ton: r.ton, tonLalu: BULOG!.pengadaan.find((x) => x.cabang === r.cabang && x.tahun === tahunPeng - 1)?.ton ?? null }))
+  : PENGADAAN_CABANG_2025.map((c) => ({ ...c, tonLalu: null }))

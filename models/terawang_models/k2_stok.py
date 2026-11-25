@@ -29,5 +29,9 @@ def estimasi_stok(akar: str | Path, hari_ini: dt.date, produksi: pd.DataFrame, e
                  "sigma": {"keluar_provinsi": ko.SIGMA_X, "konsumsi": ko.SIGMA_C, "prod_model": ko.SIGMA_P_MODEL, "prod_k1": ko.SIGMA_P_K1},
                  "jangkar_min_bulan": ko.JANGKAR_MIN, "sd_jangkar": ko.SD_JANGKAR,
                  "konsumsi_nonrt_kg_kapita_bulan": round(ko.KONSUMSI_NONRT, 3)}
+    # Arus antar kab dari LP jarak jalan (ton/tahun, neraca 2025); K2 memakainya sebagai arus masuk bulanan = 1/12.
+    F = h["arus"]
+    arus = (F.stack().rename("ton_tahun").rename_axis(["dari", "ke"]).reset_index().query("ton_tahun > 0.5")
+            .assign(ton_bulan=lambda d: d.ton_tahun / 12))
     return {"skenario": sk, "rinci": h["R"], "konsumsi": h["C"].rename("konsumsi_ton_bulan"), "hari_ke_defisit": h["hit"],
-            "jangkar": float(h["a_jangkar"]), "parameter": param}
+            "jangkar": float(h["a_jangkar"]), "parameter": param, "arus": arus}

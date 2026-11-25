@@ -101,7 +101,7 @@ export default function Whatsapp() {
             rows: [
               ["Medium", <b key="m">{rp(k.pNow)}/kg</b>],
               ["Premium", `${rp(k.prem)}/kg`],
-              ["HET medium", "Rp13.500/kg"],
+              ["HET medium", `${rp(HET)}/kg`],
               ["2 pekan lagi", `${arah > 40 ? "naik" : "stabil"} ± ${rp(k.fc[1].m)}`],
             ],
             foot: (
