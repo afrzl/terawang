@@ -1,0 +1,39 @@
+wilayah,jenis,nama_repo,lon,lat,bagian_poligon,daratan_utama_persen_luas,geser_ke_jalan_m
+Pacitan,kabupaten,Pacitan,111.17931,-8.12788,2,100,221
+Ponorogo,kabupaten,Ponorogo,111.49973,-7.93161,1,100,54
+Trenggalek,kabupaten,Trenggalek,111.62607,-8.16432,8,100,281
+Tulungagung,kabupaten,Tulungagung,111.88727,-8.11461,2,100,25
+Blitar,kabupaten,Blitar,112.23640,-8.13052,3,100,12
+Kediri,kabupaten,Kediri,112.08634,-7.82883,1,100,17
+Malang,kabupaten,Malang,112.64139,-8.12278,2,100,9
+Lumajang,kabupaten,Lumajang,113.13790,-8.12541,1,100,74
+Jember,kabupaten,Jember,113.66380,-8.23086,3,98,11
+Banyuwangi,kabupaten,Banyuwangi,114.20389,-8.36542,3,100,6
+Bondowoso,kabupaten,Bondowoso,113.94757,-7.94404,1,100,119
+Situbondo,kabupaten,Situbondo,114.04915,-7.80040,1,100,74
+Probolinggo,kabupaten,Probolinggo,113.32149,-7.86840,2,100,211
+Pasuruan,kabupaten,Pasuruan,112.83005,-7.74514,1,100,96
+Sidoarjo,kabupaten,Sidoarjo,112.66447,-7.44566,1,100,19
+Mojokerto,kabupaten,Mojokerto,112.48454,-7.54804,1,100,6
+Jombang,kabupaten,Jombang,112.26509,-7.54515,1,100,54
+Nganjuk,kabupaten,Nganjuk,111.93855,-7.59741,1,100,276
+Madiun,kabupaten,Madiun,111.64558,-7.62442,1,100,835
+Magetan,kabupaten,Magetan,111.35795,-7.66308,1,100,116
+Ngawi,kabupaten,Ngawi,111.34314,-7.43917,1,100,55
+Bojonegoro,kabupaten,Bojonegoro,111.80989,-7.25556,1,100,1019
+Tuban,kabupaten,Tuban,111.89227,-6.95205,1,100,283
+Lamongan,kabupaten,Lamongan,112.30108,-7.13130,1,100,86
+Gresik,kabupaten,Gresik,112.53102,-7.16115,8,81,94
+Bangkalan,kabupaten,Bangkalan,112.93069,-7.04536,1,100,33
+Sampang,kabupaten,Sampang,113.26749,-7.04175,4,96,46
+Pamekasan,kabupaten,Pamekasan,113.50446,-7.06523,1,100,2
+Sumenep,kabupaten,Sumenep,113.82159,-6.98774,44,55,55
+Kota Kediri,kota,Kota Kediri,112.01527,-7.82596,1,100,2
+Kota Blitar,kota,Kota Blitar,112.16649,-8.09535,1,100,15
+Kota Malang,kota,Kota Malang,112.63637,-7.97893,1,100,4
+Kota Probolinggo,kota,Kota Probolinggo,113.20528,-7.77707,1,100,36
+Kota Pasuruan,kota,Kota Pasuruan,112.90945,-7.65128,1,100,97
+Kota Mojokerto,kota,Kota Mojokerto,112.43768,-7.47139,1,100,34
+Kota Madiun,kota,Kota Madiun,111.53013,-7.62701,1,100,8
+Kota Surabaya,kota,Kota Surabaya,112.71547,-7.27411,1,100,6
+Kota Batu,kota,Batu,112.53238,-7.83084,1,100,18

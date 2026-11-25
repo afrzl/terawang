@@ -40,6 +40,8 @@ interface LineChartProps {
   points?: { vals: Val[]; color: string }[]
   /** Indeks awal area prakiraan (diberi latar). */
   splitAt?: number
+  /** Teks pada area setelah splitAt. */
+  splitLabel?: string
   W?: number
   H?: number
   tip?: (i: number) => React.ReactNode
@@ -47,7 +49,7 @@ interface LineChartProps {
 
 const M = { l: 58, r: 96, t: 14, b: 28 }
 
-export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], points = [], splitAt, W = 720, H = 280, tip }: LineChartProps) {
+export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], points = [], splitAt, splitLabel = "prakiraan", W = 720, H = 280, tip }: LineChartProps) {
   const { show, hide } = useTooltip()
   const svgRef = useRef<SVGSVGElement>(null)
   const [hover, setHover] = useState<number | null>(null)
@@ -88,7 +90,7 @@ export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], p
         <>
           <rect x={x(splitAt)} y={M.t} width={x(n - 1) - x(splitAt)} height={H - M.b - M.t} fill="var(--panel-2)" />
           <text x={x(splitAt) + 6} y={M.t + 12} className="lab">
-            prakiraan
+            {splitLabel}
           </text>
         </>
       )}

@@ -1,5 +1,6 @@
-import { FLOWS, GEO, LAYERS, WILAYAH, binColor, byName, type LayerKey, type Wilayah } from "@/lib/data"
+import { FLOWS, GEO, LAYERS, WILAYAH, binColor, byName, gabungRute, type Flow, type LayerKey, type Wilayah } from "@/lib/data"
 import { clamp, nf, rp, short } from "@/lib/format"
+import { useFilter } from "@/lib/filter"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
 
@@ -15,6 +16,8 @@ export interface MapArc {
 interface PetaJatimProps {
   layer: LayerKey
   flows?: boolean
+  /** Rute SPHP yang digambar bila `flows` aktif. Bawaan: seluruh rute K3b. */
+  flowList?: Flow[]
   labels?: boolean
   /** Arus beranimasi (mis. arus dagang antarwilayah). */
   arcs?: MapArc[]
@@ -27,12 +30,13 @@ interface PetaJatimProps {
 }
 
 /** Peta choropleth 38 kabupaten/kota Jawa Timur, opsional dengan rute penyaluran SPHP. */
-export function PetaJatim({ layer, flows = false, labels = true, arcs, muted = false, getValue, valueLabel }: PetaJatimProps) {
+export function PetaJatim({ layer, flows = false, flowList, labels = true, arcs, muted = false, getValue, valueLabel }: PetaJatimProps) {
   const { sel, select } = useSelection()
+  const { lolos } = useFilter()
   const { show, hide } = useTooltip()
   const d = LAYERS[layer]
   const val = getValue ?? d.val
-  const fillOf = (k: Wilayah) => (d.na?.(k) ? "var(--s0)" : binColor(layer, val(k)))
+  const fillOf = (k: Wilayah) => (!lolos(k) ? "var(--rule)" : d.na?.(k) ? "var(--s0)" : binColor(layer, val(k)))
 
   const tipFor = (n: string) => {
     const k = byName[n]
@@ -58,7 +62,12 @@ export function PetaJatim({ layer, flows = false, labels = true, arcs, muted = f
   const sg = GEO[sel]
   const bl = GEO["Kota Blitar"].c
   const shownLabels = new Set([...LABELS, sel])
-  const sourceNames = [...new Set(FLOWS.map((f) => f.from.n))]
+  const semuaRute = flowList ?? FLOWS
+  const rute = gabungRute(semuaRute)
+  // Kiriman lokal (asal sama dengan tujuan): total ton per kabupaten, digambar sebagai lingkaran di lokasi cabang.
+  const lokal = new Map<string, number>()
+  for (const f of semuaRute) if (f.from === f.to) lokal.set(f.from.n, (lokal.get(f.from.n) ?? 0) + f.ton)
+  const sourceNames = [...new Set(semuaRute.map((f) => f.from.n))]
 
   return (
     <svg viewBox="0 0 1165 490" role="img" aria-label="Peta Jawa Timur">
@@ -86,31 +95,71 @@ export function PetaJatim({ layer, flows = false, labels = true, arcs, muted = f
               <path d="M0,0L10,5L0,10z" fill="var(--accent)" />
             </marker>
           </defs>
-          {FLOWS.map((f, i) => {
+          {rute.map((f, i) => {
             const a = GEO[f.from.n].c
             const b = GEO[f.to.n].c
             const mx = (a[0] + b[0]) / 2
             const my = (a[1] + b[1]) / 2 - Math.hypot(b[0] - a[0], b[1] - a[1]) * 0.22
+            const dd = `M${a[0]},${a[1]}Q${mx},${my} ${b[0]},${b[1]}`
+            const w = clamp(Math.sqrt(f.ton) / 12, 2, 6.5)
             return (
-              <path
-                key={i}
-                d={`M${a[0]},${a[1]}Q${mx},${my} ${b[0]},${b[1]}`}
-                fill="none"
-                stroke="var(--accent)"
-                strokeWidth={clamp(f.ton / 220, 1.2, 5)}
-                strokeLinecap="round"
-                markerEnd="url(#ah)"
-                opacity={0.85}
-                style={{ pointerEvents: "none" }}
-              />
+              <g key={i} style={{ pointerEvents: "none" }}>
+                <path d={dd} fill="none" stroke="var(--panel)" strokeWidth={w + 3.5} strokeLinecap="round" opacity={0.9} />
+                <path d={dd} fill="none" stroke="var(--accent)" strokeWidth={w} strokeLinecap="round" markerEnd="url(#ah)" />
+              </g>
+            )
+          })}
+          {[...lokal].map(([n, ton]) => {
+            const c = GEO[n].c
+            return (
+              <circle key={`l${n}`} cx={c[0]} cy={c[1]} r={clamp(5 + Math.sqrt(ton) * 0.22, 7, 26)} fill="var(--panel)" fillOpacity={0.5} stroke="var(--accent)" strokeWidth={2.6} style={{ pointerEvents: "none" }} />
             )
           })}
           {sourceNames.map((n) => {
             const c = GEO[n].c
             return (
-              <rect key={n} x={c[0] - 5} y={c[1] - 5} width={10} height={10} fill="var(--panel)" stroke="var(--accent)" strokeWidth={2} style={{ pointerEvents: "none" }} />
+              <g key={n} transform={`translate(${c[0]},${c[1]})`} style={{ pointerEvents: "none" }}>
+                <circle r={13} fill="var(--accent)" stroke="#fff" strokeWidth={2.2} />
+                <g transform="translate(-8,-8) scale(0.667)" fill="none" stroke="#fff" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35Z" />
+                  <path d="M6 18h12" />
+                  <path d="M6 14h12" />
+                  <rect width="12" height="12" x="6" y="10" />
+                </g>
+              </g>
             )
           })}
+          {(() => {
+            // Label nama wilayah di bawah titiknya; yang berdekatan digeser ke bawah agar tidak bertumpuk.
+            const FS = 21
+            const items = [...new Set(semuaRute.flatMap((f) => [f.from.n, f.to.n]))]
+              .map((n) => {
+                const c = GEO[n].c
+                const ton = lokal.get(n)
+                const r = ton ? clamp(5 + Math.sqrt(ton) * 0.22, 13, 26) : 13
+                return { n, x: c[0], y: c[1] + r + FS, ton }
+              })
+              .sort((a, b) => a.y - b.y)
+            for (let i = 0; i < items.length; i++)
+              for (let j = 0; j < i; j++)
+                if (Math.abs(items[i].x - items[j].x) < 190 && Math.abs(items[i].y - items[j].y) < (items[j].ton ? 2 * FS : FS) + 2) items[i].y = items[j].y + (items[j].ton ? 2 * FS : FS) + 2
+            return items.map((it) => (
+              <text
+                key={`t${it.n}`}
+                x={it.x}
+                y={it.y}
+                textAnchor="middle"
+                style={{ fontSize: FS, fontWeight: 600, fill: "var(--ink)", stroke: "var(--panel)", strokeWidth: 5, paintOrder: "stroke", pointerEvents: "none" }}
+              >
+                {short(it.n)}
+                {it.ton ? (
+                  <tspan x={it.x} dy={FS - 3} style={{ fontSize: FS - 4, fontWeight: 500 }}>
+                    {nf(it.ton)} ton untuk wilayah sendiri
+                  </tspan>
+                ) : null}
+              </text>
+            ))
+          })()}
         </>
       )}
       {arcs && (
@@ -126,6 +175,7 @@ export function PetaJatim({ layer, flows = false, labels = true, arcs, muted = f
               <g key={i}>
                 <path d={d} fill="none" stroke={f.color} strokeWidth={w + 2.5} strokeLinecap="round" opacity={0.18} />
                 <path d={d} fill="none" stroke={f.color} strokeWidth={w} strokeLinecap="round" className="flow-anim" style={{ animationDuration: `${1.6 - Math.min(f.ton, 4000) / 5000}s` }} />
+                <ArrowHead x={b[0]} y={b[1]} fromX={mx} fromY={my} size={11 + w * 2} color={f.color} />
               </g>
             )
           })}
@@ -146,6 +196,14 @@ export function PetaJatim({ layer, flows = false, labels = true, arcs, muted = f
           )
         })}
     </svg>
+  )
+}
+
+/** Kepala panah di ujung tujuan, searah garis. */
+function ArrowHead({ x, y, fromX, fromY, size, color }: { x: number; y: number; fromX: number; fromY: number; size: number; color: string }) {
+  const sd = (Math.atan2(y - fromY, x - fromX) * 180) / Math.PI
+  return (
+    <path d={`M0,0 L${-size},${-size * 0.62} L${-size * 0.7},0 L${-size},${size * 0.62}Z`} transform={`translate(${x},${y}) rotate(${sd})`} fill={color} stroke="var(--panel)" strokeWidth={1} />
   )
 }
 

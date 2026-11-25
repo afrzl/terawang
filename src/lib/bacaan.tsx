@@ -77,8 +77,8 @@ export function bacaPeta(layer: LayerKey, w: number, valueAt: (l: LayerKey, k: W
   return (
     <>
       Pada {weekLabel(w)}, rata-rata harga medium Jatim <b>{rp(avg)}/kg</b>
-      {w !== 0 && <> ({sign(rasio(avg, avg0))}% dari pekan ini)</>}. <b>{siaga.length} wilayah</b> Siaga (di atas {rp(SIAGA)}) dan {wasp.length}{" "}
-      Waspada. Termahal {daftar(top.map((k) => `${k.n} (${rp(v(k))})`))}.
+      {w !== 0 && <> ({sign(rasio(avg, avg0))}% dari pekan ini)</>}. <b>{siaga.length} wilayah</b> di atas HET +5% ({rp(SIAGA)}) dan {wasp.length}{" "}
+      di atas HET sampai HET +5%. Termahal {daftar(top.map((k) => `${k.n} (${rp(v(k))})`))}.
     </>
   )
 }
@@ -107,13 +107,13 @@ export function bacaCitra(k: Wilayah, s: { before: number; after: number; lag: n
   )
 }
 
-export function bacaTreemap(): ReactNode {
+export function bacaTreemap(periode = "Nov–Jan"): ReactNode {
   const tot = sum(WILAYAH, (k) => k.est)
   const grp = REGIONS.map((r) => ({ r, v: sum(r.members, (m) => byName[m].est), p: sum(r.members, (m) => byName[m].prev) })).sort((a, b) => b.v - a.v)
   const big = WILAYAH.filter((k) => k.est > 60).sort((a, b) => rasio(a.est, a.prev) - rasio(b.est, b.prev))[0]
   return (
     <>
-      {grp[0].r.short} menyumbang <b>{pct((grp[0].v / tot) * 100)}</b> proyeksi panen Nov–Jan, disusul {grp[1].r.short} ({pct((grp[1].v / tot) * 100)})
+      {grp[0].r.short} menyumbang <b>{pct((grp[0].v / tot) * 100)}</b> produksi {periode}, disusul {grp[1].r.short} ({pct((grp[1].v / tot) * 100)})
       dan {grp[2].r.short} ({pct((grp[2].v / tot) * 100)}). Madura hanya {pct((grp.find((g) => g.r.key === "madura")!.v / tot) * 100)}.
       {big && (
         <>
@@ -214,7 +214,7 @@ export function bacaProyeksi(): ReactNode {
   const lebar = ks.slice().sort((a, b) => b.ci / b.est - a.ci / a.est)[0]
   return (
     <>
-      <b>{turun.length} dari 16</b> kabupaten penghasil terbesar diproyeksikan panen lebih kecil dari Nov–Jan 2025.{" "}
+      <b>{turun.length} dari 16</b> kabupaten penghasil terbesar diproyeksikan panen lebih kecil dari periode yang sama pada 2025.{" "}
       {pasti.length === ks.length ? (
         "Di semua wilayah itu titik 2025 berada di luar selang 90%, jadi penurunannya hampir pasti, bukan sekadar ketidakpastian model."
       ) : pasti.length ? (
@@ -415,13 +415,11 @@ export function bacaSphp(): ReactNode {
   const asal = Object.entries(
     FLOWS.reduce<Record<string, number>>((m, f) => ((m[f.from.n] = (m[f.from.n] ?? 0) + f.ton), m), {}),
   ).sort((a, b) => b[1] - a[1])
-  const p1 = FLOWS.filter((f) => f.pri === 1)
   const tujuan = new Set(FLOWS.map((f) => f.to.n)).size
   return (
     <>
-      Rekomendasi pekan ini <b>{nf(ton)} ton</b> beras SPHP lewat {FLOWS.length} rute ke {tujuan} wilayah. Gudang {daftar(asal.slice(0, 2).map(([n]) => n))}{" "}
-      menanggung {pct((sum(asal.slice(0, 2), ([, v]) => v) / ton) * 100)} volume.{" "}
-      {p1.length ? `${p1.length} rute prioritas 1 (harga Siaga sekaligus stok menipis) harus dikirim paling lambat ${dfmt(new Date(+NOW + 7 * DAY))}.` : ""}
+      Rencana penyaluran Nov–Jan <b>{nf(ton)} ton</b> beras SPHP lewat {FLOWS.length} rute ke {tujuan} wilayah. Cabang Bulog {daftar(asal.slice(0, 2).map(([n]) => n))}{" "}
+      menanggung {pct((sum(asal.slice(0, 2), ([, v]) => v) / ton) * 100)} volume.
     </>
   )
 }

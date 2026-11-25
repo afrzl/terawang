@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { sankey, sankeyLinkHorizontal, type SankeyLink, type SankeyNode } from "d3-sankey"
-import { REGIONS, TRADE, regionOf } from "@/lib/arus"
+import { REGIONS, TRADE, regionOf, type Trade } from "@/lib/arus"
 import { nf, short } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
@@ -24,10 +24,10 @@ type L = SankeyLink<NodeDatum, LinkDatum>
 const W = 940
 const H = 520
 const TOP_SRC = 9
-const TOP_DST = 11
+const TOP_DST = 8
 
 /** Tiga kolom: kabupaten asal → kawasan tujuan → kabupaten/kota tujuan. */
-function buildGraph() {
+function buildGraph(TRADE: Trade[]) {
   const outBy = new Map<string, number>()
   const inBy = new Map<string, number>()
   for (const t of TRADE) {
@@ -48,9 +48,9 @@ function buildGraph() {
     const s = srcId(t.from.n)
     const r = "r:" + regionOf[t.to.n].key
     const d = dstId(t.to.n)
-    add(s === "s:lain" ? { id: s, label: "Lainnya (surplus)", color: "var(--ink-3)", col: 0 } : { id: s, label: t.from.n, color: regionOf[t.from.n].color, col: 0, wilayah: t.from.n })
+    add(s === "s:lain" ? { id: s, label: "Surplus lainnya", color: "var(--ink-3)", col: 0 } : { id: s, label: t.from.n, color: regionOf[t.from.n].color, col: 0, wilayah: t.from.n })
     add({ id: r, label: regionOf[t.to.n].short, color: regionOf[t.to.n].color, col: 1 })
-    add(d === "d:lain" ? { id: d, label: "Lainnya", color: "var(--ink-3)", col: 2 } : { id: d, label: t.to.n, color: regionOf[t.to.n].color, col: 2, wilayah: t.to.n })
+    add(d === "d:lain" ? { id: d, label: "Tujuan lainnya", color: "var(--ink-3)", col: 2 } : { id: d, label: t.to.n, color: regionOf[t.to.n].color, col: 2, wilayah: t.to.n })
     bump(s + "|" + r, t.ton)
     bump(r + "|" + d, t.ton)
   }
@@ -63,13 +63,13 @@ function buildGraph() {
   return { nodes: [...nodes.values()], links, order }
 }
 
-export function SankeyArus() {
+export function SankeyArus({ trade = TRADE }: { trade?: Trade[] } = {}) {
   const { sel, select } = useSelection()
   const { show, hide } = useTooltip()
   const [hover, setHover] = useState<string | null>(null)
 
   const graph = useMemo(() => {
-    const { nodes, links, order } = buildGraph()
+    const { nodes, links, order } = buildGraph(trade)
     const layout = sankey<NodeDatum, LinkDatum>()
       .nodeId((d) => d.id)
       .nodeWidth(12)
@@ -81,11 +81,11 @@ export function SankeyArus() {
         return (b.value ?? 0) - (a.value ?? 0)
       })
       .extent([
-        [150, 10],
+        [150, 34],
         [W - 160, H - 10],
       ])
     return layout({ nodes: nodes.map((d) => ({ ...d })), links: links.map((d) => ({ ...d })) })
-  }, [])
+  }, [trade])
 
   const linkPath = sankeyLinkHorizontal<NodeDatum, LinkDatum>()
   const isLit = (l: L) => {
@@ -97,6 +97,14 @@ export function SankeyArus() {
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Diagram Sankey arus beras antarwilayah" className="sankey">
+      {(["Asal", "Kawasan tujuan", "Tujuan"] as const).map((t, c) => {
+        const n = graph.nodes.find((x) => x.col === c)
+        return (
+          <text key={t} x={n?.x0 ?? 0} y={14} className="hd">
+            {t}
+          </text>
+        )
+      })}
       <g fill="none">
         {graph.links.map((l, i) => {
           const s = l.source as N
@@ -113,7 +121,7 @@ export function SankeyArus() {
                 show(
                   <>
                     <b>
-                      {s.label} → {t.label}
+                      {s.label} ke {t.label}
                     </b>
                     <br />
                     <span className="m">{nf(l.value)} ton/bln</span>
@@ -161,7 +169,7 @@ export function SankeyArus() {
             <text x={tx} y={(y0 + y1) / 2} dy="0.35em" textAnchor={anchor} className={mid ? "mid" : undefined} style={{ fontWeight: isSel || mid ? 650 : 400 }}>
               {mid ? n.label : short(n.label)}
               <tspan className="v" dx={6}>
-                {nf((n.value ?? 0) / 1000, 1)} rb t
+                {nf((n.value ?? 0) / 1000, 1)} rb ton
               </tspan>
             </text>
           </g>
