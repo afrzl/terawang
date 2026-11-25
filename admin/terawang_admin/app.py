@@ -17,7 +17,7 @@ from starlette.responses import FileResponse, JSONResponse, RedirectResponse, Re
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
-from . import akun, dagster, envfile, jejak, pengaturan, sumber, uji
+from . import akun, dagster, data, envfile, jejak, pengaturan, sumber, uji
 
 STATIC = Path(__file__).parent / "static"
 HEADER_CSRF = "x-terawang-admin"
@@ -49,7 +49,7 @@ def perlu_login(hak: str | None = None):
                 return await fn(req)
             except dagster.GalatDagster as e:
                 return galat(str(e), 502)
-            except (sumber.GagalUnggah, akun.GalatAkun) as e:
+            except (sumber.GagalUnggah, akun.GalatAkun, data.GagalData) as e:
                 return galat(str(e), 400)
         return bungkus
     return hias
@@ -360,6 +360,36 @@ async def templat(req: Request):
     return Response(isi, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="contoh_{unduh}"'})
 
 
+def _indeks(req: Request) -> int:
+    try:
+        return int(req.query_params.get("i", ""))
+    except ValueError:
+        raise data.GagalData("Indeks berkas tidak sah.")
+
+
+@perlu_login("pipeline")
+async def data_terkini(req: Request):
+    """Berkas yang dipakai materialisasi terakhir aset sumber ini (hasil konektor otomatis, unggahan manual, atau CSV repo)."""
+    d = await run_in_threadpool(data.daftar, req.query_params.get("sumber", ""))
+    return JSONResponse(data.publik(d))
+
+
+@perlu_login("pipeline")
+async def data_pratinjau(req: Request):
+    try:
+        n = int(req.query_params.get("n", "50"))
+    except ValueError:
+        n = 50
+    return JSONResponse(await run_in_threadpool(data.pratinjau, req.query_params.get("sumber", ""), _indeks(req), n))
+
+
+@perlu_login("pipeline")
+async def data_unduh(req: Request):
+    p = await run_in_threadpool(data.path_unduh, req.query_params.get("sumber", ""), _indeks(req))
+    jenis = "application/gzip" if p.name.endswith(".gz") else "application/json" if p.name.endswith(".json") else "text/csv; charset=utf-8"
+    return FileResponse(p, media_type=jenis, filename=p.name, headers={"Cache-Control": "no-store"})
+
+
 @perlu_login("jejak")
 async def lihat_jejak(req: Request):
     return JSONResponse({"jejak": await run_in_threadpool(jejak.baca, 300)})
@@ -413,6 +443,9 @@ routes = [
     Route(f"{API}/muat-ulang/{{target}}", muat_ulang, methods=["POST"]),
     Route(f"{API}/sumber", daftar_sumber),
     Route(f"{API}/sumber-data", halaman_sumber),
+    Route(f"{API}/data", data_terkini),
+    Route(f"{API}/data/pratinjau", data_pratinjau),
+    Route(f"{API}/data/unduh", data_unduh),
     Route(f"{API}/sumber/{{sumber}}/{{nama}}", unggah, methods=["PUT"]),
     Route(f"{API}/sumber/{{sumber}}/{{nama}}", tarik, methods=["DELETE"]),
     Route(f"{API}/sumber/{{sumber}}/{{nama}}/contoh", templat),

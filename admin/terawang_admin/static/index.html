@@ -146,7 +146,8 @@
       <div class="kpis" id="status-sumber"></div>
       <div class="seg" role="tablist" id="sub-tab-sumber">
         <button type="button" role="tab" data-sub="riwayat" aria-selected="true">Riwayat pembaruan</button>
-        <button type="button" role="tab" data-sub="unggah" aria-selected="false">Unggah manual</button>
+        <button type="button" role="tab" data-sub="data" aria-selected="false">Data terkini</button>
+        <button type="button" role="tab" data-sub="unggah" aria-selected="false" id="tab-unggah">Unggah manual</button>
       </div>
       <div id="sub-riwayat" class="panel">
         <div class="ph">
@@ -154,6 +155,23 @@
           <label class="centang"><input type="checkbox" id="hanya-berubah" /> Sembunyikan yang tidak mengubah data</label>
         </div>
         <div id="daftar-riwayat" class="buku"></div>
+      </div>
+      <div id="sub-data" class="grid-data" hidden>
+        <div class="panel">
+          <div class="ph"><h3>Data terkini</h3><span class="note" id="info-data"></span></div>
+          <div class="pb"><p class="catatan lebar">Berkas yang dibaca pipeline pada pembaruan terakhir, dengan asalnya: <b>otomatis</b> (hasil API/konektor), <b>manual</b> (unggahan), atau <b>repo</b> (CSV bawaan). Konektor menimpa berkas di tempat, jadi yang bisa dilihat hanya versi terakhir.</p></div>
+          <div id="daftar-data" class="baris-daftar"></div>
+        </div>
+        <div class="panel" id="panel-pratinjau">
+          <div class="ph">
+            <div><h3 class="mono-judul" id="judul-pratinjau"></h3><div class="note" id="info-pratinjau"></div></div>
+            <div class="aksi">
+              <select id="jumlah-baris" aria-label="Jumlah baris"><option value="50">50 baris</option><option value="200">200 baris</option><option value="500">500 baris</option></select>
+              <a class="tombol" id="unduh-data" href="#">Unduh</a>
+            </div>
+          </div>
+          <div id="isi-pratinjau"><p class="kosong">Pilih berkas untuk melihat isinya.</p></div>
+        </div>
       </div>
       <div id="sub-unggah" hidden>
         <div class="panel">
