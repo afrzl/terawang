@@ -3,7 +3,9 @@
 Keluaran di <OUT>/ (default public/citra/jatim/):
   kab.geojson      batas 38 kab/kota (FAO GAUL 2015, sama dengan terawang_wilayah.py), simplify 100 m, properti n
   s2_okt.png       Sentinel-2 SR median 1–30 Okt 2026 (Cloud Score+ ≥ 0,6), warna alami
-  fase.png         kelas fase tumbuh per piksel sawah pada tanggal acuan (logika terawang_wilayah.kelas_fase)
+  evi.png          EVI Sentinel-2, median 30 hari s.d. tanggal acuan (Cloud Score+ ≥ 0,6), sawah saja
+  lswi.png         LSWI Sentinel-2 (B8, B11), median 30 hari s.d. tanggal acuan, sawah saja
+  vh.png           VH Sentinel-1 (dB), rata-rata 12 hari s.d. tanggal acuan, sawah saja
   vh_selisih.png   VH 12 hari terakhir musim ini − rata-rata periode sama 2023–25, sawah saja
   index.json       daftar lapisan: id, label, file, bounds [W,S,E,N], legenda, sumber
 
@@ -24,8 +26,9 @@ import terawang_wilayah as tw  # noqa: E402
 
 BBOX = [110.85, -8.85, 114.65, -6.75]  # Jawa Timur daratan + Madura
 LEBAR = 2200
-FASE = [("C9B28A", "Bera"), ("2F7FB8", "Olah tanah/genangan"), ("8BC34A", "Vegetatif"),
-        ("2E7D32", "Generatif"), ("E3B505", "Siap panen")]
+EVI_PAL = ["8C6D31", "D9C27A", "E8E3A0", "A9D18E", "4CAF50", "1B7837", "00441B"]
+LSWI_PAL = ["8C510A", "D8B365", "F6E8C3", "C7EAE5", "5AB4AC", "01665E", "003C30"]
+VH_NIVEL_PAL = ["0B1B3A", "2C4A7A", "5B7FA8", "9DB7CF", "D7E3EC", "F7F7F7"]
 VH_PAL = ["8C510A", "D8B365", "F6E8C3", "F5F5F5", "C7EAE5", "5AB4AC", "01665E"]
 
 
@@ -86,15 +89,24 @@ def main():
     unduh(rgb.updateMask(mask).visualize(bands=["B4", "B3", "B2"], min=0.02, max=0.24, gamma=1.25)
           .getThumbURL(thumb), out / "s2_okt.png")
 
-    # 2b. fase tumbuh
-    kelas, _ = tw.kelas_fase(region, a.acuan)
-    fase = kelas.updateMask(sawah).updateMask(mask)
-    unduh(fase.visualize(min=0, max=4, palette=[c for c, _ in FASE]).getThumbURL(thumb), out / "fase.png")
+    # 2b. EVI dan LSWI (median 30 hari s.d. tanggal acuan)
+    cs_img = ee.ImageCollection("GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED")
+    opt = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED").filterBounds(region)
+           .filterDate(d.advance(-30, "day"), d)
+           .linkCollection(cs_img, ["cs_cdf"])
+           .map(lambda i: i.select(["B2", "B4", "B8", "B11"]).divide(10000).updateMask(i.select("cs_cdf").gte(0.6)))
+           .median())
+    evi = opt.expression("2.5 * (N - R) / (N + 6 * R - 7.5 * B + 1)",
+                         {"N": opt.select("B8"), "R": opt.select("B4"), "B": opt.select("B2")})
+    lswi = opt.normalizedDifference(["B8", "B11"])
+    unduh(evi.updateMask(sawah).updateMask(mask).visualize(min=0, max=0.8, palette=EVI_PAL).getThumbURL(thumb), out / "evi.png")
+    unduh(lswi.updateMask(sawah).updateMask(mask).visualize(min=-0.2, max=0.6, palette=LSWI_PAL).getThumbURL(thumb), out / "lswi.png")
 
     # 2c. selisih VH
     def vh(t):
         return tw.s1(region, t.advance(-12, "day"), t).select("VH").mean()
     kini = vh(d)
+    unduh(kini.updateMask(sawah).updateMask(mask).visualize(min=-25, max=-10, palette=VH_NIVEL_PAL).getThumbURL(thumb), out / "vh.png")
     dulu = ee.ImageCollection([vh(d.advance(-j, "year")) for j in (1, 2, 3)]).mean()
     sel = kini.subtract(dulu).updateMask(sawah).updateMask(mask)
     unduh(sel.visualize(min=-4, max=4, palette=VH_PAL).getThumbURL(thumb), out / "vh_selisih.png")
@@ -103,9 +115,15 @@ def main():
     idx = [
         dict(id="s2_okt", label="Citra Sentinel-2 Oktober 2026", file="s2_okt.png", bounds=BBOX,
              legenda=[], sumber="Copernicus Sentinel-2 SR median 1–30 Okt 2026, Cloud Score+ ≥ 0,6 · " + sumber),
-        dict(id="fase", label=f"Fase tumbuh padi {a.acuan}", file="fase.png", bounds=BBOX,
-             legenda=[["#" + c, l] for c, l in FASE],
-             sumber="Sentinel-2 NDVI/LSWI (kini vs 30 hari sebelumnya) + Sentinel-1 VV, aturan ambang · " + sumber),
+        dict(id="evi", label=f"EVI Sentinel-2 ({a.acuan})", file="evi.png", bounds=BBOX,
+             legenda=[["#8C6D31", "≤ 0 (tanah terbuka/air)"], ["#E8E3A0", "0,3"], ["#4CAF50", "0,5"], ["#00441B", "≥ 0,8 (tajuk rapat)"]],
+             sumber=f"Sentinel-2 SR, EVI median 30 hari s.d. {a.acuan}, Cloud Score+ ≥ 0,6 · " + sumber),
+        dict(id="lswi", label=f"LSWI Sentinel-2 ({a.acuan})", file="lswi.png", bounds=BBOX,
+             legenda=[["#8C510A", "≤ −0,2 (kering)"], ["#F6E8C3", "0,1"], ["#5AB4AC", "0,3"], ["#003C30", "≥ 0,6 (basah/genangan)"]],
+             sumber=f"Sentinel-2 SR, LSWI = (B8−B11)/(B8+B11), median 30 hari s.d. {a.acuan}, Cloud Score+ ≥ 0,6 · " + sumber),
+        dict(id="vh", label=f"Radar VH Sentinel-1 ({a.acuan})", file="vh.png", bounds=BBOX,
+             legenda=[["#0B1B3A", "≤ −25 dB (air/genangan)"], ["#5B7FA8", "−19 dB"], ["#F7F7F7", "≥ −10 dB (tanaman rapat)"]],
+             sumber=f"Sentinel-1 GRD VH (dB), rata-rata 12 hari s.d. {a.acuan} · " + sumber),
         dict(id="vh_selisih", label="Selisih radar VH vs rata-rata 2023–25", file="vh_selisih.png", bounds=BBOX,
              legenda=[["#8C510A", "≤ −4 dB (lebih rendah: genangan/bera)"], ["#F5F5F5", "0 dB"],
                       ["#01665E", "≥ +4 dB (lebih tinggi: tanaman lebih rapat)"]],

@@ -125,14 +125,14 @@ function PetaSet({ lapisan }: { lapisan: boolean }) {
           onChange={p.setBasemap}
         />
       </div>
+      {!lapisan && (
+        <>
       {p.overlays.length > 0 && (
         <div className="fp-f">
           <span>Lapisan GEE</span>
           <Select label="Lapisan GEE" options={[{ value: "off", label: "Tidak ada" }, ...p.overlays.map((o) => ({ value: o.id, label: o.label }))]} value={p.ov} onChange={p.setOv} />
         </div>
       )}
-      {!lapisan && (
-        <>
       <div className="fp-f">
         <span>Citra {sel}</span>
         <Select<CitraMode>

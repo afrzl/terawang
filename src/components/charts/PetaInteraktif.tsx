@@ -156,8 +156,8 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
   const { basemap, fillOp, overlays, citra } = peta
   const arus = spec ? peta.arus : "off"
   const tiga = spec ? peta.dim === "3d" : false
-  // Lapisan GEE boleh tampil di semua halaman peta; citra kabupaten hanya di halaman lama (tanpa spec).
-  const ov = peta.ov
+  // Halaman Ringkasan Peta (spec) tidak memakai lapisan GEE dan citra kabupaten.
+  const ov = spec ? "off" : peta.ov
   const citraMode = spec ? "off" : peta.citraMode
   const { sel, select } = useSelection()
   const { lolos, mulai, akhir } = useFilter()
