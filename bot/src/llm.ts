@@ -91,6 +91,8 @@ async function jalankanAlat(nama: string, argumen: string): Promise<{ hasil: unk
   return { hasil: { galat: `fungsi ${nama} tidak dikenal` } }
 }
 
+const tanpaPenalaran = new Set<string>()
+
 async function panggilOpenAI(pesan: Pesan[]) {
   const body: Record<string, unknown> = {
     model: config.openai.model,
@@ -98,13 +100,26 @@ async function panggilOpenAI(pesan: Pesan[]) {
     tools: ALAT,
     max_completion_tokens: config.openai.maksKeluaran,
   }
-  if (config.openai.reasoningEffort && /^(gpt-5|o\d)/.test(config.openai.model)) body.reasoning_effort = config.openai.reasoningEffort
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${config.openai.apiKey}` },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(45_000),
-  })
+  if (config.openai.reasoningEffort && !tanpaPenalaran.has(config.openai.model) && /^(gpt-[5-9]|o\d)/.test(config.openai.model)) {
+    body.reasoning_effort = config.openai.reasoningEffort
+  }
+  const kirim = () =>
+    fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${config.openai.apiKey}` },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(45_000),
+    })
+  let res = await kirim()
+  if (res.status === 400 && body.reasoning_effort) {
+    const galat = await res.text()
+    if (!/reasoning/i.test(galat)) throw new Error(`OpenAI 400: ${galat.slice(0, 300)}`)
+    // model ini tidak menerima reasoning_effort (atau nilainya): ingat dan ulangi tanpa parameter itu
+    console.warn(`[llm] ${config.openai.model} menolak reasoning_effort=${body.reasoning_effort}; diulang tanpa parameter itu`)
+    tanpaPenalaran.add(config.openai.model)
+    delete body.reasoning_effort
+    res = await kirim()
+  }
   if (!res.ok) throw new Error(`OpenAI ${res.status}: ${(await res.text()).slice(0, 300)}`)
   const j = (await res.json()) as {
     choices: { message: { content: string | null; tool_calls?: PanggilanAlat[] } }[]
