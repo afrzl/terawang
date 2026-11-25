@@ -19,7 +19,17 @@ export const config = {
     apiKey: env.OPENAI_API_KEY ?? "",
     model: env.OPENAI_MODEL ?? "gpt-5-mini",
     reasoningEffort: env.OPENAI_REASONING_EFFORT ?? "minimal", // kosongkan untuk model non-penalaran
-    batasHarianPerNomor: angka("LLM_BATAS_HARIAN", 30),
+    batasHarianPerNomor: angka("LLM_BATAS_HARIAN", 20),
+    /** Maksimal pesan bebas per nomor dalam 10 menit (anti-spam). */
+    batasPer10Menit: angka("LLM_BATAS_10MENIT", 5),
+    /** Anggaran token seluruh bot per hari (WIB). Lewat dari ini bot hanya melayani perintah baku. */
+    tokenHarian: angka("LLM_TOKEN_HARIAN", 300_000),
+    /** Batas token keluaran per panggilan (termasuk token penalaran pada model gpt-5). */
+    maksKeluaran: angka("LLM_MAKS_KELUARAN", 700),
+    /** Panjang maksimum pesan warga yang diteruskan ke LLM (karakter). */
+    maksMasukan: angka("LLM_MAKS_MASUKAN", 400),
+    /** Umur cache jawaban untuk pertanyaan yang sama (menit). 0 = mati. */
+    cacheMenit: angka("LLM_CACHE_MENIT", 30),
   },
   /** HET beras medium cadangan bila app.ambang_harga belum diisi (zona Jawa). */
   hetMediumCadangan: angka("HET_MEDIUM", 13500),

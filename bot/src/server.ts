@@ -4,6 +4,7 @@ import { tanggapi } from "./bot.ts"
 import { config } from "./config.ts"
 import { pool } from "./db.ts"
 import { kirim, sehat, tandaTanganSah, uraiWebhook } from "./gowa.ts"
+import { pemakaianHariIni } from "./pagar.ts"
 import { mulaiPenjadwal } from "./siaran.ts"
 import { semuaWilayah } from "./wilayah.ts"
 
@@ -51,7 +52,7 @@ const server = createServer(async (req, res) => {
   try {
     if (req.method === "GET" && url.pathname === "/health") {
       const [db, wa] = await Promise.all([pool.query("select 1").then(() => true, () => false), sehat()])
-      return json(res, db ? 200 : 503, { db, gowa: wa.ok })
+      return json(res, db ? 200 : 503, { db, gowa: wa.ok, llm: { aktif: Boolean(config.openai.apiKey), model: config.openai.model, ...pemakaianHariIni() } })
     }
 
     if (req.method === "POST" && url.pathname === "/webhook/wa") {

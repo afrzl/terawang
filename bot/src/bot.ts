@@ -5,6 +5,7 @@ import { BANTUAN, teksBerasMurah, teksHarga, teksPeringatan, teksPilihWilayah, t
 import * as kontak from "./kontak.ts"
 import { q } from "./db.ts"
 import { jawabBebas, llmAktif } from "./llm.ts"
+import * as pagar from "./pagar.ts"
 import { cariDiKalimat, cocokkan, labelWilayah, normal, semuaWilayah, type Wilayah } from "./wilayah.ts"
 
 type Perintah = "harga" | "stok" | "sphp" | "peringatan" | "langganan" | "berhenti" | "lapor" | "bantuan"
@@ -155,22 +156,39 @@ async function riwayat(kontakId: number) {
 
 async function pesanBebas(k: kontak.Kontak, teks: string): Promise<Balasan> {
   const daftar = await semuaWilayah()
-  // pesan yang isinya hanya nama wilayah -> HARGA
+  // pesan yang isinya hanya nama wilayah -> HARGA (tanpa LLM)
   const hanya = cocokkan(teks, daftar)
   if (hanya.jenis === "pas" && normal(teks).split(" ").length <= 3) {
     await kontak.ingatWilayah(k.id, hanya.wilayah.id)
     return jalankan("harga", hanya.wilayah, k, teks)
   }
   if (!llmAktif()) return { teks: `Maaf, aku belum paham pesannya.\n\n${BANTUAN}`, intent: "tidak_dikenal", wilayahId: null }
-  if ((await kontak.jumlahLlmHariIni(k.id)) >= config.openai.batasHarianPerNomor) {
-    return { teks: `Batas pertanyaan bebas hari ini sudah tercapai. Perintah baku tetap bisa dipakai:\n\n${BANTUAN}`, intent: "batas_llm", wilayahId: null }
-  }
+
+  // guard rail sebelum OpenAI: panjang, injeksi prompt, topik
+  const sebut = cariDiKalimat(teks, daftar).jenis !== "tidak_ada"
+  const tolak = pagar.cekMasukan(teks, sebut)
+  if (tolak) return { teks: tolak.teks, intent: `tolak_${tolak.alasan}`, wilayahId: null }
+
+  // cache: pertanyaan yang sama dalam 30 menit dijawab tanpa memanggil OpenAI lagi
+  const kunci = pagar.kunciCache(teks, k.wilayah_id)
+  const c = pagar.ambilCache(kunci)
+  if (c) return { teks: c.jawaban, intent: "llm_cache", wilayahId: c.wilayahId ?? null }
+
+  const batas = pagar.cekBatas(k.id, await kontak.jumlahLlmHariIni(k.id))
+  if (batas) return { teks: `${batas.teks}\n\n${BANTUAN}`, intent: `tolak_${batas.alasan}`, wilayahId: null }
+
   const ingat = daftar.find((w) => w.id === k.wilayah_id) ?? null
   try {
     const r = await jawabBebas(teks, await riwayat(k.id), ingat)
+    pagar.catatToken(r.token)
+    console.log(`[llm] kontak=${k.id} token=${r.token} alat=${r.pakaiAlat} hari_ini=${pagar.pemakaianHariIni().token}`)
+    const jawaban = pagar.rapikanJawaban(r.jawaban)
+    if (!jawaban || pagar.angkaTanpaData(jawaban, r.pakaiAlat)) {
+      return { teks: `Maaf, aku belum bisa menjawab itu dengan data yang ada. Coba perintah baku:\n\n${BANTUAN}`, intent: "llm_ditolak", wilayahId: null }
+    }
     if (r.wilayahId) await kontak.ingatWilayah(k.id, r.wilayahId)
-    console.log(`[llm] kontak=${k.id} token=${r.token}`)
-    return { teks: r.jawaban, intent: "llm", wilayahId: r.wilayahId ?? null }
+    pagar.simpanCache(kunci, jawaban, r.wilayahId)
+    return { teks: jawaban, intent: "llm", wilayahId: r.wilayahId ?? null }
   } catch (e) {
     console.error("[llm] gagal:", e)
     return { teks: `Maaf, layanan tanya-jawab sedang gangguan. Coba perintah baku dulu:\n\n${BANTUAN}`, intent: "llm_gagal", wilayahId: null }
