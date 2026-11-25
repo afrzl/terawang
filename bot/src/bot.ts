@@ -112,11 +112,18 @@ async function denganWilayah(nomor: string, k: kontak.Kontak, p: Perintah, arg: 
   }
   // "harga beras bulan depan kira2 brp ya di malang": ini kalimat, bukan nama wilayah.
   // Kalimat panjang diteruskan ke jalur pesan bebas (OpenAI); tanpa LLM, cari wilayah di dalam kalimat.
-  if (teksAsli && normal(arg).split(" ").length > 2) {
-    if (llmAktif()) return pesanBebas(k, teksAsli)
-    const di = cariDiKalimat(arg, daftar)
-    if (di.jenis === "pas") return jalankan(p, di.wilayah, k, arg)
+  // "stok jember aman?", "harga di blitar dong": wilayah ada di dalam sisa kalimat
+  const di = cariDiKalimat(arg, daftar)
+  const panjang = normal(arg).split(" ").length > 4
+  if (di.jenis === "pas" && (!panjang || !llmAktif())) {
+    if (wajib) await kontak.ingatWilayah(k.id, di.wilayah.id)
+    return jalankan(p, di.wilayah, k, arg)
   }
+  if (di.jenis === "ambigu" && (!panjang || !llmAktif())) {
+    tunda.set(nomor, { jenis: "pilih", perintah: p, pilihan: di.pilihan, sampai: Date.now() + 10 * MENIT })
+    return { teks: teksPilihWilayah(di.pilihan, labelWilayah), intent: p, wilayahId: null }
+  }
+  if (teksAsli && normal(arg).split(" ").length > 2 && llmAktif()) return pesanBebas(k, teksAsli)
   return { teks: `Wilayah "${arg}" tidak ditemukan. TERAWANG mencakup 38 kab/kota di Jawa Timur, misalnya Malang, Jember, Kota Surabaya.`, intent: p, wilayahId: null }
 }
 
