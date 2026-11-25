@@ -3,10 +3,12 @@
 Alur:
   produksi  : Jan-Sep 2026 = pola bulanan K1 (gabungan) diskalakan ke total BPS Jan-Sep 2026 per kab (asli); Okt-Nov 2026 = K1 bulan berjalan;
               Des 2026 dan Jan 2027 = PRAKIRAAN K1 (jarak 4 dan 8 minggu). Beras = luas panen x produktivitas beras/ha BPS per kab.
-  konsumsi  : penduduk proyeksi 2026 x Susenas Maret 2025 (kg/kapita/minggu x 30/7)
-  arus      : optimasi jarak jalan (surplus -> defisit), struktur 2025
-  keluar provinsi: hanya dari KELEBIHAN panen: X_t = theta x max(P_t - C, 0); theta dari sisa surplus 2025 (jadi tidak ada pengiriman keluar di
-              bulan paceklik), dengan ketidakpastian 20% dari X_t
+  konsumsi  : penduduk proyeksi 2026 x (Susenas Maret 2025 rumah tangga, kg/kapita/minggu x 30/7 + konsumsi di luar rumah
+              tangga KONSUMSI_NONRT kg/kapita/bulan, sama untuk semua kab). Produksi beras BPS sudah bersih susut.
+  arus      : optimasi jarak jalan (surplus -> defisit), struktur 2025. Kab defisit menerima arus tetap tiap bulan; kab surplus
+              melepas beras (ke kab lain DAN keluar provinsi) hanya dari kelebihan panen: keluar_t = theta x max(P_t - C, 0),
+              theta = (arus LP tahunan + sisa surplus) / kelebihan tahunan 2025 (diperbaiki 24 Nov 2026; sebelumnya arus antar kab
+              dibagi rata 1/12 sehingga lumbung ikut "mengirim" di bulan paceklik), ketidakpastian 20% dari arus keluar
   stok      : x_t = a*C + kumulatif(P - C + arus - X); ketidakpastian = jangkar (sd 0,4 bulan) + derau w_t terakumulasi (setara filter Kalman tanpa pengamatan).
               Derau w_t = ketidakpastian keluar provinsi + konsumsi + galat produksi (model 0,15; prakiraan K1 0,30).
   jangkar    : satu konstanta (ASUMSI) a bulan konsumsi: stok awal Jan 2026 = a x C, dipilih agar cakupan terendah Jatim = 1,0 bulan.
@@ -31,14 +33,19 @@ from scipy.stats import norm
 sys.path.insert(0, "scripts/k1")
 sys.path.insert(0, "scripts/k2")
 import model_stok as ms  # noqa: E402
-from k1_prakiraan import prakiraan  # noqa: E402
+from k1_prakiraan import GALAT_CSV, daftar_kota, prakiraan  # noqa: E402
 
 SIGMA_X, SIGMA_C = 0.20, 0.05
-SIGMA_P_MODEL, SIGMA_P_K1 = 0.15, 0.30
-HARI_INI = dt.date(2026, 11, 19)
+SIGMA_P_MODEL, SIGMA_P_K1 = 0.15, 0.30  # SIGMA_P_K1 hanya cadangan bila data/satelit/k1_galat_empiris.csv tidak ada
+HARI_INI = dt.date.today()
 AMBANG_CUKUP, AMBANG_DEFISIT, AMBANG_SURPLUS = 1.0, 0.75, 1.5
 JANGKAR_MIN, SD_JANGKAR = 1.0, 0.4  # ASUMSI: cakupan terendah Jatim 1,0 bulan (SCBN Juni 2022 nasional); sd 0,4 bulan
-TAHUN_LATIH = list(range(2019, 2026))
+TAHUN_LATIH = None  # None = semua tahun BPS bulanan yang lengkap (k1_prakiraan.tahun_final)
+# Konsumsi beras di luar rumah tangga (jasa makanan, industri pengolahan, institusi), kg/kapita/bulan. Angka NASIONAL:
+# BPS "Konsumsi Bahan Pokok Nonrumah Tangga 2025" (rilis 12 Jun 2026) 9,57 juta ton / penduduk Indonesia 2025 284,4 juta / 12.
+# Susenas hanya mencatat rumah tangga; tanpa suku ini surplus Jatim 2025 terbaca 2,8 juta ton (dengan suku ini ±1,4 juta ton).
+# Ganti dengan angka Jawa Timur dari publikasi yang sama bila sudah dibaca. Uji kepekaan: ai-notes/metodologi-k2.md (25 Nov 2026).
+KONSUMSI_NONRT = 9.57e6 / 284.4e6 * 1000 / 12
 
 
 def bulan_horizon(hari_ini):
@@ -68,8 +75,51 @@ def produksi(kab, hari_ini=HARI_INI):
         rasio = r26 if (ty == 2026 and tm <= 9) else (b25.beras / b25.luas).where(b25.luas > 0, r26)  # cadangan bila tak ada panen Okt-Des 2025
         prod[(ty, tm)] = luas * rasio
         luas_d[(ty, tm)] = luas
-        sd_prod[(ty, tm)] = SIGMA_P_K1 if lead[(ty, tm)] > 0 else SIGMA_P_MODEL
+        # Jan-Sep 2026 sudah diskalakan ke total BPS: tinggal galat pola bulanan. Bulan lain: galat empiris uji bergulir K1 per jenis wilayah.
+        sd_prod[(ty, tm)] = pd.Series(SIGMA_P_MODEL, index=kab) if (ty == 2026 and tm <= 9) else sd_empiris(kab, lead[(ty, tm)])
     return prod, sd_prod, luas_d
+
+
+def sd_empiris(kab, lead_bulan):
+    """sd relatif produksi per kab untuk jarak prakiraan 0/1/2 bulan, dari k1_galat_empiris.csv (cadangan: konstanta lama)."""
+    try:
+        G = pd.read_csv(GALAT_CSV).set_index(["lead", "jenis"]).sd_relatif
+    except FileNotFoundError:
+        return pd.Series(SIGMA_P_K1 if lead_bulan > 0 else SIGMA_P_MODEL, index=kab)
+    kota, h = daftar_kota(), min(int(lead_bulan), 2)
+    return pd.Series([G[(h, "KOTA" if k in kota else "KABUPATEN")] for k in kab], index=kab)
+
+
+def sd_ambil(sd_prod, b, k):
+    """sd_prod[b] boleh angka (format lama) atau Series per kab."""
+    v = sd_prod[b]
+    return float(v[k]) if isinstance(v, pd.Series) else float(v)
+
+
+def hitung_mundur(R, kol, BULAN, ini, hari_ini):
+    """Hari dari hari_ini sampai kolom cakupan 'kol' melewati AMBANG_DEFISIT (interpolasi linear antar akhir bulan); None bila tidak."""
+    ak = {(ty, tm): dt.date(ty + (tm == 12), tm % 12 + 1, 1) - dt.timedelta(days=1) for ty, tm in BULAN}
+    lalu = BULAN[BULAN.index(ini) - 1]
+    hit = {}
+    for k in R.kab.unique():
+        g = R[R.kab == k].set_index(["tahun", "bulan"])[kol]
+        pts = [(ak[lalu], g[lalu])] + [(ak[b], g[b]) for b in BULAN if b >= ini]
+        now_cak = np.interp(hari_ini.toordinal(), [x[0].toordinal() for x in pts], [x[1] for x in pts])
+        if now_cak < AMBANG_DEFISIT:
+            hit[k] = 0
+            continue
+        hari = None
+        for (d0, c0), (d1, c1) in zip(pts[:-1], pts[1:]):
+            if d1 <= hari_ini:
+                continue
+            if c1 < AMBANG_DEFISIT:
+                d_start = max(d0, hari_ini)
+                c_start = np.interp(d_start.toordinal(), [d0.toordinal(), d1.toordinal()], [c0, c1])
+                frac = (c_start - AMBANG_DEFISIT) / max(c_start - c1, 1e-9)
+                hari = (d_start - hari_ini).days + frac * (d1 - d_start).days
+                break
+        hit[k] = hari
+    return hit
 
 
 def hitung(hari_ini=HARI_INI, prod=None, sd_prod=None):
@@ -79,6 +129,7 @@ def hitung(hari_ini=HARI_INI, prod=None, sd_prod=None):
     kab = list(w.index)
     pop26 = ms.sql("select w.nama_repo kab, p.jumlah_jiwa from silver.penduduk p join ref.wilayah w on w.id=p.wilayah_id where w.level='KABKOTA' and p.tahun=2026").set_index("kab").jumlah_jiwa.loc[kab]
     pop25 = ms.sql("select w.nama_repo kab, p.jumlah_jiwa from silver.penduduk p join ref.wilayah w on w.id=p.wilayah_id where w.level='KABKOTA' and p.tahun=2025").set_index("kab").jumlah_jiwa.loc[kab]
+    C25 = C25 + pop25 * KONSUMSI_NONRT / 1000  # + konsumsi di luar rumah tangga (ton/bulan); juga dipakai neraca 2025 untuk arus dan theta
     C = C25 * pop26 / pop25  # ton/bulan, 2026
 
     # struktur arus dan porsi keluar provinsi dari neraca 2025
@@ -90,7 +141,11 @@ def hitung(hari_ini=HARI_INI, prod=None, sd_prod=None):
     keluar[F.index] = F.sum(axis=1) / 12
     sisa = (net.clip(lower=0) - 12 * keluar).clip(lower=0)
     lebih25 = np.maximum(P25.sub(C25, axis=0), 0).sum(axis=1)
-    theta = (sisa / lebih25.replace(0, np.nan)).fillna(0)
+    # Seluruh arus KELUAR kab surplus (ke kab lain + keluar provinsi) terjadi saat ada kelebihan panen, sebanding kelebihan bulan itu:
+    # keluar_t = theta x max(P_t - C, 0), theta = (arus LP tahunan + sisa) / kelebihan tahunan 2025. Sebelumnya arus ke kab lain
+    # dibagi rata 1/12, sehingga lumbung tetap "mengirim" di bulan paceklik dan jatuh ke DEFISIT (mis. Lamongan Jan 2027).
+    theta = ((12 * keluar + sisa) / lebih25.replace(0, np.nan)).fillna(0).clip(upper=1.0)
+    keluar[:] = 0.0
 
     # produksi 2026-2027 dari K1
     if prod is None:
@@ -103,7 +158,7 @@ def hitung(hari_ini=HARI_INI, prod=None, sd_prod=None):
         Pk = np.array([prod[b][k] for b in BULAN])
         Xk = theta[k] * np.maximum(Pk - C[k], 0)
         U[k] = np.cumsum(Pk - C[k] + masuk[k] - keluar[k] - Xk)
-        Q[k] = np.cumsum((SIGMA_X * Xk) ** 2 + (SIGMA_C * C[k]) ** 2 + (np.array([sd_prod[b] for b in BULAN]) * Pk) ** 2)
+        Q[k] = np.cumsum((SIGMA_X * Xk) ** 2 + (SIGMA_C * C[k]) ** 2 + (np.array([sd_ambil(sd_prod, b, k) for b in BULAN]) * Pk) ** 2)
     tot = sum(U[k] for k in kab) / C.sum()
     a_jangkar = JANGKAR_MIN - tot[:BULAN.index(ini) + 1].min()
 
@@ -121,31 +176,17 @@ def hitung(hari_ini=HARI_INI, prod=None, sd_prod=None):
     R["surplus_ton"] = np.maximum(R.cak - AMBANG_CUKUP, 0) * R.kab.map(C)
     R["kebutuhan_ton"] = np.maximum(AMBANG_CUKUP - R.cak, 0) * R.kab.map(C)
 
-    # hitung mundur ke defisit (rerata cakupan melewati ambang), mulai hari_ini
-    ak = {(ty, tm): dt.date(ty + (tm == 12), tm % 12 + 1, 1) - dt.timedelta(days=1) for ty, tm in BULAN}
-    lalu = BULAN[BULAN.index(ini) - 1]
-    hit = {}
-    for k in kab:
-        g = R[R.kab == k].set_index(["tahun", "bulan"]).cak
-        pts = [(ak[lalu], g[lalu])] + [(ak[b], g[b]) for b in BULAN if b >= ini]
-        now_cak = np.interp(hari_ini.toordinal(), [x[0].toordinal() for x in pts], [x[1] for x in pts])
-        if now_cak < AMBANG_DEFISIT:
-            hit[k] = 0
-            continue
-        hari = None
-        for (d0, c0), (d1, c1) in zip(pts[:-1], pts[1:]):
-            if d1 <= hari_ini:
-                continue
-            if c1 < AMBANG_DEFISIT:
-                d_start = max(d0, hari_ini)
-                c_start = np.interp(d_start.toordinal(), [d0.toordinal(), d1.toordinal()], [c0, c1])
-                frac = (c_start - AMBANG_DEFISIT) / max(c_start - c1, 1e-9)
-                hari = (d_start - hari_ini).days + frac * (d1 - d_start).days
-                break
-        hit[k] = hari
+    # hitung mundur ke defisit (cakupan melewati ambang), mulai hari_ini: nilai tengah dan skenario cepat (P10 cakupan)
+    hit = hitung_mundur(R, "cak", BULAN, ini, hari_ini)
+    hit_p10 = hitung_mundur(R, "cak_p10", BULAN, ini, hari_ini)
     R["hari_ke_defisit"] = R.kab.map(hit)
-    return {"R": R, "C": C, "prod": prod, "sd_prod": sd_prod, "theta": theta, "a_jangkar": a_jangkar, "hit": hit,
-            "bulan": BULAN, "ini": ini, "ids": w.id.to_dict()}
+    R["hari_ke_defisit_p10"] = R.kab.map(hit_p10)
+    # Catatan (uji 24 Nov 2026): status dari peluang >= 50% identik dengan status dari nilai tengah. Penanda "waspada" berbasis
+    # peluang sengaja TIDAK dipakai: pita ketidakpastian tanpa pengamatan stok terlalu lebar (sd cakupan median ±1,3 bulan) dan
+    # membesar sebanding produksi, sehingga penanda itu menyorot kab lumbung, bukan kab yang stoknya menipis. hari_ke_defisit_p10
+    # disimpan untuk diagnosis saja.
+    return {"R": R, "C": C, "prod": prod, "sd_prod": sd_prod, "theta": theta, "a_jangkar": a_jangkar, "hit": hit, "hit_p10": hit_p10,
+            "bulan": BULAN, "ini": ini, "ids": w.id.to_dict(), "arus": F}
 
 
 def skenario(R, C):
@@ -163,6 +204,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--simpan", action="store_true")
     ap.add_argument("--hari-ini", default=HARI_INI.isoformat())
+    ap.add_argument("--keluar", default="", help="simpan rincian ke CSV ini (bawaan: tidak menulis berkas)")
     a = ap.parse_args()
     hari_ini = dt.date.fromisoformat(a.hari_ini)
     h = hitung(hari_ini)
@@ -180,7 +222,8 @@ def main():
     print(f"\nHitung mundur ke defisit (cakupan < {AMBANG_DEFISIT} bulan konsumsi) dari {hari_ini}: sudah defisit {len(sudah)} kab; akan defisit dalam horizon {len(segera)} kab; aman sampai {lb_fut} {sum(v is None for v in hit.values())} kab")
     print("  paling cepat:", ", ".join(f"{k} {v:.0f} hari" for v, k in segera[:8]))
     print(f"  sd cakupan rata-rata: taksiran {lb_now} {now.sd.mean():.2f} bulan; perkiraan {lb_fut} {fut.sd.mean():.2f} bulan (sudah memuat galat prakiraan K1)")
-    R.to_csv("data/satelit/k2_operasional_2026.csv", index=False)
+    if a.keluar:
+        R.to_csv(a.keluar, index=False)
 
     if a.simpan:
         par = {"k1": "prakiraan gabungan (K1) untuk 2 bulan ke depan", "produksi_2026": "pola K1 diskalakan ke BPS Jan-Sep 2026", "jangkar": f"a={a_jangkar:.2f} bulan konsumsi (asumsi)",

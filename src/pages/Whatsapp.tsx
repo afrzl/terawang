@@ -1,3 +1,4 @@
+import { MessageCircle } from "lucide-react"
 import { useMemo } from "react"
 import { Sparkline } from "@/components/charts/Sparkline"
 import { WaPlayer, type WaScenario } from "@/components/ui/WaPlayer"
@@ -100,7 +101,7 @@ export default function Whatsapp() {
             rows: [
               ["Medium", <b key="m">{rp(k.pNow)}/kg</b>],
               ["Premium", `${rp(k.prem)}/kg`],
-              ["HET medium", "Rp13.500/kg"],
+              ["HET medium", `${rp(HET)}/kg`],
               ["2 pekan lagi", `${arah > 40 ? "naik" : "stabil"} ± ${rp(k.fc[1].m)}`],
             ],
             foot: (
@@ -202,10 +203,7 @@ export default function Whatsapp() {
 
   return (
     <section className="view">
-      <ViewHeader eyebrow="Kanal warga" title="Bot WhatsApp TERAWANG">
-        Warga dan pedagang kecil tidak perlu membuka dasbor. Cukup kirim pesan untuk tahu harga beras di wilayahnya dan titik penjualan beras SPHP
-        terdekat. Isi jawaban diambil dari data yang sama dengan dasbor; ganti wilayah di kop untuk melihat jawabannya berubah.
-      </ViewHeader>
+      <ViewHeader icon={MessageCircle} title="Kanal warga" />
       <div className="ph-stage">
         <WaPlayer scenarios={scenarios} />
       </div>

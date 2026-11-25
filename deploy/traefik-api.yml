@@ -1,0 +1,17 @@
+# Router Traefik untuk API baca-saja dasbor TERAWANG. Salin ke /opt/traefik/dynamic/terawang-api.yml (milik root).
+# https://terawang.tech/api/... -> API (api/src/server.ts) di 172.19.0.1:3072. Hak SPHP dicek API ke layanan admin.
+# Prioritas tinggi supaya /api tidak jatuh ke router dasbor statis (terawang.yml).
+http:
+  routers:
+    terawang-api:
+      rule: "Host(`terawang.tech`) && PathPrefix(`/api`)"
+      entryPoints: [websecure]
+      priority: 1000
+      service: terawang-api
+      tls:
+        certResolver: le
+  services:
+    terawang-api:
+      loadBalancer:
+        servers:
+          - url: "http://172.19.0.1:3072"

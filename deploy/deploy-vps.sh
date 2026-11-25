@@ -22,4 +22,9 @@ sleep 1
 CRON_LINE="@reboot cd $APP_DIR && nohup python3 deploy/serve.py --dir dist --port $PORT >deploy/server.log 2>&1"
 ( crontab -l 2>/dev/null | grep -v "deploy/serve.py --dir .*dist --port $PORT" | grep -v "terawang-web" || true; echo "$CRON_LINE" ) | crontab -
 
+# API dasbor (api/src/server.ts): perbarui juga bila sudah pernah dipasang lewat deploy-api.sh.
+if [ -f deploy/api-ensure.sh ]; then
+  API_HOST="$(sed -n 's/.*API_HOST="\([^"]*\)".*/\1/p' deploy/api-ensure.sh | head -1)" bash deploy/deploy-api.sh
+fi
+
 curl -fsS -o /dev/null "http://127.0.0.1:$PORT/stok" && echo "Selesai: http://$(hostname -I | awk '{print $1}'):$PORT"

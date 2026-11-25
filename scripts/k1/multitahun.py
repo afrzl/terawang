@@ -51,10 +51,8 @@ def data_bps(rel):
     return p if p and os.path.exists(p) else rel
 
 
-def muat():
-    """Kembalikan kab, lon/lat, tanggal jendela, dan matriks VH, VV, LSWI, EVI (N x W, NaN = kosong)."""
-    S = "data/satelit/"
-    T = os.environ.get("TERAWANG_TITIK_DIR", "data/satelit").rstrip("/") + "/"  # pipeline: deret 12-harian yang diperpanjang otomatis
+def muat_folder(S, T):
+    """Deret riwayat dari folder S dan deret 12-harian dari folder T (titik yang sama, urutan yang sama)."""
     old_vh = pd.read_csv(T + "vh_titik_12harian_kabkota.csv.gz")
     old_vv = pd.read_csv(T + "vv_titik_12harian_kabkota.csv.gz")
     old_s2 = pd.read_csv(T + "s2_titik_12harian_kabkota.csv.gz")
@@ -71,6 +69,20 @@ def muat():
     vv = np.hstack([new["vv"].iloc[:, 3:].to_numpy(float), old_vv.iloc[:, 3:].to_numpy(float)])
     lswi = np.hstack([new["lswi"].iloc[:, 3:].to_numpy(float), old_s2[[c for c in old_s2.columns if c.startswith("lswi_")]].to_numpy(float)])
     evi = np.hstack([new["evi"].iloc[:, 3:].to_numpy(float), old_s2[[c for c in old_s2.columns if c.startswith("evi_")]].to_numpy(float)])
+    return kab, tgl, vh, vv, lswi, evi
+
+
+def muat():
+    """Kembalikan kab, lon/lat, tanggal jendela, dan matriks VH, VV, LSWI, EVI (N x W, NaN = kosong)."""
+    S = "data/satelit/"
+    T = os.environ.get("TERAWANG_TITIK_DIR", "data/satelit").rstrip("/") + "/"  # pipeline: deret 12-harian yang diperpanjang otomatis
+    kab, tgl, vh, vv, lswi, evi = muat_folder(S, T)
+    tam = os.environ.get("TERAWANG_TITIK_TAMBAHAN")  # titik sampel tambahan (scripts/gee/tambah_titik.py), digabung sebagai baris
+    if tam and os.path.exists(os.path.join(tam, "vh_titik_12harian_kabkota.csv.gz")):
+        t = muat_folder(tam.rstrip("/") + "/", tam.rstrip("/") + "/")
+        assert t[1] == tgl, "jendela titik tambahan harus sama dengan titik lama (jalankan perpanjang_titik.py untuk keduanya)"
+        kab = np.concatenate([kab, t[0]])
+        vh, vv, lswi, evi = (np.vstack([x, y]) for x, y in zip((vh, vv, lswi, evi), t[2:]))
     return kab, tgl, vh, vv, lswi, evi
 
 

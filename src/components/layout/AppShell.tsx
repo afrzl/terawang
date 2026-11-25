@@ -1,18 +1,13 @@
-import { useEffect } from "react"
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom"
-import { CalendarDays, Sprout } from "lucide-react"
-import { KopPattern } from "@/components/layout/KopPattern"
+import { useEffect, useRef } from "react"
+import { NavLink, Outlet, useLocation } from "react-router-dom"
+import { LogIn, LogOut, Settings, UserRound } from "lucide-react"
 import { ThemeToggle } from "@/components/layout/ThemeToggle"
 import { navItems } from "@/components/layout/nav"
-import { WilayahPicker } from "@/components/ui/WilayahPicker"
-import { FLOWS, WILAYAH } from "@/lib/data"
-import { nf, sum } from "@/lib/format"
+import { FilterPanel } from "@/components/layout/FilterPanel"
+import { useFilter } from "@/lib/filter"
+import { useSelection } from "@/lib/selection"
+import { tautanMasuk, useSesi } from "@/lib/sesi"
 
-const estT = sum(WILAYAH, (k) => k.est)
-const yoy = (estT / sum(WILAYAH, (k) => k.prev) - 1) * 100
-const nSiaga = WILAYAH.filter((k) => k.hs === "siaga").length
-const nDefisit = WILAYAH.filter((k) => k.ss === "defisit").length
-const tonSphp = sum(FLOWS, (f) => f.ton)
 
 function Logo() {
   return (
@@ -25,86 +20,102 @@ function Logo() {
   )
 }
 
+/** Akun di bilah atas: tombol Masuk bagi guest; nama, peran, tautan Admin, dan Keluar bagi yang sudah masuk. */
+function Akun() {
+  const { sesi, siap, boleh, keluar } = useSesi()
+  const { pathname } = useLocation()
+  if (!siap) return null
+  if (!sesi.pengguna)
+    return (
+      <a className="chip chip-akun" href={tautanMasuk(pathname)}>
+        <LogIn size={13} />
+        <b>Masuk</b>
+      </a>
+    )
+  return (
+    <span className="akun-grup">
+      <span className="chip" title={`Masuk sebagai ${sesi.pengguna}`}>
+        <UserRound size={13} />
+        <b>{sesi.pengguna}</b> {sesi.labelPeran}
+      </span>
+      {boleh("pipeline") && (
+        <a className="chip chip-akun" href="/admin/">
+          <Settings size={13} />
+          Admin
+        </a>
+      )}
+      <button type="button" className="chip chip-akun" onClick={keluar} aria-label="Keluar">
+        <LogOut size={13} />
+      </button>
+    </span>
+  )
+}
+
 export function AppShell() {
   const { pathname } = useLocation()
+  const { W, reset } = useFilter()
+  const { sel, select } = useSelection()
 
+  // Kalau wilayah terpilih tersaring keluar oleh filter, pindah ke wilayah pertama yang lolos.
   useEffect(() => {
+    if (W.length && !W.some((k) => k.n === sel)) select(W[0].n)
+  }, [W, sel, select])
+
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    scrollRef.current?.scrollTo(0, 0)
     window.scrollTo(0, 0)
   }, [pathname])
 
   return (
-    <>
+    <div className="shell">
       <header className="kop">
-        <KopPattern />
         <div className="wrap">
           <div className="brand">
             <div className="logo">
               <Logo />
             </div>
-            <div>
-              <h1>
-                TERA<span>WANG</span>
-              </h1>
-              <div className="sub">Pemantauan beras dari sawah ke pasar · Jawa Timur, 38 kabupaten/kota</div>
-            </div>
+            <h1>
+              TERA<span>WANG</span>
+            </h1>
           </div>
+          <nav className="tabs" aria-label="Bagian dasbor">
+            {navItems.map((it) => (
+              <NavLink key={it.to} to={it.to} end>
+                {it.label}
+              </NavLink>
+            ))}
+          </nav>
           <div className="meta">
-            <span className="chip">
-              <CalendarDays size={13} />
-              <b>Pekan 44/2026</b> · s.d. 1 Nov
-            </span>
-            <span className="chip">
-              <Sprout size={13} />
-              <b>MT I 2026/27</b>
-            </span>
-            <WilayahPicker />
-            <span className="tag">Prototipe · data simulasi</span>
             <ThemeToggle />
-          </div>
-          <div className="pulse" aria-label="Sorotan pekan ini">
-            <Link to="/produksi">
-              <span className="dot" style={{ background: "#B9E39A" }} />
-              <span className="n">{nf(yoy, 1)}%</span>
-              <span className="lbl">panen Nov–Jan vs 2025</span>
-            </Link>
-            <Link to="/stok">
-              <span className="dot" style={{ background: "#F2C76B" }} />
-              <span className="n">{nDefisit}</span>
-              <span className="lbl">wilayah stok defisit dalam 4 pekan</span>
-            </Link>
-            <Link to="/harga">
-              <span className="dot live" style={{ background: "#FF8A73" }} />
-              <span className="n">{nSiaga}</span>
-              <span className="lbl">wilayah Siaga harga</span>
-            </Link>
-            <Link to="/harga">
-              <span className="dot" style={{ background: "#9CC3F5" }} />
-              <span className="n">{nf(tonSphp)} t</span>
-              <span className="lbl">rekomendasi SPHP</span>
-            </Link>
+            <Akun />
           </div>
         </div>
       </header>
-      <nav className="tabs" aria-label="Bagian dasbor">
-        <div className="wrap">
-          {navItems.map((it) => (
-            <NavLink key={it.to} to={it.to} end>
-              <span className="k">{it.k}</span>
-              {it.label}
-            </NavLink>
-          ))}
+      <div className="body">
+        <FilterPanel />
+        <div className={"scroll" + (pathname === "/" ? " full" : "")} ref={scrollRef}>
+          <main className={pathname === "/" ? "full" : "wrap"}>
+            {W.length ? (
+              <Outlet />
+            ) : (
+              <div className="fp-empty">
+                <p>Tidak ada wilayah yang cocok dengan filter.</p>
+                <button type="button" onClick={reset}>
+                  Atur ulang filter
+                </button>
+              </div>
+            )}
+          </main>
+          {pathname !== "/" && (
+          <footer>
+            <div className="wrap" style={{ textAlign: "center" }}>
+              TERAWANG by Makmur Jaya, Politeknik Statistika STIS 2026
+            </div>
+          </footer>
+          )}
         </div>
-      </nav>
-      <main className="wrap">
-        <Outlet />
-      </main>
-      <footer>
-        <div className="wrap">
-          TERAWANG · Tim Makmur Jaya, Politeknik Statistika STIS · PLAY IT! Hackathon DeepTech 2026. Semua angka di prototipe ini
-          adalah data simulasi yang dibangkitkan untuk peragaan, bukan data resmi. Batas wilayah: GADM; Kota Blitar ditandai titik,
-          pulau kecil (Bawean, Masalembu) tidak digambar.
-        </div>
-      </footer>
-    </>
+      </div>
+    </div>
   )
 }

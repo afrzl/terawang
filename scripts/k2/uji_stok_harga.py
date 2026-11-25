@@ -6,8 +6,6 @@ lain pada bulan yang sama dalam 1-2 bulan berikutnya. Uji: korelasi dan selisih 
 
   python scripts/k2/uji_stok_harga.py
 """
-import io
-import subprocess
 import sys
 
 import numpy as np
@@ -18,7 +16,7 @@ import model_stok as ms  # noqa: E402
 
 
 def sql(q):
-    return pd.read_csv(io.StringIO(subprocess.run(["psql", "-d", "terawang", "--csv", "-c", q], capture_output=True, text=True, check=True).stdout))
+    return ms.sql(q)  # lewat DATABASE_URL bila ada (server), selain itu psql lokal
 
 
 def main():

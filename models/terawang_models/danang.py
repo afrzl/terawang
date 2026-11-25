@@ -1,4 +1,4 @@
-"""Jembatan ke skrip model asli Danang di scripts/k1 dan scripts/k2.
+"""Jembatan ke skrip model asli Danang di scripts/k1, scripts/k2, dan scripts/k3.
 
 Skrip Danang memakai path relatif terhadap akar repo ("data/...", "scripts/k1") dan membaca database lewat
 DATABASE_URL (atau psql lokal). Fungsi di sini menyiapkan keduanya lalu mengimpor modulnya, tanpa menyalin logika model.
@@ -13,11 +13,11 @@ from pathlib import Path
 
 @contextlib.contextmanager
 def di_repo(akar: str | Path, env: dict[str, str] | None = None):
-    """Jalankan blok dengan cwd = akar repo, scripts/k1 dan scripts/k2 di sys.path, dan env tambahan."""
+    """Jalankan blok dengan cwd = akar repo, scripts/k1, scripts/k2, scripts/k3 di sys.path, dan env tambahan."""
     akar = Path(akar).resolve()
     lama_cwd, lama_path, lama_env = os.getcwd(), list(sys.path), {k: os.environ.get(k) for k in (env or {})}
     os.chdir(akar)
-    sys.path[:0] = [str(akar / "scripts/k1"), str(akar / "scripts/k2")]
+    sys.path[:0] = [str(akar / "scripts/k1"), str(akar / "scripts/k2"), str(akar / "scripts/k3")]
     os.environ.update({k: str(v) for k, v in (env or {}).items()})
     try:
         yield

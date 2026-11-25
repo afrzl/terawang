@@ -60,3 +60,19 @@ def status_harga(harga: float, het: float | None, siaga_pct: float = 3.0) -> str
     if harga <= het:
         return "AMAN"
     return "WASPADA" if harga <= het * (1 + siaga_pct / 100) else "SIAGA"
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# K3a operasional (Danang): scripts/k3/k3_harga_operasional.py. Dipakai pipeline; baseline naif di atas tetap untuk pembanding.
+VERSI_K3A = "k3a-harian-galat365-2026.11"
+HORIZON_K3A = (7, 14, 21, 28)
+
+
+def prediksi_harga_k3a(akar, env: dict[str, str]) -> tuple[pd.DataFrame, dict]:
+    """Jalankan K3a Danang. Keluaran (R, parameter): R = komoditas, kab, tanggal_acuan, horizon_hari, harga, p10, p90, status, p_di_atas_het."""
+    from .danang import di_repo, modul
+
+    with di_repo(akar, env):
+        ko = modul("k3_harga_operasional")
+        R, het, kal = ko.hitung(cetak=False)
+        return R, ko.parameter_run(het, kal)
