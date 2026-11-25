@@ -107,6 +107,7 @@ model Wilayah {
   kontak_warga          KontakWarga[]
   langganan_peringatan  LanggananPeringatan[]
   percakapan_bot        PercakapanBot[]
+  laporan_harga_warga   LaporanHargaWarga[]
 
   @@index([level])
   @@index([induk_id])
@@ -126,6 +127,7 @@ model Komoditas {
   harga_provinsi_harian HargaProvinsiHarian[]
   ambang_harga          AmbangHarga[]
   prediksi_harga        PrediksiHarga[]
+  laporan_harga_warga   LaporanHargaWarga[]
 
   @@map("komoditas")
   @@schema("ref")

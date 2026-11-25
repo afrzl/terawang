@@ -36,3 +36,6 @@ admin/*.egg-info/
 # API dasbor
 deploy/api-ensure.sh
 deploy/api.log
+
+# bot WhatsApp
+bot/.env
