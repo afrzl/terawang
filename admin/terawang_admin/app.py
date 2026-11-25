@@ -13,7 +13,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import FileResponse, JSONResponse, RedirectResponse, Response
+from starlette.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
@@ -439,8 +439,17 @@ async def wa_aksi(req: Request):
 
 # ---------- halaman ----------
 
+def _versi_aset() -> str:
+    return str(int(max((STATIC / n).stat().st_mtime for n in ("admin.css", "admin.js"))))
+
+
 async def halaman(req: Request):
-    return FileResponse(STATIC / "index.html", headers={"Cache-Control": "no-cache"})
+    # ?v= ikut berubah tiap admin.css/admin.js berubah, supaya browser tidak memakai salinan lama.
+    v = _versi_aset()
+    html = (STATIC / "index.html").read_text(encoding="utf-8")
+    html = html.replace("/admin/static/admin.css\"", f"/admin/static/admin.css?v={v}\"")
+    html = html.replace("/admin/static/admin.js\"", f"/admin/static/admin.js?v={v}\"")
+    return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
 
 
 async def ke_garis_miring(req: Request):
@@ -460,6 +469,8 @@ class HeaderKeamanan(BaseHTTPMiddleware):
                                 "frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
         if req.url.path.startswith("/admin/api/"):
             resp.headers["Cache-Control"] = "no-store"
+        elif req.url.path.startswith("/admin/static/"):
+            resp.headers["Cache-Control"] = "no-cache"
         return resp
 
 

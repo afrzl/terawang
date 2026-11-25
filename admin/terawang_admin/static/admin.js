@@ -750,7 +750,7 @@ function gambarWa() {
   const [stTeks, stK] = dev ? (dev.login && dev.terhubung ? STATE_WA.logged_in : STATE_WA[dev.state] || STATE_WA.disconnected) : ["Tidak ada", "gagal"];
   const wh = b.webhook || {}, bl = b.balasan || {}, llm = b.llm || {};
   $("#kpi-wa").replaceChildren(
-    kpi(stTeks, "nomor bot", dev ? dev.nomor || dev.id : "belum ada device", stK === "ok" ? "" : "crit"),
+    kpi(stTeks, "nomor bot", dev ? dev.nomor || "belum login" : "belum ada device", stK === "ok" ? "" : "crit"),
     kpi(wh.pesanTerakhir ? relatif(dtkMs(wh.pesanTerakhir)) : "–", "pesan masuk terakhir", b.mulai ? `sejak bot menyala ${relatif(dtkMs(b.mulai))}` : ""),
     kpi(String(bl.jumlahOk ?? "–"), "balasan terkirim", bl.jumlahGagal ? `${bl.jumlahGagal} gagal` : "tanpa gagal", bl.jumlahGagal ? "warn" : ""),
     kpi(llm.aktif ? Number(llm.token || 0).toLocaleString("id-ID") : "Mati", "token OpenAI hari ini", llm.aktif ? `batas ${Number(llm.batas).toLocaleString("id-ID")} · ${llm.model}` : "API key kosong", llm.aktif ? "" : "warn"),
