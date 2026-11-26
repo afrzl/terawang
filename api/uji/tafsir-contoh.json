@@ -1,0 +1,2979 @@
+[
+ {
+  "grafik": "Sumbangan tiap wilayah",
+  "judul": "Sumbangan tiap wilayah",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "semua 38 kab/kota Jawa Timur",
+   "satuan_produksi": "gabah kering giling (GKG)"
+  },
+  "data": {
+   "satuan": "ribu ton GKG",
+   "kawasan": [
+    {
+     "kawasan": "Arek",
+     "produksi": 282.9,
+     "porsi_persen": 21.8
+    },
+    {
+     "kawasan": "Mataraman",
+     "produksi": 570.3,
+     "porsi_persen": 44
+    },
+    {
+     "kawasan": "Tapal Kuda",
+     "produksi": 406.3,
+     "porsi_persen": 31.3
+    },
+    {
+     "kawasan": "Madura",
+     "produksi": 37.3,
+     "porsi_persen": 2.9
+    }
+   ],
+   "wilayah": [
+    {
+     "wilayah": "Jember",
+     "kawasan": "Tapal Kuda",
+     "produksi": 124.6,
+     "porsi_persen": 9.6,
+     "yoy_persen": -8.6
+    },
+    {
+     "wilayah": "Kediri",
+     "kawasan": "Mataraman",
+     "produksi": 94.8,
+     "porsi_persen": 7.3,
+     "yoy_persen": -22.4
+    },
+    {
+     "wilayah": "Banyuwangi",
+     "kawasan": "Tapal Kuda",
+     "produksi": 85,
+     "porsi_persen": 6.6,
+     "yoy_persen": -10.5
+    },
+    {
+     "wilayah": "Jombang",
+     "kawasan": "Arek",
+     "produksi": 76.1,
+     "porsi_persen": 5.9,
+     "yoy_persen": -12.2
+    },
+    {
+     "wilayah": "Ngawi",
+     "kawasan": "Mataraman",
+     "produksi": 70.9,
+     "porsi_persen": 5.5,
+     "yoy_persen": -24.6
+    },
+    {
+     "wilayah": "Nganjuk",
+     "kawasan": "Mataraman",
+     "produksi": 65.8,
+     "porsi_persen": 5.1,
+     "yoy_persen": -22.3
+    },
+    {
+     "wilayah": "Madiun",
+     "kawasan": "Mataraman",
+     "produksi": 60.3,
+     "porsi_persen": 4.7,
+     "yoy_persen": -14.7
+    },
+    {
+     "wilayah": "Situbondo",
+     "kawasan": "Tapal Kuda",
+     "produksi": 53.9,
+     "porsi_persen": 4.2,
+     "yoy_persen": -5.5
+    },
+    {
+     "wilayah": "Ponorogo",
+     "kawasan": "Mataraman",
+     "produksi": 52.6,
+     "porsi_persen": 4.1,
+     "yoy_persen": -15.1
+    },
+    {
+     "wilayah": "Tuban",
+     "kawasan": "Mataraman",
+     "produksi": 51.2,
+     "porsi_persen": 3.9,
+     "yoy_persen": -50.9
+    },
+    {
+     "wilayah": "Lumajang",
+     "kawasan": "Tapal Kuda",
+     "produksi": 48.3,
+     "porsi_persen": 3.7,
+     "yoy_persen": -17.2
+    },
+    {
+     "wilayah": "Probolinggo",
+     "kawasan": "Tapal Kuda",
+     "produksi": 47.5,
+     "porsi_persen": 3.7,
+     "yoy_persen": -20.9
+    },
+    {
+     "wilayah": "Pasuruan",
+     "kawasan": "Arek",
+     "produksi": 45.9,
+     "porsi_persen": 3.5,
+     "yoy_persen": -11.1
+    },
+    {
+     "wilayah": "Bondowoso",
+     "kawasan": "Tapal Kuda",
+     "produksi": 43.7,
+     "porsi_persen": 3.4,
+     "yoy_persen": -18.8
+    },
+    {
+     "wilayah": "Bojonegoro",
+     "kawasan": "Mataraman",
+     "produksi": 43.6,
+     "porsi_persen": 3.4,
+     "yoy_persen": -68.3
+    },
+    {
+     "wilayah": "Malang",
+     "kawasan": "Arek",
+     "produksi": 41.2,
+     "porsi_persen": 3.2,
+     "yoy_persen": -27.4
+    },
+    {
+     "wilayah": "Blitar",
+     "kawasan": "Mataraman",
+     "produksi": 40,
+     "porsi_persen": 3.1,
+     "yoy_persen": -20.4
+    },
+    {
+     "wilayah": "Mojokerto",
+     "kawasan": "Arek",
+     "produksi": 38.8,
+     "porsi_persen": 3,
+     "yoy_persen": -18.8
+    },
+    {
+     "wilayah": "Lamongan",
+     "kawasan": "Arek",
+     "produksi": 37.2,
+     "porsi_persen": 2.9,
+     "yoy_persen": -68.3
+    },
+    {
+     "wilayah": "Magetan",
+     "kawasan": "Mataraman",
+     "produksi": 35.2,
+     "porsi_persen": 2.7,
+     "yoy_persen": -26.1
+    },
+    {
+     "wilayah": "Tulungagung",
+     "kawasan": "Mataraman",
+     "produksi": 34,
+     "porsi_persen": 2.6,
+     "yoy_persen": -10.6
+    },
+    {
+     "wilayah": "Sidoarjo",
+     "kawasan": "Arek",
+     "produksi": 18.9,
+     "porsi_persen": 1.5,
+     "yoy_persen": -15.2
+    },
+    {
+     "wilayah": "Gresik",
+     "kawasan": "Arek",
+     "produksi": 17.8,
+     "porsi_persen": 1.4,
+     "yoy_persen": -48.7
+    },
+    {
+     "wilayah": "Sumenep",
+     "kawasan": "Madura",
+     "produksi": 14.9,
+     "porsi_persen": 1.2,
+     "yoy_persen": -63.4
+    },
+    {
+     "wilayah": "Bangkalan",
+     "kawasan": "Madura",
+     "produksi": 12.3,
+     "porsi_persen": 0.9,
+     "yoy_persen": -72.1
+    },
+    {
+     "wilayah": "Trenggalek",
+     "kawasan": "Mataraman",
+     "produksi": 11.9,
+     "porsi_persen": 0.9,
+     "yoy_persen": -36.4
+    },
+    {
+     "wilayah": "Sampang",
+     "kawasan": "Madura",
+     "produksi": 6.2,
+     "porsi_persen": 0.5,
+     "yoy_persen": -84.1
+    },
+    {
+     "wilayah": "Pamekasan",
+     "kawasan": "Madura",
+     "produksi": 3.9,
+     "porsi_persen": 0.3,
+     "yoy_persen": -80.2
+    },
+    {
+     "wilayah": "Pacitan",
+     "kawasan": "Mataraman",
+     "produksi": 3.5,
+     "porsi_persen": 0.3,
+     "yoy_persen": -56.2
+    },
+    {
+     "wilayah": "Kota Probolinggo",
+     "kawasan": "Tapal Kuda",
+     "produksi": 3.3,
+     "porsi_persen": 0.3,
+     "yoy_persen": 5.3
+    },
+    {
+     "wilayah": "Kota Kediri",
+     "kawasan": "Mataraman",
+     "produksi": 3.2,
+     "porsi_persen": 0.2,
+     "yoy_persen": -32.5
+    },
+    {
+     "wilayah": "Batu",
+     "kawasan": "Arek",
+     "produksi": 1.8,
+     "porsi_persen": 0.1,
+     "yoy_persen": -14.9
+    },
+    {
+     "wilayah": "Kota Madiun",
+     "kawasan": "Mataraman",
+     "produksi": 1.7,
+     "porsi_persen": 0.1,
+     "yoy_persen": -11.1
+    },
+    {
+     "wilayah": "Kota Surabaya",
+     "kawasan": "Arek",
+     "produksi": 1.7,
+     "porsi_persen": 0.1,
+     "yoy_persen": -15.1
+    },
+    {
+     "wilayah": "Kota Blitar",
+     "kawasan": "Mataraman",
+     "produksi": 1.6,
+     "porsi_persen": 0.1,
+     "yoy_persen": -14.9
+    },
+    {
+     "wilayah": "Kota Malang",
+     "kawasan": "Arek",
+     "produksi": 1.5,
+     "porsi_persen": 0.1,
+     "yoy_persen": -16.6
+    },
+    {
+     "wilayah": "Kota Pasuruan",
+     "kawasan": "Arek",
+     "produksi": 1.3,
+     "porsi_persen": 0.1,
+     "yoy_persen": 9.7
+    },
+    {
+     "wilayah": "Kota Mojokerto",
+     "kawasan": "Arek",
+     "produksi": 0.6,
+     "porsi_persen": 0,
+     "yoy_persen": 11.8
+    }
+   ]
+  }
+ },
+ {
+  "grafik": "Produksi per wilayah",
+  "judul": "Produksi per wilayah",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "semua 38 kab/kota Jawa Timur",
+   "satuan_produksi": "gabah kering giling (GKG)"
+  },
+  "data": {
+   "satuan": "ribu ton GKG",
+   "keterangan": "proyeksi model K1 dengan selang 90%, dibanding periode sama 2025 (BPS)",
+   "wilayah": [
+    {
+     "wilayah": "Jember",
+     "proyeksi": 124.6,
+     "selang_bawah": 118.4,
+     "selang_atas": 130.8,
+     "periode_sama_2025": 136.3
+    },
+    {
+     "wilayah": "Kediri",
+     "proyeksi": 94.8,
+     "selang_bawah": 90.1,
+     "selang_atas": 99.5,
+     "periode_sama_2025": 122.2
+    },
+    {
+     "wilayah": "Banyuwangi",
+     "proyeksi": 85,
+     "selang_bawah": 80.8,
+     "selang_atas": 89.3,
+     "periode_sama_2025": 95
+    },
+    {
+     "wilayah": "Jombang",
+     "proyeksi": 76.1,
+     "selang_bawah": 72.3,
+     "selang_atas": 79.9,
+     "periode_sama_2025": 86.7
+    },
+    {
+     "wilayah": "Ngawi",
+     "proyeksi": 70.9,
+     "selang_bawah": 67.4,
+     "selang_atas": 74.5,
+     "periode_sama_2025": 94
+    },
+    {
+     "wilayah": "Nganjuk",
+     "proyeksi": 65.8,
+     "selang_bawah": 62.5,
+     "selang_atas": 69.1,
+     "periode_sama_2025": 84.6
+    },
+    {
+     "wilayah": "Madiun",
+     "proyeksi": 60.3,
+     "selang_bawah": 57.3,
+     "selang_atas": 63.4,
+     "periode_sama_2025": 70.8
+    },
+    {
+     "wilayah": "Situbondo",
+     "proyeksi": 53.9,
+     "selang_bawah": 51.2,
+     "selang_atas": 56.6,
+     "periode_sama_2025": 57
+    },
+    {
+     "wilayah": "Ponorogo",
+     "proyeksi": 52.6,
+     "selang_bawah": 50,
+     "selang_atas": 55.3,
+     "periode_sama_2025": 62
+    },
+    {
+     "wilayah": "Tuban",
+     "proyeksi": 51.2,
+     "selang_bawah": 48.6,
+     "selang_atas": 53.8,
+     "periode_sama_2025": 104.2
+    },
+    {
+     "wilayah": "Lumajang",
+     "proyeksi": 48.3,
+     "selang_bawah": 45.9,
+     "selang_atas": 50.7,
+     "periode_sama_2025": 58.4
+    },
+    {
+     "wilayah": "Probolinggo",
+     "proyeksi": 47.5,
+     "selang_bawah": 45.1,
+     "selang_atas": 49.9,
+     "periode_sama_2025": 60
+    },
+    {
+     "wilayah": "Pasuruan",
+     "proyeksi": 45.9,
+     "selang_bawah": 43.6,
+     "selang_atas": 48.2,
+     "periode_sama_2025": 51.6
+    },
+    {
+     "wilayah": "Bondowoso",
+     "proyeksi": 43.7,
+     "selang_bawah": 41.6,
+     "selang_atas": 45.9,
+     "periode_sama_2025": 53.9
+    },
+    {
+     "wilayah": "Bojonegoro",
+     "proyeksi": 43.6,
+     "selang_bawah": 41.4,
+     "selang_atas": 45.7,
+     "periode_sama_2025": 137.5
+    },
+    {
+     "wilayah": "Malang",
+     "proyeksi": 41.2,
+     "selang_bawah": 39.1,
+     "selang_atas": 43.2,
+     "periode_sama_2025": 56.7
+    }
+   ]
+  }
+ },
+ {
+  "grafik": "Kalender panen",
+  "judul": "Kalender panen",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "semua 38 kab/kota Jawa Timur",
+   "satuan_produksi": "gabah kering giling (GKG)"
+  },
+  "data": {
+   "satuan": "ribu ha luas panen per bulan",
+   "bulan_disorot": [
+    "Nov 2026"
+   ],
+   "wilayah": [
+    {
+     "wilayah": "Jember",
+     "Jan 2026": 18.76,
+     "Feb 2026": 35.6,
+     "Mar 2026": 52.16,
+     "Apr 2026": 17.66,
+     "Mei 2026": 20.14,
+     "Jun 2026": 19.59,
+     "Jul 2026": 43.32,
+     "Agu 2026": 17.94,
+     "Sep 2026": 20.7,
+     "Okt 2026": 24.28,
+     "Nov 2026": 21.8,
+     "Des 2026": 18.21,
+     "Jan 2027": 15.18
+    },
+    {
+     "wilayah": "Kediri",
+     "Jan 2026": 14.28,
+     "Feb 2026": 27.09,
+     "Mar 2026": 39.69,
+     "Apr 2026": 13.44,
+     "Mei 2026": 15.33,
+     "Jun 2026": 14.91,
+     "Jul 2026": 32.97,
+     "Agu 2026": 13.65,
+     "Sep 2026": 15.75,
+     "Okt 2026": 18.48,
+     "Nov 2026": 16.59,
+     "Des 2026": 13.86,
+     "Jan 2027": 11.55
+    },
+    {
+     "wilayah": "Banyuwangi",
+     "Jan 2026": 12.8,
+     "Feb 2026": 24.29,
+     "Mar 2026": 35.59,
+     "Apr 2026": 12.05,
+     "Mei 2026": 13.75,
+     "Jun 2026": 13.37,
+     "Jul 2026": 29.56,
+     "Agu 2026": 12.24,
+     "Sep 2026": 14.12,
+     "Okt 2026": 16.57,
+     "Nov 2026": 14.88,
+     "Des 2026": 12.43,
+     "Jan 2027": 10.36
+    },
+    {
+     "wilayah": "Jombang",
+     "Jan 2026": 11.47,
+     "Feb 2026": 21.75,
+     "Mar 2026": 31.87,
+     "Apr 2026": 10.79,
+     "Mei 2026": 12.31,
+     "Jun 2026": 11.97,
+     "Jul 2026": 26.47,
+     "Agu 2026": 10.96,
+     "Sep 2026": 12.65,
+     "Okt 2026": 14.84,
+     "Nov 2026": 13.32,
+     "Des 2026": 11.13,
+     "Jan 2027": 9.27
+    },
+    {
+     "wilayah": "Ngawi",
+     "Jan 2026": 10.68,
+     "Feb 2026": 20.27,
+     "Mar 2026": 29.7,
+     "Apr 2026": 10.06,
+     "Mei 2026": 11.47,
+     "Jun 2026": 11.16,
+     "Jul 2026": 24.67,
+     "Agu 2026": 10.21,
+     "Sep 2026": 11.78,
+     "Okt 2026": 13.83,
+     "Nov 2026": 12.41,
+     "Des 2026": 10.37,
+     "Jan 2027": 8.64
+    },
+    {
+     "wilayah": "Nganjuk",
+     "Jan 2026": 9.9,
+     "Feb 2026": 18.79,
+     "Mar 2026": 27.53,
+     "Apr 2026": 9.32,
+     "Mei 2026": 10.63,
+     "Jun 2026": 10.34,
+     "Jul 2026": 22.87,
+     "Agu 2026": 9.47,
+     "Sep 2026": 10.92,
+     "Okt 2026": 12.82,
+     "Nov 2026": 11.51,
+     "Des 2026": 9.61,
+     "Jan 2027": 8.01
+    },
+    {
+     "wilayah": "Madiun",
+     "Jan 2026": 9.09,
+     "Feb 2026": 17.24,
+     "Mar 2026": 25.26,
+     "Apr 2026": 8.55,
+     "Mei 2026": 9.76,
+     "Jun 2026": 9.49,
+     "Jul 2026": 20.98,
+     "Agu 2026": 8.69,
+     "Sep 2026": 10.02,
+     "Okt 2026": 11.76,
+     "Nov 2026": 10.56,
+     "Des 2026": 8.82,
+     "Jan 2027": 7.35
+    },
+    {
+     "wilayah": "Situbondo",
+     "Jan 2026": 8.11,
+     "Feb 2026": 15.39,
+     "Mar 2026": 22.55,
+     "Apr 2026": 7.64,
+     "Mei 2026": 8.71,
+     "Jun 2026": 8.47,
+     "Jul 2026": 18.73,
+     "Agu 2026": 7.76,
+     "Sep 2026": 8.95,
+     "Okt 2026": 10.5,
+     "Nov 2026": 9.43,
+     "Des 2026": 7.87,
+     "Jan 2027": 6.56
+    },
+    {
+     "wilayah": "Ponorogo",
+     "Jan 2026": 7.93,
+     "Feb 2026": 15.04,
+     "Mar 2026": 22.03,
+     "Apr 2026": 7.46,
+     "Mei 2026": 8.51,
+     "Jun 2026": 8.28,
+     "Jul 2026": 18.3,
+     "Agu 2026": 7.58,
+     "Sep 2026": 8.74,
+     "Okt 2026": 10.26,
+     "Nov 2026": 9.21,
+     "Des 2026": 7.69,
+     "Jan 2027": 6.41
+    },
+    {
+     "wilayah": "Tuban",
+     "Jan 2026": 7.71,
+     "Feb 2026": 14.63,
+     "Mar 2026": 21.43,
+     "Apr 2026": 7.26,
+     "Mei 2026": 8.28,
+     "Jun 2026": 8.05,
+     "Jul 2026": 17.8,
+     "Agu 2026": 7.37,
+     "Sep 2026": 8.5,
+     "Okt 2026": 9.98,
+     "Nov 2026": 8.96,
+     "Des 2026": 7.48,
+     "Jan 2027": 6.24
+    },
+    {
+     "wilayah": "Lumajang",
+     "Jan 2026": 7.27,
+     "Feb 2026": 13.8,
+     "Mar 2026": 20.22,
+     "Apr 2026": 6.85,
+     "Mei 2026": 7.81,
+     "Jun 2026": 7.59,
+     "Jul 2026": 16.79,
+     "Agu 2026": 6.95,
+     "Sep 2026": 8.02,
+     "Okt 2026": 9.41,
+     "Nov 2026": 8.45,
+     "Des 2026": 7.06,
+     "Jan 2027": 5.88
+    },
+    {
+     "wilayah": "Probolinggo",
+     "Jan 2026": 7.15,
+     "Feb 2026": 13.57,
+     "Mar 2026": 19.87,
+     "Apr 2026": 6.73,
+     "Mei 2026": 7.68,
+     "Jun 2026": 7.47,
+     "Jul 2026": 16.51,
+     "Agu 2026": 6.84,
+     "Sep 2026": 7.89,
+     "Okt 2026": 9.25,
+     "Nov 2026": 8.31,
+     "Des 2026": 6.94,
+     "Jan 2027": 5.78
+    },
+    {
+     "wilayah": "Pasuruan",
+     "Jan 2026": 6.91,
+     "Feb 2026": 13.12,
+     "Mar 2026": 19.22,
+     "Apr 2026": 6.51,
+     "Mei 2026": 7.42,
+     "Jun 2026": 7.22,
+     "Jul 2026": 15.96,
+     "Agu 2026": 6.61,
+     "Sep 2026": 7.63,
+     "Okt 2026": 8.95,
+     "Nov 2026": 8.03,
+     "Des 2026": 6.71,
+     "Jan 2027": 5.59
+    },
+    {
+     "wilayah": "Bondowoso",
+     "Jan 2026": 6.59,
+     "Feb 2026": 12.5,
+     "Mar 2026": 18.31,
+     "Apr 2026": 6.2,
+     "Mei 2026": 7.07,
+     "Jun 2026": 6.88,
+     "Jul 2026": 15.21,
+     "Agu 2026": 6.3,
+     "Sep 2026": 7.27,
+     "Okt 2026": 8.53,
+     "Nov 2026": 7.65,
+     "Des 2026": 6.39,
+     "Jan 2027": 5.33
+    }
+   ]
+  }
+ },
+ {
+  "grafik": "Fase tumbuh per wilayah",
+  "judul": "Fase tumbuh per wilayah",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "semua 38 kab/kota Jawa Timur",
+   "satuan_produksi": "gabah kering giling (GKG)"
+  },
+  "data": {
+   "satuan": "persen luas sawah per fase tumbuh (citra satelit terbaru)",
+   "wilayah": [
+    {
+     "wilayah": "Blitar",
+     "Bera": 22,
+     "Olah tanah/genangan": 1,
+     "Vegetatif": 26,
+     "Generatif": 30,
+     "Siap panen": 21
+    },
+    {
+     "wilayah": "Kediri",
+     "Bera": 22,
+     "Olah tanah/genangan": 1,
+     "Vegetatif": 26,
+     "Generatif": 27,
+     "Siap panen": 24
+    },
+    {
+     "wilayah": "Madiun",
+     "Bera": 22,
+     "Olah tanah/genangan": 0,
+     "Vegetatif": 16,
+     "Generatif": 36,
+     "Siap panen": 27
+    },
+    {
+     "wilayah": "Jember",
+     "Bera": 11,
+     "Olah tanah/genangan": 1,
+     "Vegetatif": 19,
+     "Generatif": 33,
+     "Siap panen": 37
+    },
+    {
+     "wilayah": "Bondowoso",
+     "Bera": 23,
+     "Olah tanah/genangan": 0,
+     "Vegetatif": 28,
+     "Generatif": 23,
+     "Siap panen": 26
+    },
+    {
+     "wilayah": "Lumajang",
+     "Bera": 18,
+     "Olah tanah/genangan": 2,
+     "Vegetatif": 26,
+     "Generatif": 24,
+     "Siap panen": 30
+    },
+    {
+     "wilayah": "Tulungagung",
+     "Bera": 24,
+     "Olah tanah/genangan": 2,
+     "Vegetatif": 22,
+     "Generatif": 29,
+     "Siap panen": 23
+    },
+    {
+     "wilayah": "Malang",
+     "Bera": 26,
+     "Olah tanah/genangan": 1,
+     "Vegetatif": 35,
+     "Generatif": 16,
+     "Siap panen": 23
+    },
+    {
+     "wilayah": "Probolinggo",
+     "Bera": 29,
+     "Olah tanah/genangan": 0,
+     "Vegetatif": 25,
+     "Generatif": 20,
+     "Siap panen": 25
+    },
+    {
+     "wilayah": "Jombang",
+     "Bera": 22,
+     "Olah tanah/genangan": 1,
+     "Vegetatif": 20,
+     "Generatif": 24,
+     "Siap panen": 32
+    },
+    {
+     "wilayah": "Banyuwangi",
+     "Bera": 22,
+     "Olah tanah/genangan": 0,
+     "Vegetatif": 28,
+     "Generatif": 16,
+     "Siap panen": 34
+    },
+    {
+     "wilayah": "Pasuruan",
+     "Bera": 31,
+     "Olah tanah/genangan": 0,
+     "Vegetatif": 22,
+     "Generatif": 21,
+     "Siap panen": 25
+    },
+    {
+     "wilayah": "Situbondo",
+     "Bera": 30,
+     "Olah tanah/genangan": 0,
+     "Vegetatif": 22,
+     "Generatif": 21,
+     "Siap panen": 27
+    },
+    {
+     "wilayah": "Ponorogo",
+     "Bera": 25,
+     "Olah tanah/genangan": 1,
+     "Vegetatif": 15,
+     "Generatif": 27,
+     "Siap panen": 33
+    },
+    {
+     "wilayah": "Magetan",
+     "Bera": 36,
+     "Olah tanah/genangan": 0,
+     "Vegetatif": 19,
+     "Generatif": 19,
+     "Siap panen": 25
+    },
+    {
+     "wilayah": "Trenggalek",
+     "Bera": 35,
+     "Olah tanah/genangan": 0,
+     "Vegetatif": 19,
+     "Generatif": 17,
+     "Siap panen": 28
+    }
+   ]
+  }
+ },
+ {
+  "grafik": "Profil sinyal satelit · Madiun",
+  "judul": "Profil sinyal satelit · Madiun",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "semua 38 kab/kota Jawa Timur",
+   "satuan_produksi": "gabah kering giling (GKG)",
+   "keterangan": "EVI = indeks kehijauan tanaman dari Sentinel-2 (tanpa satuan, naik saat padi tumbuh), median titik sawah per akuisisi"
+  },
+  "data": {
+   "garis": [
+    "rata-rata riwayat",
+    "musim ini"
+   ],
+   "titik": [
+    {
+     "tanggal": "2026-06-01",
+     "rata-rata riwayat": 0.2,
+     "musim ini": 0.2
+    },
+    {
+     "tanggal": "2026-06-13",
+     "rata-rata riwayat": 0.2,
+     "musim ini": 0.2
+    },
+    {
+     "tanggal": "2026-06-25",
+     "rata-rata riwayat": 0.2,
+     "musim ini": 0.2
+    },
+    {
+     "tanggal": "2026-07-07",
+     "rata-rata riwayat": 0.19,
+     "musim ini": 0.2
+    },
+    {
+     "tanggal": "2026-07-19",
+     "rata-rata riwayat": 0.21,
+     "musim ini": 0.2
+    },
+    {
+     "tanggal": "2026-07-31",
+     "rata-rata riwayat": 0.2,
+     "musim ini": 0.2
+    },
+    {
+     "tanggal": "2026-08-12",
+     "rata-rata riwayat": 0.21,
+     "musim ini": 0.21
+    },
+    {
+     "tanggal": "2026-08-24",
+     "rata-rata riwayat": 0.2,
+     "musim ini": 0.19
+    },
+    {
+     "tanggal": "2026-09-05",
+     "rata-rata riwayat": 0.21,
+     "musim ini": 0.2
+    },
+    {
+     "tanggal": "2026-09-17",
+     "rata-rata riwayat": 0.22,
+     "musim ini": 0.21
+    },
+    {
+     "tanggal": "2026-09-29",
+     "rata-rata riwayat": 0.24,
+     "musim ini": 0.22
+    },
+    {
+     "tanggal": "2026-10-11",
+     "rata-rata riwayat": 0.28,
+     "musim ini": 0.24
+    },
+    {
+     "tanggal": "2026-10-23",
+     "rata-rata riwayat": 0.32,
+     "musim ini": 0.28
+    },
+    {
+     "tanggal": "2026-11-04",
+     "rata-rata riwayat": 0.41,
+     "musim ini": 0.34
+    }
+   ]
+  }
+ },
+ {
+  "grafik": "Estimasi stok non-Bulog",
+  "judul": "Estimasi stok non-Bulog",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "semua 38 kab/kota Jawa Timur",
+   "keterangan": "Cakupan stok dalam bulan konsumsi, rata-rata tertimbang konsumsi wilayah terpilih; kolom Des–Jan = prakiraan; pita = selang ketidakpastian; batas aman 1 bulan, defisit di bawah 0,75 bulan"
+  },
+  "data": {
+   "garis": [
+    "cakupan stok"
+   ],
+   "titik": [
+    {
+     "tanggal": "2026-01-31",
+     "cakupan stok": 3.8,
+     "pita bawah": 3.39,
+     "pita atas": 4.22
+    },
+    {
+     "tanggal": "2026-02-28",
+     "cakupan stok": 3.8,
+     "pita bawah": 3.14,
+     "pita atas": 4.47
+    },
+    {
+     "tanggal": "2026-03-31",
+     "cakupan stok": 3.8,
+     "pita bawah": 3.02,
+     "pita atas": 4.59
+    },
+    {
+     "tanggal": "2026-04-30",
+     "cakupan stok": 3.8,
+     "pita bawah": 3.02,
+     "pita atas": 4.59
+    },
+    {
+     "tanggal": "2026-05-31",
+     "cakupan stok": 3.75,
+     "pita bawah": 2.96,
+     "pita atas": 4.54
+    },
+    {
+     "tanggal": "2026-06-30",
+     "cakupan stok": 3.45,
+     "pita bawah": 2.65,
+     "pita atas": 4.24
+    },
+    {
+     "tanggal": "2026-07-31",
+     "cakupan stok": 3.28,
+     "pita bawah": 2.47,
+     "pita atas": 4.09
+    },
+    {
+     "tanggal": "2026-08-31",
+     "cakupan stok": 3.05,
+     "pita bawah": 2.24,
+     "pita atas": 3.87
+    },
+    {
+     "tanggal": "2026-09-30",
+     "cakupan stok": 2.81,
+     "pita bawah": 1.99,
+     "pita atas": 3.62
+    },
+    {
+     "tanggal": "2026-10-31",
+     "cakupan stok": 2.65,
+     "pita bawah": 1.83,
+     "pita atas": 3.47
+    },
+    {
+     "tanggal": "2026-11-30",
+     "cakupan stok": 2.39,
+     "pita bawah": 1.56,
+     "pita atas": 3.21,
+     "Des–Jan": "ya"
+    },
+    {
+     "tanggal": "2026-12-31",
+     "cakupan stok": 2.11,
+     "pita bawah": 1.28,
+     "pita atas": 2.94,
+     "Des–Jan": "ya"
+    },
+    {
+     "tanggal": "2027-01-31",
+     "cakupan stok": 1.76,
+     "pita bawah": 0.93,
+     "pita atas": 2.59,
+     "Des–Jan": "ya"
+    }
+   ],
+   "garis_acuan": [
+    {
+     "nama": "batas aman",
+     "nilai": 1
+    },
+    {
+     "nama": "defisit",
+     "nilai": 0.75
+    }
+   ]
+  }
+ },
+ {
+  "grafik": "Neraca Nov 2026",
+  "judul": "Neraca Nov 2026",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "semua 38 kab/kota Jawa Timur"
+  },
+  "data": {
+   "satuan": "ton beras",
+   "keterangan": "neraca bulanan: stok awal + produksi − konsumsi + arus netto = stok akhir; level stok bertumpu pada stok awal asumsi model K2",
+   "komponen": [
+    {
+     "komponen": "Stok awal",
+     "nilai": 836065,
+     "sumber": "model K2"
+    },
+    {
+     "komponen": "Produksi",
+     "nilai": 748797,
+     "sumber": "estimasi"
+    },
+    {
+     "komponen": "Konsumsi",
+     "nilai": -315781,
+     "sumber": "BPS"
+    },
+    {
+     "komponen": "Arus netto",
+     "nilai": -515798,
+     "sumber": "estimasi"
+    },
+    {
+     "komponen": "Stok akhir",
+     "nilai": 753284,
+     "sumber": "model K2"
+    }
+   ]
+  }
+ },
+ {
+  "grafik": "Estimasi Waktu Menuju Defisit",
+  "judul": "Estimasi Waktu Menuju Defisit",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "semua 38 kab/kota Jawa Timur"
+  },
+  "data": {
+   "keterangan": "wilayah yang paling cepat jatuh ke batas defisit (cakupan 0,75 bulan konsumsi), dihitung dari tanggal acuan",
+   "tanggal_acuan": "2026-11-26",
+   "wilayah_berisiko": 10,
+   "wilayah": [
+    {
+     "wilayah": "Kota Mojokerto",
+     "cakupan_bulan": 0.79,
+     "hari_menuju_defisit": 8,
+     "tanggal_defisit": "2026-12-04"
+    },
+    {
+     "wilayah": "Kota Madiun",
+     "cakupan_bulan": 0.88,
+     "hari_menuju_defisit": 24,
+     "tanggal_defisit": "2026-12-20"
+    },
+    {
+     "wilayah": "Kota Probolinggo",
+     "cakupan_bulan": 0.86,
+     "hari_menuju_defisit": 25,
+     "tanggal_defisit": "2026-12-21"
+    },
+    {
+     "wilayah": "Kota Blitar",
+     "cakupan_bulan": 0.86,
+     "hari_menuju_defisit": 26,
+     "tanggal_defisit": "2026-12-22"
+    },
+    {
+     "wilayah": "Kota Kediri",
+     "cakupan_bulan": 0.93,
+     "hari_menuju_defisit": 35,
+     "tanggal_defisit": "2026-12-31"
+    },
+    {
+     "wilayah": "Kota Malang",
+     "cakupan_bulan": 0.95,
+     "hari_menuju_defisit": 36,
+     "tanggal_defisit": "2027-01-01"
+    },
+    {
+     "wilayah": "Batu",
+     "cakupan_bulan": 0.97,
+     "hari_menuju_defisit": 37,
+     "tanggal_defisit": "2027-01-02"
+    },
+    {
+     "wilayah": "Kota Pasuruan",
+     "cakupan_bulan": 0.98,
+     "hari_menuju_defisit": 38,
+     "tanggal_defisit": "2027-01-03"
+    }
+   ]
+  }
+ },
+ {
+  "grafik": "Stok Bulog Jawa Timur",
+  "judul": "Stok Bulog Jawa Timur",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "semua 38 kab/kota Jawa Timur"
+  },
+  "data": {
+   "satuan": "ribu ton beras, tingkat provinsi Jawa Timur",
+   "tahun": 2025,
+   "bulan": [
+    {
+     "bulan": "Jan 2025",
+     "persediaan_akhir": 322.2,
+     "pemasukan": 88,
+     "pengeluaran": 16.2
+    },
+    {
+     "bulan": "Feb 2025",
+     "persediaan_akhir": 444.2,
+     "pemasukan": 131.9,
+     "pengeluaran": 9.9
+    },
+    {
+     "bulan": "Mar 2025",
+     "persediaan_akhir": 538.7,
+     "pemasukan": 123.3,
+     "pengeluaran": 28.8
+    },
+    {
+     "bulan": "Apr 2025",
+     "persediaan_akhir": 738.1,
+     "pemasukan": 257.2,
+     "pengeluaran": 57.9
+    },
+    {
+     "bulan": "Mei 2025",
+     "persediaan_akhir": 917.4,
+     "pemasukan": 288,
+     "pengeluaran": 108.8
+    },
+    {
+     "bulan": "Jun 2025",
+     "persediaan_akhir": 984,
+     "pemasukan": 162,
+     "pengeluaran": 95.4
+    },
+    {
+     "bulan": "Jul 2025",
+     "persediaan_akhir": 962.8,
+     "pemasukan": 167.9,
+     "pengeluaran": 189.1
+    },
+    {
+     "bulan": "Agu 2025",
+     "persediaan_akhir": 955.6,
+     "pemasukan": 100.8,
+     "pengeluaran": 108
+    },
+    {
+     "bulan": "Sep 2025",
+     "persediaan_akhir": 935.1,
+     "pemasukan": 62,
+     "pengeluaran": 82.5
+    },
+    {
+     "bulan": "Okt 2025",
+     "persediaan_akhir": 907,
+     "pemasukan": 30.4,
+     "pengeluaran": 58.6
+    },
+    {
+     "bulan": "Nov 2025",
+     "persediaan_akhir": 864.8,
+     "pemasukan": 69.2,
+     "pengeluaran": 111.4
+    },
+    {
+     "bulan": "Des 2025",
+     "persediaan_akhir": 796.4,
+     "pemasukan": 51.8,
+     "pengeluaran": 120.2
+    }
+   ]
+  }
+ },
+ {
+  "grafik": "Pengadaan per Kantor Cabang Bulog",
+  "judul": "Pengadaan per Kantor Cabang Bulog",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "semua 38 kab/kota Jawa Timur"
+  },
+  "data": {
+   "satuan": "ton beras pengadaan per tahun",
+   "cabang": [
+    {
+     "cabang": "Jember",
+     "pengadaan_2025": 89100
+    },
+    {
+     "cabang": "Probolinggo",
+     "pengadaan_2025": 78000
+    },
+    {
+     "cabang": "Malang",
+     "pengadaan_2025": 61600
+    },
+    {
+     "cabang": "Surabaya Selatan",
+     "pengadaan_2025": 60400
+    },
+    {
+     "cabang": "Madiun",
+     "pengadaan_2025": 58900
+    },
+    {
+     "cabang": "Ponorogo",
+     "pengadaan_2025": 58900
+    },
+    {
+     "cabang": "Banyuwangi",
+     "pengadaan_2025": 52200
+    },
+    {
+     "cabang": "Kediri",
+     "pengadaan_2025": 50900
+    },
+    {
+     "cabang": "Bojonegoro",
+     "pengadaan_2025": 48700
+    },
+    {
+     "cabang": "Bondowoso",
+     "pengadaan_2025": 43300
+    },
+    {
+     "cabang": "Surabaya Utara",
+     "pengadaan_2025": 42800
+    },
+    {
+     "cabang": "Tulungagung",
+     "pengadaan_2025": 42400
+    },
+    {
+     "cabang": "Madura",
+     "pengadaan_2025": 1200
+    }
+   ],
+   "total": {
+    "pengadaan_2025": 688400
+   }
+  }
+ },
+ {
+  "grafik": "Peta alokasi pasokan",
+  "judul": "Peta alokasi pasokan",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "semua 38 kab/kota Jawa Timur",
+   "keterangan": "alokasi pasokan beras antarkabupaten dari optimasi jarak (model), bukan arus dagang tercatat; ton per bulan; warna peta = cakupan stok (bulan konsumsi) akhir Nov 2026"
+  },
+  "data": {
+   "arus_terbesar": [
+    {
+     "dari": "Malang",
+     "ke": "Kota Malang",
+     "ton": 6300,
+     "km": 17,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Mojokerto",
+     "ke": "Kota Surabaya",
+     "ton": 5430,
+     "km": 62,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Lamongan",
+     "ke": "Kota Surabaya",
+     "ton": 5140,
+     "km": 62,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Mojokerto",
+     "ke": "Sidoarjo",
+     "ton": 4490,
+     "km": 38,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Jombang",
+     "ke": "Kota Surabaya",
+     "ton": 4300,
+     "km": 78,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Sumenep",
+     "ke": "Pamekasan",
+     "ton": 3610,
+     "km": 48,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Pasuruan",
+     "ke": "Kota Surabaya",
+     "ton": 1860,
+     "km": 77,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Ponorogo",
+     "ke": "Pacitan",
+     "ton": 1610,
+     "km": 73,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Jombang",
+     "ke": "Sidoarjo",
+     "ton": 1350,
+     "km": 58,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Jombang",
+     "ke": "Sampang",
+     "ton": 820,
+     "km": 169,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Pasuruan",
+     "ke": "Kota Pasuruan",
+     "ton": 680,
+     "km": 16,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Mojokerto",
+     "ke": "Kota Mojokerto",
+     "ton": 660,
+     "km": 13,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Nganjuk",
+     "ke": "Kota Surabaya",
+     "ton": 620,
+     "km": 112,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Mojokerto",
+     "ke": "Sampang",
+     "ton": 540,
+     "km": 153,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Lamongan",
+     "ke": "Sampang",
+     "ton": 520,
+     "km": 151,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Kediri",
+     "ke": "Kota Surabaya",
+     "ton": 520,
+     "km": 125,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Pasuruan",
+     "ke": "Sidoarjo",
+     "ton": 460,
+     "km": 60,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Kediri",
+     "ke": "Kota Kediri",
+     "ton": 440,
+     "km": 10,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Lamongan",
+     "ke": "Gresik",
+     "ton": 420,
+     "km": 31,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Madiun",
+     "ke": "Kota Madiun",
+     "ton": 410,
+     "km": 18,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Pasuruan",
+     "ke": "Sampang",
+     "ton": 350,
+     "km": 167,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Kediri",
+     "ke": "Sampang",
+     "ton": 300,
+     "km": 217,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Mojokerto",
+     "ke": "Batu",
+     "ton": 290,
+     "km": 43,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Nganjuk",
+     "ke": "Sampang",
+     "ton": 280,
+     "km": 205,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Sumenep",
+     "ke": "Sampang",
+     "ton": 260,
+     "km": 88,
+     "lintas_kawasan": "tidak"
+    }
+   ],
+   "cakupan_stok_bulan": [
+    {
+     "wilayah": "Pacitan",
+     "cakupan": 1.33
+    },
+    {
+     "wilayah": "Ponorogo",
+     "cakupan": 3.2
+    },
+    {
+     "wilayah": "Trenggalek",
+     "cakupan": 1.64
+    },
+    {
+     "wilayah": "Tulungagung",
+     "cakupan": 2.15
+    },
+    {
+     "wilayah": "Blitar",
+     "cakupan": 2.42
+    },
+    {
+     "wilayah": "Kediri",
+     "cakupan": 3.4
+    },
+    {
+     "wilayah": "Malang",
+     "cakupan": 1.68
+    },
+    {
+     "wilayah": "Lumajang",
+     "cakupan": 2.76
+    },
+    {
+     "wilayah": "Jember",
+     "cakupan": 2.76
+    },
+    {
+     "wilayah": "Banyuwangi",
+     "cakupan": 3.05
+    },
+    {
+     "wilayah": "Bondowoso",
+     "cakupan": 3.08
+    },
+    {
+     "wilayah": "Situbondo",
+     "cakupan": 3.35
+    },
+    {
+     "wilayah": "Probolinggo",
+     "cakupan": 2.62
+    },
+    {
+     "wilayah": "Pasuruan",
+     "cakupan": 2.21
+    },
+    {
+     "wilayah": "Sidoarjo",
+     "cakupan": 1.25
+    },
+    {
+     "wilayah": "Mojokerto",
+     "cakupan": 2.64
+    },
+    {
+     "wilayah": "Jombang",
+     "cakupan": 3.09
+    },
+    {
+     "wilayah": "Nganjuk",
+     "cakupan": 3.48
+    },
+    {
+     "wilayah": "Madiun",
+     "cakupan": 3.33
+    },
+    {
+     "wilayah": "Magetan",
+     "cakupan": 3.23
+    },
+    {
+     "wilayah": "Ngawi",
+     "cakupan": 3.41
+    },
+    {
+     "wilayah": "Bojonegoro",
+     "cakupan": 3.22
+    },
+    {
+     "wilayah": "Tuban",
+     "cakupan": 3.28
+    },
+    {
+     "wilayah": "Lamongan",
+     "cakupan": 3.24
+    },
+    {
+     "wilayah": "Gresik",
+     "cakupan": 2.59
+    },
+    {
+     "wilayah": "Bangkalan",
+     "cakupan": 2.55
+    },
+    {
+     "wilayah": "Sampang",
+     "cakupan": 2.37
+    },
+    {
+     "wilayah": "Pamekasan",
+     "cakupan": 1.67
+    },
+    {
+     "wilayah": "Sumenep",
+     "cakupan": 2.49
+    },
+    {
+     "wilayah": "Kota Kediri",
+     "cakupan": 0.91
+    },
+    {
+     "wilayah": "Kota Blitar",
+     "cakupan": 0.85
+    },
+    {
+     "wilayah": "Kota Malang",
+     "cakupan": 0.93
+    },
+    {
+     "wilayah": "Kota Probolinggo",
+     "cakupan": 0.84
+    },
+    {
+     "wilayah": "Kota Pasuruan",
+     "cakupan": 0.96
+    },
+    {
+     "wilayah": "Kota Mojokerto",
+     "cakupan": 0.77
+    },
+    {
+     "wilayah": "Kota Madiun",
+     "cakupan": 0.86
+    },
+    {
+     "wilayah": "Kota Surabaya",
+     "cakupan": 0.95
+    },
+    {
+     "wilayah": "Batu",
+     "cakupan": 0.95
+    }
+   ]
+  }
+ },
+ {
+  "grafik": "Pasangan pemasok–penerima terbesar",
+  "judul": "Pasangan pemasok–penerima terbesar",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "semua 38 kab/kota Jawa Timur",
+   "keterangan": "alokasi pasokan beras antarkabupaten dari optimasi jarak (model), bukan arus dagang tercatat; ton per bulan"
+  },
+  "data": {
+   "pasangan": [
+    {
+     "dari": "Malang",
+     "ke": "Kota Malang",
+     "ton": 6300,
+     "km": 17,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Mojokerto",
+     "ke": "Kota Surabaya",
+     "ton": 5430,
+     "km": 62,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Lamongan",
+     "ke": "Kota Surabaya",
+     "ton": 5140,
+     "km": 62,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Mojokerto",
+     "ke": "Sidoarjo",
+     "ton": 4490,
+     "km": 38,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Jombang",
+     "ke": "Kota Surabaya",
+     "ton": 4300,
+     "km": 78,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Sumenep",
+     "ke": "Pamekasan",
+     "ton": 3610,
+     "km": 48,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Pasuruan",
+     "ke": "Kota Surabaya",
+     "ton": 1860,
+     "km": 77,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Ponorogo",
+     "ke": "Pacitan",
+     "ton": 1610,
+     "km": 73,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Jombang",
+     "ke": "Sidoarjo",
+     "ton": 1350,
+     "km": 58,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Jombang",
+     "ke": "Sampang",
+     "ton": 820,
+     "km": 169,
+     "lintas_kawasan": "ya"
+    }
+   ]
+  }
+ },
+ {
+  "grafik": "Alokasi pasokan antarkabupaten",
+  "judul": "Alokasi pasokan antarkabupaten",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "semua 38 kab/kota Jawa Timur",
+   "keterangan": "alokasi pasokan beras antarkabupaten dari optimasi jarak (model), bukan arus dagang tercatat; ton per bulan"
+  },
+  "data": {
+   "total_ton": 46510,
+   "lintas_kawasan_ton": 7450,
+   "wilayah_pemasok": 19,
+   "arus": [
+    {
+     "dari": "Malang",
+     "ke": "Kota Malang",
+     "ton": 6300,
+     "km": 17,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Mojokerto",
+     "ke": "Kota Surabaya",
+     "ton": 5430,
+     "km": 62,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Lamongan",
+     "ke": "Kota Surabaya",
+     "ton": 5140,
+     "km": 62,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Mojokerto",
+     "ke": "Sidoarjo",
+     "ton": 4490,
+     "km": 38,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Jombang",
+     "ke": "Kota Surabaya",
+     "ton": 4300,
+     "km": 78,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Sumenep",
+     "ke": "Pamekasan",
+     "ton": 3610,
+     "km": 48,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Pasuruan",
+     "ke": "Kota Surabaya",
+     "ton": 1860,
+     "km": 77,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Ponorogo",
+     "ke": "Pacitan",
+     "ton": 1610,
+     "km": 73,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Jombang",
+     "ke": "Sidoarjo",
+     "ton": 1350,
+     "km": 58,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Jombang",
+     "ke": "Sampang",
+     "ton": 820,
+     "km": 169,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Pasuruan",
+     "ke": "Kota Pasuruan",
+     "ton": 680,
+     "km": 16,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Mojokerto",
+     "ke": "Kota Mojokerto",
+     "ton": 660,
+     "km": 13,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Nganjuk",
+     "ke": "Kota Surabaya",
+     "ton": 620,
+     "km": 112,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Mojokerto",
+     "ke": "Sampang",
+     "ton": 540,
+     "km": 153,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Lamongan",
+     "ke": "Sampang",
+     "ton": 520,
+     "km": 151,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Kediri",
+     "ke": "Kota Surabaya",
+     "ton": 520,
+     "km": 125,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Pasuruan",
+     "ke": "Sidoarjo",
+     "ton": 460,
+     "km": 60,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Kediri",
+     "ke": "Kota Kediri",
+     "ton": 440,
+     "km": 10,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Lamongan",
+     "ke": "Gresik",
+     "ton": 420,
+     "km": 31,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Madiun",
+     "ke": "Kota Madiun",
+     "ton": 410,
+     "km": 18,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Pasuruan",
+     "ke": "Sampang",
+     "ton": 350,
+     "km": 167,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Kediri",
+     "ke": "Sampang",
+     "ton": 300,
+     "km": 217,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Mojokerto",
+     "ke": "Batu",
+     "ton": 290,
+     "km": 43,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Nganjuk",
+     "ke": "Sampang",
+     "ton": 280,
+     "km": 205,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Sumenep",
+     "ke": "Sampang",
+     "ton": 260,
+     "km": 88,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Pasuruan",
+     "ke": "Kota Malang",
+     "ton": 260,
+     "km": 43,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Tuban",
+     "ke": "Kota Surabaya",
+     "ton": 260,
+     "km": 124,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Probolinggo",
+     "ke": "Kota Surabaya",
+     "ton": 230,
+     "km": 124,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Blitar",
+     "ke": "Kota Blitar",
+     "ton": 220,
+     "km": 11,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Jombang",
+     "ke": "Bangkalan",
+     "ton": 190,
+     "km": 121,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Jombang",
+     "ke": "Pamekasan",
+     "ton": 190,
+     "km": 206,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Bojonegoro",
+     "ke": "Kota Surabaya",
+     "ton": 180,
+     "km": 125,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Madiun",
+     "ke": "Pacitan",
+     "ton": 170,
+     "km": 119,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Mojokerto",
+     "ke": "Bangkalan",
+     "ton": 160,
+     "km": 105,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Lamongan",
+     "ke": "Bangkalan",
+     "ton": 160,
+     "km": 104,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Tuban",
+     "ke": "Sampang",
+     "ton": 150,
+     "km": 213,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Probolinggo",
+     "ke": "Sampang",
+     "ton": 130,
+     "km": 216,
+     "lintas_kawasan": "ya"
+    },
+    {
+     "dari": "Magetan",
+     "ke": "Pacitan",
+     "ton": 120,
+     "km": 112,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Lamongan",
+     "ke": "Sidoarjo",
+     "ton": 120,
+     "km": 77,
+     "lintas_kawasan": "tidak"
+    },
+    {
+     "dari": "Mojokerto",
+     "ke": "Pamekasan",
+     "ton": 120,
+     "km": 190,
+     "lintas_kawasan": "ya"
+    }
+   ]
+  }
+ },
+ {
+  "grafik": "Alokasi pasokan antarkawasan",
+  "judul": "Alokasi pasokan antarkawasan",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "semua 38 kab/kota Jawa Timur",
+   "keterangan": "alokasi pasokan beras antarkabupaten dari optimasi jarak (model), bukan arus dagang tercatat; ton per bulan"
+  },
+  "data": {
+   "kawasan_asal_ke_tujuan_ton": [
+    {
+     "dari": "Arek",
+     "ke": "Arek",
+     "ton": 32050
+    },
+    {
+     "dari": "Arek",
+     "ke": "Madura",
+     "ton": 3360
+    },
+    {
+     "dari": "Mataraman",
+     "ke": "Arek",
+     "ton": 2030
+    },
+    {
+     "dari": "Mataraman",
+     "ke": "Mataraman",
+     "ton": 3140
+    },
+    {
+     "dari": "Mataraman",
+     "ke": "Madura",
+     "ton": 1400
+    },
+    {
+     "dari": "Tapal Kuda",
+     "ke": "Arek",
+     "ton": 370
+    },
+    {
+     "dari": "Tapal Kuda",
+     "ke": "Madura",
+     "ton": 290
+    },
+    {
+     "dari": "Madura",
+     "ke": "Madura",
+     "ton": 3870
+    }
+   ]
+  }
+ },
+ {
+  "grafik": "Neraca kawasan Nov 2026",
+  "judul": "Neraca kawasan Nov 2026",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "semua 38 kab/kota Jawa Timur",
+   "keterangan": "produksi dikurangi konsumsi per kawasan, ton per bulan; positif = surplus"
+  },
+  "data": [
+   {
+    "kawasan": "Arek",
+    "produksi": 163362,
+    "konsumsi": 124767,
+    "surplus": 38595,
+    "keluar_kawasan": 3360,
+    "masuk_kawasan": 2400
+   },
+   {
+    "kawasan": "Mataraman",
+    "produksi": 329279,
+    "konsumsi": 96321,
+    "surplus": 232957,
+    "keluar_kawasan": 3430,
+    "masuk_kawasan": 0
+   },
+   {
+    "kawasan": "Tapal Kuda",
+    "produksi": 234611,
+    "konsumsi": 63258,
+    "surplus": 171353,
+    "keluar_kawasan": 660,
+    "masuk_kawasan": 0
+   },
+   {
+    "kawasan": "Madura",
+    "produksi": 21545,
+    "konsumsi": 31435,
+    "surplus": -9890,
+    "keluar_kawasan": 0,
+    "masuk_kawasan": 5050
+   }
+  ]
+ },
+ {
+  "grafik": "Harga beras",
+  "judul": "Harga beras",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "semua 38 kab/kota Jawa Timur",
+   "jenis_beras": "medium dan premium",
+   "keterangan": "Rupiah per kg, rata-rata pekanan Jawa Timur (bobot penduduk); titik berlabel prakiraan = prakiraan model K3a"
+  },
+  "data": {
+   "garis": [
+    "harga medium",
+    "harga premium"
+   ],
+   "titik": [
+    {
+     "tanggal": "2026-05-10",
+     "harga medium": 12790,
+     "harga premium": 14387.03
+    },
+    {
+     "tanggal": "2026-05-17",
+     "harga medium": 12804.7,
+     "harga premium": 14401.73
+    },
+    {
+     "tanggal": "2026-05-24",
+     "harga medium": 12814.29,
+     "harga premium": 14411.31
+    },
+    {
+     "tanggal": "2026-05-31",
+     "harga medium": 12813.08,
+     "harga premium": 14410.11
+    },
+    {
+     "tanggal": "2026-06-07",
+     "harga medium": 12805.8,
+     "harga premium": 14402.83
+    },
+    {
+     "tanggal": "2026-06-14",
+     "harga medium": 12806.83,
+     "harga premium": 14403.86
+    },
+    {
+     "tanggal": "2026-06-21",
+     "harga medium": 12791.7,
+     "harga premium": 14388.73
+    },
+    {
+     "tanggal": "2026-06-28",
+     "harga medium": 12780.88,
+     "harga premium": 14377.91
+    },
+    {
+     "tanggal": "2026-07-05",
+     "harga medium": 12773.3,
+     "harga premium": 14370.33
+    },
+    {
+     "tanggal": "2026-07-12",
+     "harga medium": 12763.04,
+     "harga premium": 14360.07
+    },
+    {
+     "tanggal": "2026-07-19",
+     "harga medium": 12766.5,
+     "harga premium": 14363.52
+    },
+    {
+     "tanggal": "2026-07-26",
+     "harga medium": 12770.32,
+     "harga premium": 14367.35
+    },
+    {
+     "tanggal": "2026-08-02",
+     "harga medium": 12784.1,
+     "harga premium": 14381.13
+    },
+    {
+     "tanggal": "2026-08-09",
+     "harga medium": 12796.31,
+     "harga premium": 14393.34
+    },
+    {
+     "tanggal": "2026-08-16",
+     "harga medium": 12789.89,
+     "harga premium": 14386.91
+    },
+    {
+     "tanggal": "2026-08-23",
+     "harga medium": 12821.52,
+     "harga premium": 14418.54
+    },
+    {
+     "tanggal": "2026-08-30",
+     "harga medium": 12857.56,
+     "harga premium": 14454.59
+    },
+    {
+     "tanggal": "2026-09-06",
+     "harga medium": 12890.52,
+     "harga premium": 14487.55
+    },
+    {
+     "tanggal": "2026-09-13",
+     "harga medium": 12922.33,
+     "harga premium": 14519.36
+    },
+    {
+     "tanggal": "2026-09-20",
+     "harga medium": 12954.43,
+     "harga premium": 14551.46
+    },
+    {
+     "tanggal": "2026-09-27",
+     "harga medium": 12992.63,
+     "harga premium": 14589.66
+    },
+    {
+     "tanggal": "2026-10-04",
+     "harga medium": 13026.61,
+     "harga premium": 14623.64
+    },
+    {
+     "tanggal": "2026-10-11",
+     "harga medium": 13061.59,
+     "harga premium": 14658.62
+    },
+    {
+     "tanggal": "2026-10-18",
+     "harga medium": 13092.18,
+     "harga premium": 14689.21
+    },
+    {
+     "tanggal": "2026-10-25",
+     "harga medium": 13124.93,
+     "harga premium": 14721.96
+    },
+    {
+     "tanggal": "2026-11-01",
+     "harga medium": 13163.53,
+     "harga premium": 14760.56,
+     "medium P10–P90 bawah": 13163.53,
+     "medium P10–P90 atas": 13163.53,
+     "premium P10–P90 bawah": 14760.56,
+     "premium P10–P90 atas": 14760.56,
+     "prakiraan": "ya"
+    },
+    {
+     "tanggal": "2026-11-08",
+     "harga medium": 13200.41,
+     "harga premium": 14797.44,
+     "medium P10–P90 bawah": 13082.41,
+     "medium P10–P90 atas": 13318.41,
+     "premium P10–P90 bawah": 14679.44,
+     "premium P10–P90 atas": 14915.44,
+     "prakiraan": "ya"
+    },
+    {
+     "tanggal": "2026-11-15",
+     "harga medium": 13237.29,
+     "harga premium": 14834.32,
+     "medium P10–P90 bawah": 13071.29,
+     "medium P10–P90 atas": 13403.29,
+     "premium P10–P90 bawah": 14668.32,
+     "premium P10–P90 atas": 15000.32,
+     "prakiraan": "ya"
+    },
+    {
+     "tanggal": "2026-11-22",
+     "harga medium": 13274.18,
+     "harga premium": 14871.21,
+     "medium P10–P90 bawah": 13060.18,
+     "medium P10–P90 atas": 13488.18,
+     "premium P10–P90 bawah": 14657.21,
+     "premium P10–P90 atas": 15085.21,
+     "prakiraan": "ya"
+    },
+    {
+     "tanggal": "2026-11-29",
+     "harga medium": 13311.06,
+     "harga premium": 14908.09,
+     "medium P10–P90 bawah": 13049.06,
+     "medium P10–P90 atas": 13573.06,
+     "premium P10–P90 bawah": 14646.09,
+     "premium P10–P90 atas": 15170.09,
+     "prakiraan": "ya"
+    }
+   ],
+   "garis_acuan": [
+    {
+     "nama": "HET 13.500",
+     "nilai": 13500
+    },
+    {
+     "nama": "HET 14.900",
+     "nilai": 14900
+    }
+   ]
+  }
+ },
+ {
+  "grafik": "Sebaran harga 38 wilayah per pekan",
+  "judul": "Sebaran harga 38 wilayah per pekan",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "semua 38 kab/kota Jawa Timur",
+   "jenis_beras": "medium dan premium"
+  },
+  "data": {
+   "satuan": "rupiah per kg",
+   "jumlah_wilayah": 38,
+   "het": {
+    "medium": 13500,
+    "premium": 14900
+   },
+   "pekan": [
+    {
+     "pekan": "2026-08-16",
+     "jenis": "medium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 12790,
+     "termurah": 12474,
+     "wilayah_termurah": "Ngawi",
+     "termahal": 13503,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 1
+    },
+    {
+     "pekan": "2026-08-23",
+     "jenis": "medium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 12822,
+     "termurah": 12503,
+     "wilayah_termurah": "Ngawi",
+     "termahal": 13555,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 1
+    },
+    {
+     "pekan": "2026-08-30",
+     "jenis": "medium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 12858,
+     "termurah": 12536,
+     "wilayah_termurah": "Ngawi",
+     "termahal": 13539,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 1
+    },
+    {
+     "pekan": "2026-09-06",
+     "jenis": "medium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 12891,
+     "termurah": 12561,
+     "wilayah_termurah": "Ngawi",
+     "termahal": 13594,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 1
+    },
+    {
+     "pekan": "2026-09-13",
+     "jenis": "medium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 12922,
+     "termurah": 12565,
+     "wilayah_termurah": "Ngawi",
+     "termahal": 13607,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 1
+    },
+    {
+     "pekan": "2026-09-20",
+     "jenis": "medium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 12954,
+     "termurah": 12610,
+     "wilayah_termurah": "Ngawi",
+     "termahal": 13581,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 1
+    },
+    {
+     "pekan": "2026-09-27",
+     "jenis": "medium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 12993,
+     "termurah": 12655,
+     "wilayah_termurah": "Ngawi",
+     "termahal": 13624,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 2
+    },
+    {
+     "pekan": "2026-10-04",
+     "jenis": "medium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 13027,
+     "termurah": 12665,
+     "wilayah_termurah": "Ngawi",
+     "termahal": 13628,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 2
+    },
+    {
+     "pekan": "2026-10-11",
+     "jenis": "medium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 13062,
+     "termurah": 12713,
+     "wilayah_termurah": "Ngawi",
+     "termahal": 13673,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 4
+    },
+    {
+     "pekan": "2026-10-18",
+     "jenis": "medium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 13092,
+     "termurah": 12721,
+     "wilayah_termurah": "Ngawi",
+     "termahal": 13661,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 6
+    },
+    {
+     "pekan": "2026-10-25",
+     "jenis": "medium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 13125,
+     "termurah": 12751,
+     "wilayah_termurah": "Ngawi",
+     "termahal": 13676,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 6
+    },
+    {
+     "pekan": "2026-11-01",
+     "jenis": "medium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 13164,
+     "termurah": 12781,
+     "wilayah_termurah": "Ngawi",
+     "termahal": 13712,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 6
+    },
+    {
+     "pekan": "2026-11-08",
+     "jenis": "medium",
+     "jenis_nilai": "prakiraan",
+     "rata_rata": 13200,
+     "termurah": 12812,
+     "wilayah_termurah": "Ngawi",
+     "termahal": 13747,
+     "wilayah_termahal": "Kota Malang",
+     "wilayah_di_atas_het": 8
+    },
+    {
+     "pekan": "2026-11-15",
+     "jenis": "medium",
+     "jenis_nilai": "prakiraan",
+     "rata_rata": 13237,
+     "termurah": 12843,
+     "wilayah_termurah": "Ngawi",
+     "termahal": 13824,
+     "wilayah_termahal": "Kota Malang",
+     "wilayah_di_atas_het": 10
+    },
+    {
+     "pekan": "2026-11-22",
+     "jenis": "medium",
+     "jenis_nilai": "prakiraan",
+     "rata_rata": 13274,
+     "termurah": 12866,
+     "wilayah_termurah": "Bojonegoro",
+     "termahal": 13901,
+     "wilayah_termahal": "Kota Malang",
+     "wilayah_di_atas_het": 12
+    },
+    {
+     "pekan": "2026-11-29",
+     "jenis": "medium",
+     "jenis_nilai": "prakiraan",
+     "rata_rata": 13311,
+     "termurah": 12888,
+     "wilayah_termurah": "Bojonegoro",
+     "termahal": 13978,
+     "wilayah_termahal": "Kota Malang",
+     "wilayah_di_atas_het": 14
+    },
+    {
+     "pekan": "2026-08-16",
+     "jenis": "premium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 14387,
+     "termurah": 13995,
+     "wilayah_termurah": "Lamongan",
+     "termahal": 15126,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 2
+    },
+    {
+     "pekan": "2026-08-23",
+     "jenis": "premium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 14419,
+     "termurah": 14021,
+     "wilayah_termurah": "Lamongan",
+     "termahal": 15178,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 2
+    },
+    {
+     "pekan": "2026-08-30",
+     "jenis": "premium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 14455,
+     "termurah": 14046,
+     "wilayah_termurah": "Lamongan",
+     "termahal": 15163,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 2
+    },
+    {
+     "pekan": "2026-09-06",
+     "jenis": "premium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 14488,
+     "termurah": 14081,
+     "wilayah_termurah": "Lamongan",
+     "termahal": 15218,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 3
+    },
+    {
+     "pekan": "2026-09-13",
+     "jenis": "premium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 14519,
+     "termurah": 14105,
+     "wilayah_termurah": "Lamongan",
+     "termahal": 15231,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 3
+    },
+    {
+     "pekan": "2026-09-20",
+     "jenis": "premium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 14551,
+     "termurah": 14126,
+     "wilayah_termurah": "Lamongan",
+     "termahal": 15205,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 5
+    },
+    {
+     "pekan": "2026-09-27",
+     "jenis": "premium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 14590,
+     "termurah": 14185,
+     "wilayah_termurah": "Lamongan",
+     "termahal": 15247,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 5
+    },
+    {
+     "pekan": "2026-10-04",
+     "jenis": "premium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 14624,
+     "termurah": 14170,
+     "wilayah_termurah": "Lamongan",
+     "termahal": 15252,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 6
+    },
+    {
+     "pekan": "2026-10-11",
+     "jenis": "premium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 14659,
+     "termurah": 14228,
+     "wilayah_termurah": "Lamongan",
+     "termahal": 15297,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 7
+    },
+    {
+     "pekan": "2026-10-18",
+     "jenis": "premium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 14689,
+     "termurah": 14239,
+     "wilayah_termurah": "Lamongan",
+     "termahal": 15284,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 9
+    },
+    {
+     "pekan": "2026-10-25",
+     "jenis": "premium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 14722,
+     "termurah": 14275,
+     "wilayah_termurah": "Lamongan",
+     "termahal": 15299,
+     "wilayah_termahal": "Sumenep",
+     "wilayah_di_atas_het": 10
+    },
+    {
+     "pekan": "2026-11-01",
+     "jenis": "premium",
+     "jenis_nilai": "aktual",
+     "rata_rata": 14761,
+     "termurah": 14303,
+     "wilayah_termurah": "Lamongan",
+     "termahal": 15348,
+     "wilayah_termahal": "Kota Surabaya",
+     "wilayah_di_atas_het": 12
+    },
+    {
+     "pekan": "2026-11-08",
+     "jenis": "premium",
+     "jenis_nilai": "prakiraan",
+     "rata_rata": 14797,
+     "termurah": 14333,
+     "wilayah_termurah": "Lamongan",
+     "termahal": 15423,
+     "wilayah_termahal": "Kota Surabaya",
+     "wilayah_di_atas_het": 15
+    },
+    {
+     "pekan": "2026-11-15",
+     "jenis": "premium",
+     "jenis_nilai": "prakiraan",
+     "rata_rata": 14834,
+     "termurah": 14363,
+     "wilayah_termurah": "Lamongan",
+     "termahal": 15498,
+     "wilayah_termahal": "Kota Surabaya",
+     "wilayah_di_atas_het": 15
+    },
+    {
+     "pekan": "2026-11-22",
+     "jenis": "premium",
+     "jenis_nilai": "prakiraan",
+     "rata_rata": 14871,
+     "termurah": 14393,
+     "wilayah_termurah": "Lamongan",
+     "termahal": 15573,
+     "wilayah_termahal": "Kota Surabaya",
+     "wilayah_di_atas_het": 18
+    },
+    {
+     "pekan": "2026-11-29",
+     "jenis": "premium",
+     "jenis_nilai": "prakiraan",
+     "rata_rata": 14908,
+     "termurah": 14423,
+     "wilayah_termurah": "Lamongan",
+     "termahal": 15647,
+     "wilayah_termahal": "Kota Surabaya",
+     "wilayah_di_atas_het": 19
+    }
+   ]
+  }
+ },
+ {
+  "grafik": "Heatmap harga 38 wilayah, 26 pekan terakhir",
+  "judul": "Heatmap harga 38 wilayah, 26 pekan terakhir",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "semua 38 kab/kota Jawa Timur",
+   "jenis_beras": "medium dan premium"
+  },
+  "data": {
+   "satuan": "rupiah per kg",
+   "jenis_beras": "medium",
+   "het": 13500,
+   "pekan_awal": "2026-05-10",
+   "pekan_aktual_terakhir": "2026-11-01",
+   "pekan_prakiraan_terakhir": "2026-11-29",
+   "wilayah": [
+    {
+     "wilayah": "Kota Malang",
+     "harga_awal": 12910,
+     "harga_aktual_terakhir": 13670,
+     "prakiraan_4_pekan": 13978,
+     "tertinggi_riwayat": 13670,
+     "pekan_di_atas_het": 3
+    },
+    {
+     "wilayah": "Kota Surabaya",
+     "harga_awal": 12886,
+     "harga_aktual_terakhir": 13671,
+     "prakiraan_4_pekan": 13970,
+     "tertinggi_riwayat": 13671,
+     "pekan_di_atas_het": 3
+    },
+    {
+     "wilayah": "Batu",
+     "harga_awal": 13031,
+     "harga_aktual_terakhir": 13672,
+     "prakiraan_4_pekan": 13931,
+     "tertinggi_riwayat": 13672,
+     "pekan_di_atas_het": 4
+    },
+    {
+     "wilayah": "Pamekasan",
+     "harga_awal": 13184,
+     "harga_aktual_terakhir": 13691,
+     "prakiraan_4_pekan": 13892,
+     "tertinggi_riwayat": 13691,
+     "pekan_di_atas_het": 4
+    },
+    {
+     "wilayah": "Sumenep",
+     "harga_awal": 13532,
+     "harga_aktual_terakhir": 13712,
+     "prakiraan_4_pekan": 13789,
+     "tertinggi_riwayat": 13712,
+     "pekan_di_atas_het": 23
+    },
+    {
+     "wilayah": "Sampang",
+     "harga_awal": 13346,
+     "harga_aktual_terakhir": 13642,
+     "prakiraan_4_pekan": 13760,
+     "tertinggi_riwayat": 13642,
+     "pekan_di_atas_het": 6
+    },
+    {
+     "wilayah": "Sidoarjo",
+     "harga_awal": 12773,
+     "harga_aktual_terakhir": 13461,
+     "prakiraan_4_pekan": 13726,
+     "tertinggi_riwayat": 13461,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Kota Mojokerto",
+     "harga_awal": 12648,
+     "harga_aktual_terakhir": 13396,
+     "prakiraan_4_pekan": 13699,
+     "tertinggi_riwayat": 13396,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Kota Pasuruan",
+     "harga_awal": 12706,
+     "harga_aktual_terakhir": 13398,
+     "prakiraan_4_pekan": 13667,
+     "tertinggi_riwayat": 13398,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Bangkalan",
+     "harga_awal": 13231,
+     "harga_aktual_terakhir": 13499,
+     "prakiraan_4_pekan": 13600,
+     "tertinggi_riwayat": 13499,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Kota Probolinggo",
+     "harga_awal": 12759,
+     "harga_aktual_terakhir": 13368,
+     "prakiraan_4_pekan": 13599,
+     "tertinggi_riwayat": 13368,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Pacitan",
+     "harga_awal": 12752,
+     "harga_aktual_terakhir": 13333,
+     "prakiraan_4_pekan": 13566,
+     "tertinggi_riwayat": 13333,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Kota Madiun",
+     "harga_awal": 12687,
+     "harga_aktual_terakhir": 13291,
+     "prakiraan_4_pekan": 13530,
+     "tertinggi_riwayat": 13291,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Kota Kediri",
+     "harga_awal": 12774,
+     "harga_aktual_terakhir": 13306,
+     "prakiraan_4_pekan": 13523,
+     "tertinggi_riwayat": 13306,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Kota Blitar",
+     "harga_awal": 12637,
+     "harga_aktual_terakhir": 13219,
+     "prakiraan_4_pekan": 13455,
+     "tertinggi_riwayat": 13219,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Malang",
+     "harga_awal": 12686,
+     "harga_aktual_terakhir": 13224,
+     "prakiraan_4_pekan": 13430,
+     "tertinggi_riwayat": 13224,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Trenggalek",
+     "harga_awal": 12720,
+     "harga_aktual_terakhir": 13166,
+     "prakiraan_4_pekan": 13345,
+     "tertinggi_riwayat": 13166,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Probolinggo",
+     "harga_awal": 12858,
+     "harga_aktual_terakhir": 13159,
+     "prakiraan_4_pekan": 13277,
+     "tertinggi_riwayat": 13159,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Gresik",
+     "harga_awal": 12925,
+     "harga_aktual_terakhir": 13164,
+     "prakiraan_4_pekan": 13262,
+     "tertinggi_riwayat": 13164,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Situbondo",
+     "harga_awal": 12757,
+     "harga_aktual_terakhir": 13057,
+     "prakiraan_4_pekan": 13175,
+     "tertinggi_riwayat": 13057,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Pasuruan",
+     "harga_awal": 12788,
+     "harga_aktual_terakhir": 13047,
+     "prakiraan_4_pekan": 13152,
+     "tertinggi_riwayat": 13047,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Kediri",
+     "harga_awal": 12777,
+     "harga_aktual_terakhir": 13028,
+     "prakiraan_4_pekan": 13135,
+     "tertinggi_riwayat": 13028,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Tulungagung",
+     "harga_awal": 12674,
+     "harga_aktual_terakhir": 12995,
+     "prakiraan_4_pekan": 13117,
+     "tertinggi_riwayat": 12995,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Bondowoso",
+     "harga_awal": 12686,
+     "harga_aktual_terakhir": 12993,
+     "prakiraan_4_pekan": 13106,
+     "tertinggi_riwayat": 12993,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Blitar",
+     "harga_awal": 12665,
+     "harga_aktual_terakhir": 12984,
+     "prakiraan_4_pekan": 13105,
+     "tertinggi_riwayat": 12984,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Mojokerto",
+     "harga_awal": 12748,
+     "harga_aktual_terakhir": 12993,
+     "prakiraan_4_pekan": 13083,
+     "tertinggi_riwayat": 12993,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Jombang",
+     "harga_awal": 12731,
+     "harga_aktual_terakhir": 12980,
+     "prakiraan_4_pekan": 13082,
+     "tertinggi_riwayat": 12980,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Lumajang",
+     "harga_awal": 12742,
+     "harga_aktual_terakhir": 12975,
+     "prakiraan_4_pekan": 13071,
+     "tertinggi_riwayat": 12975,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Ponorogo",
+     "harga_awal": 12679,
+     "harga_aktual_terakhir": 12955,
+     "prakiraan_4_pekan": 13060,
+     "tertinggi_riwayat": 12955,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Banyuwangi",
+     "harga_awal": 12714,
+     "harga_aktual_terakhir": 12947,
+     "prakiraan_4_pekan": 13049,
+     "tertinggi_riwayat": 12947,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Nganjuk",
+     "harga_awal": 12742,
+     "harga_aktual_terakhir": 12935,
+     "prakiraan_4_pekan": 13013,
+     "tertinggi_riwayat": 12935,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Magetan",
+     "harga_awal": 12756,
+     "harga_aktual_terakhir": 12927,
+     "prakiraan_4_pekan": 13004,
+     "tertinggi_riwayat": 12927,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Tuban",
+     "harga_awal": 12630,
+     "harga_aktual_terakhir": 12895,
+     "prakiraan_4_pekan": 13003,
+     "tertinggi_riwayat": 12895,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Madiun",
+     "harga_awal": 12660,
+     "harga_aktual_terakhir": 12866,
+     "prakiraan_4_pekan": 12949,
+     "tertinggi_riwayat": 12866,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Jember",
+     "harga_awal": 12633,
+     "harga_aktual_terakhir": 12857,
+     "prakiraan_4_pekan": 12946,
+     "tertinggi_riwayat": 12857,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Lamongan",
+     "harga_awal": 12507,
+     "harga_aktual_terakhir": 12805,
+     "prakiraan_4_pekan": 12925,
+     "tertinggi_riwayat": 12805,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Ngawi",
+     "harga_awal": 12472,
+     "harga_aktual_terakhir": 12781,
+     "prakiraan_4_pekan": 12905,
+     "tertinggi_riwayat": 12781,
+     "pekan_di_atas_het": 0
+    },
+    {
+     "wilayah": "Bojonegoro",
+     "harga_awal": 12583,
+     "harga_aktual_terakhir": 12799,
+     "prakiraan_4_pekan": 12888,
+     "tertinggi_riwayat": 12799,
+     "pekan_di_atas_het": 0
+    }
+   ]
+  }
+ }
+]

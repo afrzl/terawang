@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react"
+import { createContext, useContext, useEffect, useMemo, useState } from "react"
 
 /**
  * Data interpretasi grafik. Komponen grafik mendaftarkan data yang PERSIS mereka gambar ke Panel terdekat
@@ -33,16 +33,11 @@ export function useWadahTafsir() {
 export function useDataTafsir(kunci: string, data: unknown) {
   const daftar = useContext(Ctx)
   const json = daftar ? JSON.stringify(data ?? null) : ""
-  const terakhir = useRef<string>("")
-  useEffect(() => {
-    if (!daftar || json === terakhir.current) return
-    terakhir.current = json
-    daftar(kunci, JSON.parse(json))
-  }, [daftar, kunci, json])
   useEffect(() => {
     if (!daftar) return
+    daftar(kunci, JSON.parse(json))
     return () => daftar(kunci, undefined)
-  }, [daftar, kunci])
+  }, [daftar, kunci, json])
 }
 
 /** Bulatkan angka supaya data yang dikirim ringkas dan sama dengan yang terbaca di grafik. */

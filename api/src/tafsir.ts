@@ -125,9 +125,13 @@ const r1 = (x: number) => Math.round(x * 10) / 10
 
 /** Label baris: kunci teks pertama (nama, wilayah, bulan, ...). */
 function labelDari(o: Record<string, unknown>, i: number): string {
+  if (typeof o.dari === "string" && typeof o.ke === "string") return `${o.dari} ke ${o.ke}`
   for (const v of Object.values(o)) if (typeof v === "string" && v) return v
   return `#${i + 1}`
 }
+
+/** Kolom yang tidak bermakna dijumlahkan (persen, rasio, harga, jarak, indeks). */
+const BUKAN_JUMLAH = /persen|porsi|cakupan|harga|km|indeks|evi|lswi|vh|rata|nilai_acuan|hari|bulan$/i
 
 /**
  * Untuk setiap array (angka, atau objek berkolom angka) hitung awal, akhir, selisih, perubahan %, min, maks, total, rata-rata.
@@ -182,10 +186,11 @@ function statistik(nama: string, xs: [string, number | null][]): string {
     `min ${r4(mn[1])} (${mn[0]})`,
     `maks ${r4(mx[1])} (${mx[0]})`,
     `selisih maks-min ${r4(mx[1] - mn[1])}`,
-    `total ${r4(tot)}`,
     `rata-rata ${r4(tot / ada.length)}`,
   ]
-  if (tot > 0 && ada.every((x) => x[1] >= 0)) bag.push(`porsi maks ${r1((mx[1] / tot) * 100)}%`)
+  const jumlah = !waktu && !BUKAN_JUMLAH.test(nama.split(".").pop() ?? "") && ada.every((x) => x[1] >= 0)
+  if (jumlah) bag.push(`total ${r4(tot)}`)
+  if (jumlah && tot > 0) bag.push(`porsi ${mx[0]} terhadap total ${r1((mx[1] / tot) * 100)}%`)
   return bag.filter(Boolean).join("; ")
 }
 
@@ -251,7 +256,7 @@ function cocok(a: AngkaJawaban, sah: number[]): boolean {
   for (const d0 of sah) {
     const d = Math.abs(d0)
     // ditulis apa adanya, atau dengan satuan rb/jt yang menggeser skala, atau sebagai persen dari pecahan
-    const calon = [d, d / a.pengali, d * 1e3, d / 1e3, d * 1e6, d / 1e6]
+    const calon = [d, d / a.pengali, d * 1e3, d / 1e3]
     if (a.persen) calon.push(d * 100)
     for (const c of calon) if (Math.abs(c - v) <= Math.max(tol, Math.abs(c) * 0.005)) return true
   }
