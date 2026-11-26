@@ -69,7 +69,6 @@ export function useTafsir({ judul, data, keterangan }: { judul: string; data: Re
         ) : (
           <p>{st.teks}</p>
         )}
-        {st.k === "ok" && <small>Dari data yang tampil di grafik ini. Angka sudah dicocokkan ke data.</small>}
         {st.k !== "muat" && (
           <button type="button" className="tafsir-tutup" onClick={() => setSt({ k: "diam" })} aria-label="Tutup interpretasi">
             <X size={14} />
