@@ -14,6 +14,12 @@ if [ "$PAKSA" != 1 ] && [ "$LAMA" = "$BARU" ]; then
   exit 0
 fi
 
+# Pintu SSH (~/bin/terawang-autodeploy) ikut diperbarui dari repo; berlaku mulai deploy berikutnya.
+GERBANG="$HOME/bin/terawang-autodeploy"
+if [ -f deploy/autodeploy-ssh.sh ] && ! cmp -s deploy/autodeploy-ssh.sh "$GERBANG"; then
+  mkdir -p "$HOME/bin" && install -m 755 deploy/autodeploy-ssh.sh "$GERBANG" && echo "Pintu SSH auto-deploy diperbarui."
+fi
+
 BERUBAH="$( [ "$LAMA" = "$BARU" ] || git diff --name-only "$LAMA" "$BARU" )"
 echo "Berkas berubah: $(printf '%s\n' "$BERUBAH" | grep -c . || true)"
 berubah() { [ "$PAKSA" = 1 ] || printf '%s\n' "$BERUBAH" | grep -qE "$1"; }
