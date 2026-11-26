@@ -1,4 +1,5 @@
-import { DERET } from "@/lib/api"
+import { DERET, FASE_API, type FaseData } from "@/lib/api"
+import faseBundel from "@/lib/fase_bulanan.json"
 import { useMemo, useState } from "react"
 import { Sprout } from "lucide-react"
 import { LineChart } from "@/components/charts/LineChart"
@@ -16,7 +17,6 @@ import { bul, useDataTafsir } from "@/lib/tafsir"
 import { PRODUKTIVITAS, luasPanen, produksiBatas, produksiPrevRentang, produksiRentang, yoyRentang } from "@/lib/petaLayers"
 
 const STEPS = ["--s1", "--s2", "--s3", "--s4", "--s5"]
-const PHASE_COLORS = ["--s0", "--s1", "--s2", "--s4", "--s5"]
 const ROW_H = 22
 const MT = 8
 
@@ -57,9 +57,9 @@ export default function Produksi() {
       <KpiStrip
         items={[
           pisah
-            ? { k: satuan === "gkg" ? "Produksi padi (GKG), ton" : "Produksi beras, ton", v: <KpiPerWilayah wil={wilP} warna={warna} nilai={prodWil} />, t: "per wilayah, % = YoY" }
+            ? { k: `${sat.kpi}, ton`, v: <KpiPerWilayah wil={wilP} warna={warna} nilai={prodWil} />, t: "per wilayah, % = YoY" }
             : {
-            k: satuan === "gkg" ? "Produksi padi (GKG)" : "Produksi beras",
+            k: sat.kpi,
             v: prodT >= 1000 ? `${nf(prodT / 1000, 2)} jt ton` : `${nf(prodT, 0)} rb ton`,
             t: (
               <>
@@ -118,15 +118,25 @@ function SatPanel({ wilayah, onPilih, kandidat }: { wilayah?: string; onPilih: (
   )
 }
 
+/** Ringkas: n kabupaten teratas (tanpa kota). Semua: seluruh wilayah terfilter, termasuk kota. */
+function useSemua<T extends { n: string }>(urut: T[], n: number) {
+  const [semua, setSemua] = useState(false)
+  const ringkas = urut.filter((k) => !byName[k.n]?.isKota).slice(0, n)
+  const tombol =
+    urut.length > ringkas.length ? (
+      <button type="button" className="wt-chip" style={{ marginTop: 8 }} aria-pressed={semua} onClick={() => setSemua((s) => !s)}>
+        {semua ? `Tampilkan ${ringkas.length} teratas` : `Tampilkan semua (${urut.length} wilayah)`}
+      </button>
+    ) : null
+  return { daftar: semua ? urut : ringkas, tombol }
+}
+
 function HarvestCalendar() {
   const { sel, select } = useSelection()
   const { show, hide } = useTooltip()
   const wil = useWilayah()
   const { mulai, akhir } = useFilter()
-  const top = wil
-    .filter((k) => !k.isKota)
-    .sort((a, b) => b.est - a.est)
-    .slice(0, 14)
+  const { daftar: top, tombol } = useSemua([...wil].sort((a, b) => b.est - a.est), 14)
   const bulan = [...Array(N_BULAN)].map((_, i) => i)
   const cal = top.map((k) => bulan.map((i) => luasPanen(k, i) / 1000))
   const W = 720
@@ -196,6 +206,7 @@ function HarvestCalendar() {
           </span>
         ))}
       </div>
+      {tombol}
     </>
   )
 }
@@ -389,13 +400,15 @@ function EstimateBars() {
   const { sel, select } = useSelection()
   const { show, hide } = useTooltip()
   const f = sat.f / 1000 // ton beras -> ribu ton satuan terpilih
-  const est = wil.filter((k) => !k.isKota)
-    .map((k) => {
-      const b = produksiBatas(k, mulai, akhir)
-      return { n: k.n, est: produksiRentang(k, mulai, akhir) * f, lo: b.lo * f, hi: b.hi * f, prev: produksiPrevRentang(k, mulai, akhir) * f }
-    })
-    .sort((a, b) => b.est - a.est)
-    .slice(0, 16)
+  const { daftar: est, tombol } = useSemua(
+    wil
+      .map((k) => {
+        const b = produksiBatas(k, mulai, akhir)
+        return { n: k.n, est: produksiRentang(k, mulai, akhir) * f, lo: b.lo * f, hi: b.hi * f, prev: produksiPrevRentang(k, mulai, akhir) * f }
+      })
+      .sort((a, b) => b.est - a.est),
+    16,
+  )
   useDataTafsir("estimasi", {
     satuan: `ribu ton ${sat.lab}`,
     keterangan: "proyeksi model K1 dengan selang 90%, dibanding periode sama 2025 (BPS)",
@@ -409,6 +422,7 @@ function EstimateBars() {
   const xs = scale(0, xm, ml, W - mr)
 
   return (
+    <>
     <svg viewBox={`0 0 ${W} ${H}`} role="img">
       <g className="grid">
         {ticks(0, xm, 5).map((t) => (
@@ -465,24 +479,66 @@ function EstimateBars() {
         )
       })}
     </svg>
+    {tombol}
+    </>
   )
+}
+
+/** Fase tumbuh per bulan: pipeline (/api/fase) atau salinan bundle. */
+const FASE: FaseData = FASE_API ?? (faseBundel as FaseData)
+/** Nama fase (berkas lama tanpa "Tanaman lain" tetap terbaca) dan warnanya. */
+const FASE_NAMA = FASE.fase?.length ? FASE.fase : PHASES
+const FASE_WARNA = ["--s0", "--s1", "--s2", "--s4", "--s5", "--fase-lain"]
+const kunciBulan = (i: number) => `${2026 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, "0")}`
+const tglPendek = (s: string) => {
+  const [, m, d] = s.split("-").map(Number)
+  return `${d} ${BULAN_NAMA[m - 1]}`
+}
+
+/** Fase untuk bulan terpilih (akhir rentang). Bulan tanpa citra (mis. bulan depan) memakai bulan terakhir yang ada, dengan keterangan. */
+function useFaseBulan() {
+  const { akhir } = useFilter()
+  const minta = kunciBulan(akhir)
+  const ada = Object.keys(FASE.bulan).sort()
+  const kunci = FASE.bulan[minta] ? minta : ada.filter((b) => b <= minta).pop() ?? ada[ada.length - 1]
+  const b = FASE.bulan[kunci]
+  const [th, bl] = kunci.split("-").map(Number)
+  const namaBulan = `${BULAN_NAMA[bl - 1]} ${th}`
+  const citra = `citra ${b.tanggal.map(tglPendek).join(", ")} ${th}`
+  const ket =
+    kunci === minta
+      ? `Fase ${namaBulan}: rata-rata ${citra}`
+      : `Belum ada citra untuk ${bulanLabel(akhir)}; ditampilkan ${namaBulan} (${citra})`
+  return { kunci, data: b.wilayah, ket }
 }
 
 function PhaseBars() {
   const wil = useWilayah()
   const { sel, select } = useSelection()
   const { show, hide } = useTooltip()
-  const ps = wil.filter((k) => !k.isKota)
-    .sort((a, b) => b.ph[2] + b.ph[3] - (a.ph[2] + a.ph[3]))
-    .slice(0, 16)
+  const fase = useFaseBulan()
+  // Luas (ribu ha) per fase = porsi titik × luas sawah wilayah; diurutkan menurut generatif + siap panen (panen 1-2 bulan ke depan),
+  // supaya sebanding dengan kalender panen (hektar).
+  const { daftar: ps, tombol } = useSemua(
+    wil
+      .filter((k) => fase.data[k.n] && k.ha > 0)
+      .map((k) => ({ n: k.n, pct: fase.data[k.n], rb: fase.data[k.n].map((v) => (v / 100) * (k.ha / 1000)) }))
+      .sort((a, b) => b.rb[3] + b.rb[4] - (a.rb[3] + a.rb[4])),
+    16,
+  )
   useDataTafsir("fase", {
-    satuan: "persen luas sawah per fase tumbuh (citra satelit terbaru)",
-    wilayah: ps.map((k) => ({ wilayah: k.n, ...Object.fromEntries(PHASES.map((n, j) => [n, bul(k.ph[j], 0)])) })),
+    satuan: `ribu ha per fase tumbuh (porsi titik sampel × luas sawah); padi = sawah tergenang dalam 120 hari terakhir, urut siap panen + generatif; ${fase.ket}`,
+    wilayah: ps.map((k) => ({ wilayah: k.n, ...Object.fromEntries(FASE_NAMA.map((n, j) => [n, bul(k.rb[j] ?? 0, 1)])) })),
   })
   const W = 560
   const ml = 96
   const H = MT + ps.length * ROW_H + 40
-  const x = scale(0, 100, ml, W - 10)
+  // Batang hanya padi, dari yang paling dekat panen (rata kiri, sama dengan urutan): siap panen, generatif, vegetatif, olah tanah.
+  // Bera dan tanaman lain hanya di tooltip.
+  const TAMPIL = [4, 3, 2, 1]
+  const maks = Math.max(1, ...ps.map((k) => sum(TAMPIL, (j) => k.rb[j] ?? 0)))
+  const tk = ticks(0, maks, 4)
+  const x = scale(0, Math.max(maks, tk[tk.length - 1]), ml, W - 10)
 
   return (
     <>
@@ -495,9 +551,10 @@ function PhaseBars() {
               <text x={ml - 8} y={y + 4} textAnchor="end" className={k.n === sel ? "lab-b" : "lab"}>
                 {short(k.n)}
               </text>
-              {k.ph.map((v, j) => {
-                const x0 = x(acc) + (j ? 1 : 0)
-                const w = Math.max(0, x(acc + v) - x(acc) - (j ? 1 : 0))
+              {TAMPIL.map((j, urut) => {
+                const v = k.rb[j] ?? 0
+                const x0 = x(acc) + (urut ? 1 : 0)
+                const w = Math.max(0, x(acc + v) - x(acc) - (urut ? 1 : 0))
                 acc += v
                 return (
                   <rect
@@ -506,16 +563,19 @@ function PhaseBars() {
                     y={y - 6}
                     width={w}
                     height={12}
-                    fill={`var(${PHASE_COLORS[j]})`}
+                    fill={`var(${FASE_WARNA[j]})`}
                     style={{ cursor: "pointer" }}
                     onMouseMove={(e) =>
                       show(
                         <>
                           <b>{k.n}</b>
-                          {PHASES.map((n, pj) => (
+                          {FASE_NAMA.map((n, pj) => (
                             <span key={n}>
                               <br />
-                              {n} <span className="m">{nf(k.ph[pj], 0)}%</span>
+                              {n}{" "}
+                              <span className="m">
+                                {nf(k.rb[pj] ?? 0, 1)} rb ha · {nf(k.pct[pj] ?? 0, 0)}%
+                              </span>
                             </span>
                           ))}
                         </>,
@@ -530,20 +590,27 @@ function PhaseBars() {
             </g>
           )
         })}
-        {[0, 25, 50, 75, 100].map((t) => (
+        {tk.map((t) => (
           <text key={t} x={x(t)} y={H - 24} textAnchor="middle">
-            {t}%
+            {nf(t, 0)}
           </text>
         ))}
+        <text x={W - 10} y={H - 8} textAnchor="end">
+          ribu ha padi
+        </text>
       </svg>
       <div className="legend" style={{ padding: "4px 0 0" }}>
-        {PHASES.map((n, j) => (
-          <span key={n}>
-            <span className="sw" style={{ background: `var(${PHASE_COLORS[j]})`, outline: "1px solid var(--rule)" }} />
-            {n}
+        {TAMPIL.map((j) => (
+          <span key={j}>
+            <span className="sw" style={{ background: `var(${FASE_WARNA[j]})`, outline: "1px solid var(--rule)" }} />
+            {FASE_NAMA[j]}
           </span>
         ))}
       </div>
+      <div className="method" style={{ marginTop: 6 }}>
+        {fase.ket}
+      </div>
+      {tombol}
     </>
   )
 }

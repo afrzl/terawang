@@ -7,13 +7,14 @@
  *   GET /api/sphp      hasil K3b terbaru (app.rekomendasi_sphp), hanya untuk akun berhak `dasbor_sphp` (dicek ke layanan admin)
  *   GET /api/citra     olahan citra per wilayah (gee_wilayah.json keluaran aset bronze_citra), bila berkasnya ada
  *   GET /api/deret     deret EVI/LSWI/VH per wilayah (deret_satelit.json keluaran aset deret_satelit_wilayah)
+ *   GET /api/fase      fase tumbuh per wilayah per bulan (fase_bulanan.json keluaran aset fase_tumbuh_bulanan)
  *   GET /api/gkp       harga GKP petani Jatim bulanan + prakiraan 1-3 bulan (gkp_prakiraan.json keluaran aset k3_prakiraan_gkp)
  *   GET /api/bulog     stok Bulog Jatim bulanan dan pengadaan per kantor cabang (silver.stok_bulog_bulanan, silver.pengadaan_bulog)
  *   POST /api/tafsir   interpretasi singkat satu grafik dari data yang dikirim dasbor (OpenAI, lihat tafsir.ts)
  *   GET /api/status    ringkas: model_run terakhir per jenis (untuk cek kesehatan)
  *
  * Deret bulanan memakai indeks 0 = Jan 2026 sampai bulan kini + 2 (horizon K2), sama dengan dasbor (src/lib/api.ts).
- * Env: DATABASE_URL (wajib), API_HOST (bawaan 127.0.0.1), API_PORT (3072), ADMIN_URL (http://127.0.0.1:3071), TERAWANG_GEE_JSON, TERAWANG_DERET_JSON.
+ * Env: DATABASE_URL (wajib), API_HOST (bawaan 127.0.0.1), API_PORT (3072), ADMIN_URL (http://127.0.0.1:3071), TERAWANG_GEE_JSON, TERAWANG_DERET_JSON, TERAWANG_FASE_JSON.
  *
  *   npm run api
  */
@@ -235,6 +236,7 @@ async function berhak(req: Request, hak: string) {
 const GEE_JSON = process.env.TERAWANG_GEE_JSON ?? path.join(os.homedir(), ".local/share/terawang/gee_wilayah.json")
 const GKP_JSON = process.env.TERAWANG_GKP_JSON ?? path.join(os.homedir(), ".local/share/terawang/gkp_prakiraan.json")
 const DERET_JSON = process.env.TERAWANG_DERET_JSON ?? path.join(os.homedir(), ".local/share/terawang/deret_satelit.json")
+const FASE_JSON = process.env.TERAWANG_FASE_JSON ?? path.join(os.homedir(), ".local/share/terawang/fase_bulanan.json")
 
 async function bulog() {
   const stok = await q<{ tahun: number; bulan: number; awal: number; masuk: number; keluar: number; akhir: number; jd: string }>(
@@ -301,6 +303,14 @@ app.get("/api/deret", async (_req, res) => {
     res.set("Cache-Control", "no-store").type("application/json").send(isi)
   } catch {
     res.status(404).json({ galat: "berkas deret satelit belum ada" })
+  }
+})
+app.get("/api/fase", async (_req, res) => {
+  try {
+    const isi = await fs.readFile(FASE_JSON, "utf8")
+    res.set("Cache-Control", "no-store").type("application/json").send(isi)
+  } catch {
+    res.status(404).json({ galat: "berkas fase tumbuh bulanan belum ada" })
   }
 })
 app.get("/api/gkp", async (_req, res) => {

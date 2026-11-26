@@ -16,7 +16,7 @@ function useKonteks(keterangan?: string): Record<string, string> {
       const n = f.W.length
       out.wilayah = n === WILAYAH.length ? `semua ${n} kab/kota Jawa Timur` : n <= 10 ? f.W.map((k) => k.n).join(", ") : `${n} kab/kota terpilih`
     }
-    if (t.satuan) out.satuan_produksi = f.satuan === "gkg" ? "gabah kering giling (GKG)" : SATUAN.beras.lab
+    if (t.satuan) out.satuan_produksi = SATUAN[f.satuan].panjang
     if (t.jenis) out.jenis_beras = f.jenisHarga.join(" dan ")
   }
   if (keterangan) out.keterangan = keterangan

@@ -156,6 +156,29 @@ def k3_rekomendasi_sphp(context: AssetExecutionContext, repo: Repo, db: Database
     return rute
 
 
+def berkas_fase() -> Path:
+    """Fase tumbuh per kab/kota per bulan untuk dasbor (dibaca API /api/fase)."""
+    return Path(os.environ.get("TERAWANG_FASE_JSON", Path.home() / ".local/share/terawang/fase_bulanan.json"))
+
+
+@asset(group_name=GRUP, kinds={"python", "json"}, deps=[AssetKey("bronze_titik_satelit")],
+       description="Fase tumbuh padi (bera, olah tanah/genangan, vegetatif, generatif, siap panen) per kab/kota per bulan dari 400 titik "
+                   "sawah Sentinel-2 EVI/LSWI (cadangan Sentinel-1 VV), aturan ambang (scripts/k1/fase_bulanan.py) -> fase_bulanan.json "
+                   "(grafik 'Fase tumbuh per wilayah' halaman Produksi, mengikuti bulan terpilih).")
+def fase_tumbuh_bulanan(context: AssetExecutionContext, repo: Repo, sumber_citra: SumberCitra) -> MaterializeResult:
+    keluar = berkas_fase()
+    keluar.parent.mkdir(parents=True, exist_ok=True)
+    tmp = keluar.with_suffix(".tmp")
+    repo.jalankan([sys.executable, "scripts/k1/fase_bulanan.py", "--folder", str(sumber_citra.folder_titik(repo)), "--keluar", str(tmp)],
+                  log=context.log)
+    tmp.replace(keluar)
+    isi = json.loads(keluar.read_text(encoding="utf-8"))
+    akhir = max(isi["bulan"])
+    rata = pd.DataFrame(isi["bulan"][akhir]["wilayah"]).T.mean().round(1).tolist()
+    return MaterializeResult(metadata={"berkas": str(keluar), "bulan": len(isi["bulan"]), "akuisisi_terakhir": isi["tanggal_terakhir"],
+                                       f"rata_jatim_{akhir}": json.dumps(dict(zip(isi["fase"], rata)), ensure_ascii=False)})
+
+
 def berkas_deret() -> Path:
     """Deret satelit per kab/kota untuk dasbor (dibaca API /api/deret)."""
     return Path(os.environ.get("TERAWANG_DERET_JSON", Path.home() / ".local/share/terawang/deret_satelit.json"))

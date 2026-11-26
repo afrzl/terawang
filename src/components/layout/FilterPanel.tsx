@@ -224,6 +224,7 @@ export function FilterPanel() {
           <Select<Satuan>
             label="Satuan produksi"
             options={[
+              { value: "gkp", label: "Gabah kering panen (GKP)" },
               { value: "gkg", label: "Gabah kering giling (GKG)" },
               { value: "beras", label: "Beras" },
             ]}

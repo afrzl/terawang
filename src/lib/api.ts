@@ -130,7 +130,19 @@ export interface GkpKab {
   prakiraan: { bulan_target: string; horizon_bulan: number; harga_prediksi: number; p10: number; p90: number }[]
 }
 
-const [k1, k2, k3a, k3b, citra, bulog, deret, gkp] = await Promise.all([
+/** Fase tumbuh per wilayah per bulan (keluaran aset fase_tumbuh_bulanan, scripts/k1/fase_bulanan.py). */
+export interface FaseData {
+  dibuat: string
+  fase: string[]
+  /** Akuisisi Sentinel-2 terakhir (ISO). */
+  tanggal_terakhir: string
+  titik_per_wilayah?: number
+  sumber: string
+  /** Kunci "YYYY-MM": tanggal akuisisi dalam bulan itu dan persen luas per fase (urutan `fase`) per wilayah. */
+  bulan: Record<string, { tanggal: string[]; wilayah: Record<string, number[]> }>
+}
+
+const [k1, k2, k3a, k3b, citra, bulog, deret, gkp, fase] = await Promise.all([
   muat<K1Data>("/api/produksi"),
   muat<K2Data>("/api/stok"),
   muat<K3aData>("/api/harga"),
@@ -139,7 +151,10 @@ const [k1, k2, k3a, k3b, citra, bulog, deret, gkp] = await Promise.all([
   muat<BulogData>("/api/bulog"),
   muat<DeretData>("/api/deret", 4000),
   muat<GkpData>("/api/gkp", 4000),
+  muat<FaseData>("/api/fase", 4000),
 ])
+/** Fase tumbuh bulanan dari pipeline; null = pakai salinan di bundle (src/lib/fase_bulanan.json). */
+export const FASE_API: FaseData | null = fase
 /** Prakiraan harga GKP; null = belum ada (panel GKP disembunyikan). */
 export const GKP: GkpData | null = gkp
 /** Stok dan pengadaan Bulog dari database; null = salinan di bundle (src/lib/bulog.ts). */

@@ -25,15 +25,17 @@ export interface Tersedia {
   peta?: boolean
   /** Pilihan jenis beras (medium atau premium) tampil di sidebar. */
   jenis?: boolean
-  /** Pilihan satuan produksi (beras atau GKG) tampil di sidebar. */
+  /** Pilihan satuan produksi (beras, GKG, atau GKP) tampil di sidebar. */
   satuan?: boolean
 }
 
-/** Satuan produksi. GKG = beras / 0,5774 (faktor konversi BPS Jawa Timur, sama dengan BRS: Pacitan 2025 76.517 t beras = 132.516 t GKG). */
-export type Satuan = "beras" | "gkg"
-export const SATUAN: Record<Satuan, { f: number; lab: string }> = {
-  beras: { f: 1, lab: "beras" },
-  gkg: { f: 1 / 0.5774, lab: "GKG" },
+/** Satuan produksi, faktor konversi BPS Jawa Timur (sama di semua kab/kota; rilis produksi 2025):
+ *  GKG = beras / 0,5774 (BRS: Pacitan 2025 76.517 t beras = 132.516 t GKG); GKP = beras / 0,4802 (GKG = 0,8317 × GKP). */
+export type Satuan = "beras" | "gkg" | "gkp"
+export const SATUAN: Record<Satuan, { f: number; lab: string; kpi: string; panjang: string }> = {
+  beras: { f: 1, lab: "beras", kpi: "Produksi beras", panjang: "beras" },
+  gkg: { f: 1 / 0.5774, lab: "GKG", kpi: "Produksi padi (GKG)", panjang: "gabah kering giling (GKG)" },
+  gkp: { f: 1 / 0.4802, lab: "GKP", kpi: "Produksi padi (GKP)", panjang: "gabah kering panen (GKP)" },
 }
 const RUTE: Record<string, Tersedia> = {
   "/": { waktu: true, wilayah: true, hs: true, ss: true, peta: true },

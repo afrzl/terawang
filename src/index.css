@@ -4,7 +4,7 @@
 :root{
   --bg:#E7ECE6; --panel:#F7F9F5; --panel-2:#EEF2EC; --ink:#14201A; --ink-2:#46564C; --ink-3:#76857B; --rule:#C8D2C9; --rule-2:#DCE3DB;
   --accent:#1D3F74; --accent-soft:#DDE5F1; --onaccent:#FFFFFF;
-  --s0:#E1E6DE; --s1:#DDEBCF; --s2:#B5D49C; --s3:#7FB463; --s4:#4C8C3B; --s5:#255F25;
+  --s0:#E1E6DE; --s1:#DDEBCF; --s2:#B5D49C; --s3:#7FB463; --s4:#4C8C3B; --s5:#255F25; --fase-lain:#D9CCA6;
   --d1:#9C4612; --d2:#D69552; --d3:#CBCFC7; --d4:#6EAAA5; --d5:#1F6B69;
   --ok:#3D7B4B; --ok-map:#A8C6A3; --warn:#B57816; --crit:#B3372B; --ok-bg:#E2EEE2; --warn-bg:#F6EBD3; --crit-bg:#F6DEDA;
   --wa:#DCEFD9; --wa-in:#FFFFFF; --wa-ground:#E9E3D8;
@@ -16,7 +16,7 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0F1512; --panel:#161E1A; --panel-2:#1C2520; --ink:#E4EBE5; --ink-2:#AAB7AE; --ink-3:#7D8B82; --rule:#2E3A33; --rule-2:#232D28;
   --accent:#8FB2EA; --accent-soft:#1F2C42; --onaccent:#0F1512;
-  --s0:#222B26; --s1:#24382A; --s2:#2F5532; --s3:#4C8340; --s4:#7DB862; --s5:#B6E192;
+  --s0:#222B26; --s1:#24382A; --s2:#2F5532; --s3:#4C8340; --s4:#7DB862; --s5:#B6E192; --fase-lain:#4D4532;
   --d1:#F0A160; --d2:#A9693A; --d3:#3F4742; --d4:#3E8682; --d5:#80D0CA;
   --ok:#78C189; --ok-map:#2F4A35; --warn:#E3AE4F; --crit:#F0806F; --ok-bg:#1E3324; --warn-bg:#3A2F17; --crit-bg:#3E1F1A;
   --r1:#86C26E; --r2:#5FC2B8; --r3:#8FB2EA; --r4:#C49BE0; --r5:#E8B25C; --r6:#EE8F6F;
@@ -24,7 +24,7 @@
 :root[data-theme="dark"]{
   --bg:#0F1512; --panel:#161E1A; --panel-2:#1C2520; --ink:#E4EBE5; --ink-2:#AAB7AE; --ink-3:#7D8B82; --rule:#2E3A33; --rule-2:#232D28;
   --accent:#8FB2EA; --accent-soft:#1F2C42; --onaccent:#0F1512;
-  --s0:#222B26; --s1:#24382A; --s2:#2F5532; --s3:#4C8340; --s4:#7DB862; --s5:#B6E192;
+  --s0:#222B26; --s1:#24382A; --s2:#2F5532; --s3:#4C8340; --s4:#7DB862; --s5:#B6E192; --fase-lain:#4D4532;
   --d1:#F0A160; --d2:#A9693A; --d3:#3F4742; --d4:#3E8682; --d5:#80D0CA;
   --ok:#78C189; --ok-map:#2F4A35; --warn:#E3AE4F; --crit:#F0806F; --ok-bg:#1E3324; --warn-bg:#3A2F17; --crit-bg:#3E1F1A;
   --r1:#86C26E; --r2:#5FC2B8; --r3:#8FB2EA; --r4:#C49BE0; --r5:#E8B25C; --r6:#EE8F6F;
