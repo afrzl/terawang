@@ -73,14 +73,17 @@ interface Run {
 }
 
 /** model_run SELESAI terbaru untuk `jenis` yang punya baris di `tabel` (lewati run yang gagal di tengah jalan). */
-async function runTerbaru(jenis: string, tabel: string, syarat = "true"): Promise<Run | null> {
-  const r = await q<Run>(
-    `select m.id, m.nama_versi, m.dibuat_pada, m.selesai_pada, m.parameter, m.metrik from app.model_run m
-     where m.jenis = $1 and m.status = 'SELESAI' and exists (select 1 from ${tabel} t where t.model_run_id = m.id and ${syarat})
-     order by m.id desc limit 1`,
-    [jenis],
-  )
-  return r[0] ?? null
+async function runTerbaru(jenis: string, tabel: string, syarat = "true", per?: string): Promise<Run | null> {
+  const pilih = (batas: string, urut: string, args: unknown[]) =>
+    q<Run>(
+      `select m.id, m.nama_versi, m.dibuat_pada, m.selesai_pada, m.parameter, m.metrik from app.model_run m
+       where m.jenis = $1 and m.status = 'SELESAI' and ${batas} and exists (select 1 from ${tabel} t where t.model_run_id = m.id and ${syarat})
+       order by m.id ${urut} limit 1`,
+      args,
+    )
+  if (!per) return (await pilih("true", "desc", [jenis]))[0] ?? null
+  // Mode tanggal acuan (edisi Cerita pekan lalu): run terakhir yang sudah ada pada `per`; bila belum ada sama sekali, run paling awal.
+  return (await pilih("m.dibuat_pada <= $2::timestamptz", "desc", [jenis, per]))[0] ?? (await pilih("true", "asc", [jenis]))[0] ?? null
 }
 
 const metaRun = (r: Run, jenis_data: string | null) => ({
@@ -90,8 +93,8 @@ const metaRun = (r: Run, jenis_data: string | null) => ({
   jenis_data: jenis_data ?? "MODEL",
 })
 
-async function produksi() {
-  const run = await runTerbaru("K1_PRODUKSI", "app.prediksi_produksi")
+async function produksi(per?: string) {
+  const run = await runTerbaru("K1_PRODUKSI", "app.prediksi_produksi", "true", per)
   if (!run) return null
   const rows = await q<{ kab: string; tahun: number; bulan: number; v: number; lo: number | null; hi: number | null; jd: string }>(
     `select w.nama_repo kab, p.tahun, p.bulan, p.produksi_beras_ton v, p.batas_bawah_ton lo, p.batas_atas_ton hi, p.jenis_data::text jd
@@ -122,8 +125,8 @@ async function produksi() {
   }
 }
 
-async function stok() {
-  const run = await runTerbaru("K2_STOK", "app.estimasi_stok")
+async function stok(per?: string) {
+  const run = await runTerbaru("K2_STOK", "app.estimasi_stok", "true", per)
   if (!run) return null
   const rows = await q<{ kab: string; tahun: number; bulan: number; sk: string; stok: number; cak: number | null; st: string | null; jd: string }>(
     `select w.nama_repo kab, e.tahun, e.bulan, e.skenario::text sk, e.stok_ton stok, e.cakupan_bulan cak, e.status::text st, e.jenis_data::text jd
@@ -160,9 +163,9 @@ async function stok() {
   }
 }
 
-async function harga() {
+async function harga(per?: string) {
   // K3a: run yang punya keempat horizon (7, 14, 21, 28 hari). Run baseline lama (14/28 hari saja) dilewati.
-  const run = await runTerbaru("K3_HARGA", "app.prediksi_harga", "t.horizon_hari = 7")
+  const run = await runTerbaru("K3_HARGA", "app.prediksi_harga", "t.horizon_hari = 7", per)
   if (!run) return null
   const rows = await q<{ kab: string; kom: string; acuan: Date; h: number; m: number; lo: number | null; hi: number | null; st: string | null; jd: string }>(
     `select w.nama_repo kab, k.kode kom, p.tanggal_acuan acuan, p.horizon_hari h, p.harga_prediksi m, p.batas_bawah lo, p.batas_atas hi, p.status::text st, p.jenis_data::text jd
@@ -171,7 +174,12 @@ async function harga() {
     [run.id],
   )
   if (!rows.length) return null
-  const acuan = rows.map((r) => ymd(r.acuan)).sort().at(-1) as string
+  let acuan = rows.map((r) => ymd(r.acuan)).sort().at(-1) as string
+  // mode tanggal acuan: riwayat harga dipotong sehari sebelum `per`, jadi tidak ada harga dari masa depan
+  if (per) {
+    const batas = new Date(Date.parse(per) + 7 * 3600_000 - 864e5).toISOString().slice(0, 10)
+    if (batas < acuan) acuan = batas
+  }
   // Riwayat: rata-rata harian per pekan berakhir di tanggal acuan (pekan ke-0 = 7 hari terakhir), 26 pekan.
   const hist = await q<{ kab: string; kom: string; pekan: number; v: number | null }>(
     `select w.nama_repo kab, k.kode kom, floor(($1::date - h.tanggal) / 7)::int pekan, avg(h.harga_rata2_rp_kg) v
@@ -206,8 +214,8 @@ async function harga() {
   return { meta: { ...metaRun(run, rows[0]?.jd ?? null), tanggal_acuan: acuan, het: hetNama, kalibrasi }, wilayah }
 }
 
-async function sphp() {
-  const run = await runTerbaru("K3_SPHP", "app.rekomendasi_sphp")
+async function sphp(per?: string) {
+  const run = await runTerbaru("K3_SPHP", "app.rekomendasi_sphp", "true", per)
   if (!run) return null
   const rows = await q<{ tahun: number; bulan: number; dari: string; ke: string; ton: number; km: number | null; jd: string }>(
     `select s.tahun, s.bulan, d.nama_repo dari, k.nama_repo ke, s.volume_ton ton, s.jarak_jalan_km km, s.jenis_data::text jd
@@ -276,9 +284,16 @@ async function tembolok<T>(kunci: string, f: () => Promise<T>) {
 const app = express()
 app.disable("x-powered-by")
 
-const kirim = (nama: string, f: () => Promise<unknown>) => async (_req: Request, res: Response) => {
+/** `?per=<ISO>` (data sebagaimana ada pada waktu itu) hanya untuk penyusun edisi Cerita yang memakai token internal. */
+const perDari = (req: Request) => {
+  const p = req.query.per
+  return typeof p === "string" && !Number.isNaN(Date.parse(p)) && tokenCocok(req.headers["x-terawang-internal"]) ? new Date(p).toISOString() : undefined
+}
+
+const kirim = (nama: string, f: (per?: string) => Promise<unknown>) => async (req: Request, res: Response) => {
   try {
-    const v = await tembolok(nama, f)
+    const per = perDari(req)
+    const v = await tembolok(per ? `${nama}@${per}` : nama, () => f(per))
     if (v === null) return res.status(404).json({ galat: `belum ada hasil ${nama}` })
     res.set("Cache-Control", "no-store").json(v)
   } catch (e) {

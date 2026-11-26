@@ -11,7 +11,7 @@
  * Bila penyusunan gagal, halaman tetap menampilkan edisi terakhir yang ada; jadwal mencoba lagi tiap jam.
  *
  * Env: CERITA_JADWAL=0 mematikan jadwal, CERITA_HARI (1 = Senin), CERITA_JAM (6), CERITA_DIR (cadangan berkas),
- *      CERITA_SIMPAN=berkas (uji: simpan ke berkas saja), CERITA_IZINKAN_SIMULASI=1 (uji lokal tanpa database), CERITA_TOKEN (token internal; bawaan dibuat di ~/.config/terawang/cerita-token).
+ *      CERITA_MUNDUR (6: isi arsip sekian pekan ke belakang saat API mulai, 0 = mati), CERITA_SIMPAN=berkas (uji: simpan ke berkas saja), CERITA_IZINKAN_SIMULASI=1 (uji lokal tanpa database), CERITA_TOKEN (token internal; bawaan dibuat di ~/.config/terawang/cerita-token).
  */
 import { spawn } from "node:child_process"
 import crypto from "node:crypto"
@@ -111,6 +111,8 @@ export interface Edisi {
   aksi_sphp?: LangkahEdisi
   /** Angka kunci pekan ini dan pekan lalu (edisi sebelumnya), untuk "dibanding pekan lalu". */
   banding: { kini: Record<string, number | null>; lalu: Record<string, number | null> | null; pekan_lalu: string | null }
+  /** Waktu acuan data (ISO) untuk edisi yang disusun belakangan; kosong = data terbaru saat terbit. `terbit` = waktu edisi dibuat. */
+  per?: string
   pemeriksaan: { angka_diperiksa: number; dibuang: string[]; templat: string[]; token: number }
 }
 
@@ -238,12 +240,12 @@ export const tokenCocok = (t: unknown) => {
 
 // ---------------------------------------------------------------- fakta (proses anak)
 
-function susunFaktaAnak(base: string): Promise<{ fakta: FaktaPekan; kunci: Record<string, number | null> }> {
+function susunFaktaAnak(base: string, per?: string): Promise<{ fakta: FaktaPekan; kunci: Record<string, number | null> }> {
   return new Promise((ok, gagal) => {
     const tsx = path.join(AKAR_API, "node_modules/.bin/tsx")
     const anak = spawn(tsx, ["--tsconfig", "../tsconfig.app.json", "src/cerita-fakta.ts"], {
       cwd: AKAR_API,
-      env: { ...process.env, CERITA_API_BASE: base, CERITA_TOKEN: tokenInternal() },
+      env: { ...process.env, CERITA_API_BASE: base, CERITA_TOKEN: tokenInternal(), ...(per ? { CERITA_PER: per } : {}) },
       stdio: ["ignore", "pipe", "pipe"],
     })
     let out = ""
@@ -420,7 +422,7 @@ async function tulisNarasi(f: FaktaPekan, banding: Edisi["banding"]) {
 
 let sedang: Promise<Edisi> | null = null
 
-export async function terbitkan(opsi: { base: string; paksa?: boolean; pekan?: string } = { base: "http://127.0.0.1:3072" }): Promise<Edisi> {
+export async function terbitkan(opsi: { base: string; paksa?: boolean; pekan?: string; per?: string } = { base: "http://127.0.0.1:3072" }): Promise<Edisi> {
   if (sedang) return sedang
   sedang = (async () => {
     const pekan = opsi.pekan ?? pekanDari()
@@ -428,7 +430,7 @@ export async function terbitkan(opsi: { base: string; paksa?: boolean; pekan?: s
       const ada = await ambilEdisi(pekan)
       if (ada) return ada
     }
-    const { fakta, kunci } = await susunFaktaAnak(opsi.base)
+    const { fakta, kunci } = await susunFaktaAnak(opsi.base, opsi.per)
     if (!fakta.api_aktif && process.env.CERITA_IZINKAN_SIMULASI !== "1") throw new Error("data model tidak terbaca dari API (dasbor jatuh ke simulasi); edisi tidak diterbitkan")
 
     const sebelum = (await daftarEdisi()).find((x) => x.pekan < pekan)
@@ -476,6 +478,7 @@ export async function terbitkan(opsi: { base: string; paksa?: boolean; pekan?: s
       langkah,
       aksi_sphp: aksiSphp,
       banding,
+      ...(opsi.per ? { per: opsi.per } : {}),
       pemeriksaan: {
         angka_diperiksa: [fakta.judul, ...langkah.map((l) => l.teks), aksiSphp.teks].reduce((s, t) => s + angkaDiTeks(t).length, 0),
         dibuang,
@@ -488,6 +491,38 @@ export async function terbitkan(opsi: { base: string; paksa?: boolean; pekan?: s
     return e
   })().finally(() => (sedang = null))
   return sedang
+}
+
+/** Senin 06.00 WIB pekan `pekan` (ISO), sebagai waktu acuan data edisi itu. */
+export function saatTerbitPekan(pekan: string): string {
+  const m = pekan.match(/^(\d{4})-W(\d{2})$/)!
+  const jan4 = Date.UTC(+m[1], 0, 4)
+  const senin = jan4 - (((new Date(jan4).getUTCDay() || 7) - 1) * 864e5) + (+m[2] - 1) * 7 * 864e5
+  const hariTerbit = Number(process.env.CERITA_HARI ?? 1)
+  return new Date(senin + (hariTerbit - 1) * 864e5 + Number(process.env.CERITA_JAM ?? 6) * 3600_000 - WIB).toISOString()
+}
+const pekanMundur = (n: number) => pekanDari(Date.now() - n * 7 * 864e5)
+
+/**
+ * Isi arsip CERITA_MUNDUR pekan ke belakang (bawaan 6) yang belum punya edisi, dari yang terlama, dengan data sebagaimana ada pada
+ * Senin 06.00 pekan itu (run model terakhir sebelum waktu itu, atau run paling awal bila belum ada; riwayat harga dipotong di sana).
+ * Sesudahnya edisi pekan berjalan ditulis ulang supaya angka "pekan lalu"-nya terisi. Jalan sekali saat API mulai.
+ */
+async function isiMundur(base: string) {
+  const n = Number(process.env.CERITA_MUNDUR ?? 6)
+  if (!(n > 0) || !tafsirAktif()) return
+  const ada = new Set((await daftarEdisi()).map((x) => x.pekan))
+  const kurang = [...Array(n)].map((_, i) => pekanMundur(n - i)).filter((p) => !ada.has(p))
+  if (!kurang.length) return
+  for (const pekan of kurang) {
+    try {
+      await terbitkan({ base, pekan, per: saatTerbitPekan(pekan), paksa: true })
+    } catch (e) {
+      console.error(`[cerita] isi mundur ${pekan} gagal:`, (e as Error).message)
+    }
+  }
+  const kini = pekanDari()
+  if (Date.now() >= saatTerbit() && ada.has(kini)) await terbitkan({ base, pekan: kini, paksa: true }).catch((e) => console.error("[cerita] tulis ulang pekan ini gagal:", (e as Error).message))
 }
 
 /** Jadwal: cek tiap 10 menit; terbitkan edisi pekan berjalan sesudah saat terbit bila belum ada. Gagal = coba lagi sejam kemudian, maks 12 kali sepekan. */
@@ -507,6 +542,10 @@ export function mulaiJadwal(base: string) {
       console.error(`[cerita] edisi ${pekan} gagal (percobaan ${gagalPekan.get(pekan)}), edisi lama tetap tampil:`, (e as Error).message)
     }
   }
-  setTimeout(cek, 30_000).unref()
+  setTimeout(() => {
+    cek()
+      .then(() => isiMundur(base))
+      .catch((e) => console.error("[cerita] isi mundur:", (e as Error).message))
+  }, 30_000).unref()
   setInterval(cek, 10 * 60_000).unref()
 }
