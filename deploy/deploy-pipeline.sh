@@ -31,13 +31,17 @@ pkill -f "[d]agster-daemon run" 2>/dev/null || true
 
 # 0b. Tunggu run yang sedang berjalan selesai (daemon sudah mati, jadi tidak ada run baru). Tanpa ini npm ci menghapus
 #     node_modules di tengah run dan langkah ingest gagal ("tsx: not found"). Batas tunggu DEPLOY_TUNGGU_MENIT (default 45).
+#     Run yang tercatat berjalan sejak lebih dari DEPLOY_RUN_BASI_JAM (default 6) jam dianggap basi (proses sudah mati) dan diabaikan.
 if [ -x "$VENV/bin/dotenv" ] && [ -x "$VENV/bin/python" ]; then
   cek_run() {
     ( cd pipeline && DAGSTER_HOME="$DAGSTER_HOME" "$VENV/bin/dotenv" -f .env run --no-override -- "$VENV/bin/python" -c '
+import os, time
 from dagster import DagsterInstance, DagsterRunStatus, RunsFilter
+batas = time.time() - float(os.environ.get("DEPLOY_RUN_BASI_JAM", "6")) * 3600  # run "berjalan" lebih tua dari ini dianggap basi
 with DagsterInstance.get() as i:
-    r = i.get_runs(RunsFilter(statuses=[DagsterRunStatus.STARTING, DagsterRunStatus.STARTED, DagsterRunStatus.CANCELING]))
-    print(" ".join(f"{x.job_name}:{x.run_id[:8]}" for x in r))' 2>/dev/null ) || echo "?"
+    r = i.get_run_records(RunsFilter(statuses=[DagsterRunStatus.STARTING, DagsterRunStatus.STARTED, DagsterRunStatus.CANCELING]))
+    print(" ".join(f"{x.dagster_run.job_name}:{x.dagster_run.run_id[:8]}" for x in r
+                   if (x.start_time or x.create_timestamp.timestamp()) > batas))' 2>/dev/null ) || echo "?"
   }
   for i in $(seq 1 $(( ${DEPLOY_TUNGGU_MENIT:-45} * 2 ))); do
     AKTIF="$(cek_run)"
