@@ -5,6 +5,7 @@
 import { config } from "./config.ts"
 import { daftarPeringatan, infoBerasMurah, infoHarga, infoStok, ringkasanJatim, peringkatWilayah, riwayatHarga, infoProduksi, type UkuranPeringkat } from "./data.ts"
 import { angkaTakCocok } from "./angka.ts"
+import { kueriData, skemaData } from "./kueri.ts"
 import { cocokkan, labelWilayah, semuaWilayah, type Wilayah } from "./wilayah.ts"
 
 type Pesan =
@@ -69,6 +70,16 @@ const ALAT = [
     description: "Produksi padi/beras satu kab/kota: angka BPS (luas panen, gabah GKG, beras) beberapa tahun terakhir dan estimasi model per bulan dari citra satelit.",
     parameters: paramWilayah,
   },
+  {
+    name: "skema_data",
+    description: "Daftar tabel dan kolom data TERAWANG yang bisa dibaca (harga, produksi, stok, prakiraan, SPHP, jarak, wilayah, dsb). Panggil sebelum kueri_data.",
+    parameters: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "kueri_data",
+    description: "Jalankan satu kueri SQL SELECT (PostgreSQL) baca-saja ke data TERAWANG, maks. 50 baris. Pakai bila fungsi lain tidak cukup. Lihat skema_data dulu.",
+    parameters: { type: "object", properties: { sql: { type: "string" } }, required: ["sql"], additionalProperties: false },
+  },
   { name: "ringkasan_jatim", description: "Jumlah kab/kota Jawa Timur per status gabungan (aman/waspada/siaga).", parameters: { type: "object", properties: {}, additionalProperties: false } },
 ].map((f) => ({ type: "function" as const, function: f }))
 
@@ -91,6 +102,7 @@ const PROMPT_STATIS = [
   "9. Jangan membuka dengan salam (Halo, Hai); langsung ke jawaban. Keterangan seperti \"belum resmi\" hanya bila ada di hasil fungsi.",
   "10. Prakiraan harga hanya ada untuk 2 dan 4 pekan ke depan. Untuk jangka lebih jauh (mis. 2 bulan lagi), katakan jujur itu di luar jangkauan prakiraan TERAWANG, sebut prakiraan 4 pekan sebagai yang terjauh, dan sarankan LANGGANAN <wilayah> untuk peringatan dini.",
   "11. Pertanyaan perbandingan se-Jatim (termurah, termahal, seluruh kab/kota, stok paling tipis/defisit) WAJIB dijawab dengan memanggil peringkat_wilayah, bukan meminta pengguna mengetik format lain.",
+  "12. Utamakan fungsi khusus. Bila tidak ada yang cocok, lihat skema_data lalu pakai kueri_data (SELECT) untuk mengambil data yang ditanyakan; jangan menampilkan SQL ke pengguna.",
 ].join("\n")
 
 function promptDinamis(wilayahIngat: Wilayah | null, topik?: string): string {
@@ -117,6 +129,8 @@ async function jalankanAlat(nama: string, argumen: string): Promise<{ hasil: unk
     return { hasil: { galat: "argumen tidak valid" } }
   }
   if (nama === "ringkasan_jatim") return { hasil: await ringkasanJatim() }
+  if (nama === "skema_data") return { hasil: await skemaData() }
+  if (nama === "kueri_data") return { hasil: await kueriData(String(a.sql ?? "")) }
   if (nama === "peringkat_wilayah") {
     const p = a as { ukuran?: UkuranPeringkat; urutan?: "terendah" | "tertinggi"; jumlah?: number }
     const ukuran = (["harga_medium", "harga_premium", "stok_cakupan"] as const).find((x) => x === p.ukuran) ?? "harga_medium"

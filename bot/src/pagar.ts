@@ -133,7 +133,7 @@ export function rapikanJawaban(s: string): string {
     .replace(/^#{1,6}\s*/gm, "")
     .replace(/\[(.+?)\]\((https?:[^)]+)\)/g, "$1 ($2)")
     // nama fungsi internal tidak boleh bocor ke pengguna
-    .replace(/\s*(atau\s+)?\*?`?\b(harga_wilayah|stok_wilayah|beras_murah|daftar_peringatan|tentang_terawang|ringkasan_jatim|peringkat_wilayah|bandingkan_wilayah|riwayat_harga|produksi_wilayah|\w+_gagal)\b`?\*?/g, "")
+    .replace(/\s*(atau\s+)?\*?`?\b(harga_wilayah|stok_wilayah|beras_murah|daftar_peringatan|tentang_terawang|ringkasan_jatim|peringkat_wilayah|bandingkan_wilayah|riwayat_harga|produksi_wilayah|skema_data|kueri_data|\w+_gagal)\b`?\*?/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim()
   if (t.length > 1200) t = t.slice(0, 1150).replace(/\s+\S*$/, "") + "…"
