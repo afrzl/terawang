@@ -78,7 +78,7 @@ export async function infoHarga(w: Wilayah): Promise<InfoHarga> {
   ])
   const prediksi = await q<InfoHarga["prediksi"][number]>(
     `with run as (
-       select id from app.model_run where jenis = 'K3_HARGA' and status = 'SELESAI' order by dibuat_pada desc limit 1
+       select m.id from app.model_run m where m.jenis = 'K3_HARGA' and m.status = 'SELESAI' and exists (select 1 from app.prediksi_harga t where t.model_run_id = m.id and t.horizon_hari = 7) order by m.id desc limit 1
      )
      select p.horizon_hari, p.tanggal_acuan::text as tanggal_acuan, round(p.harga_prediksi)::int as harga_rp_kg,
             round(p.batas_bawah)::int as batas_bawah, round(p.batas_atas)::int as batas_atas, p.status::text as status
@@ -113,9 +113,13 @@ export type InfoStok = {
 export async function infoStok(w: Wilayah): Promise<InfoStok> {
   const rows = await q<{ tahun: number; bulan: number; stok_ton: number; cakupan_bulan: number | null; status: string | null }>(
     `with run as (
-       select id from app.model_run where jenis = 'K2_STOK' and status = 'SELESAI' order by dibuat_pada desc limit 1
+       -- sama dengan API dasbor: run SELESAI terbaru yang punya baris (lihat runTerbaru di api/src/server.ts)
+       select m.id from app.model_run m where m.jenis = 'K2_STOK' and m.status = 'SELESAI'
+          and exists (select 1 from app.estimasi_stok t where t.model_run_id = m.id)
+        order by m.id desc limit 1
      )
-     select tahun, bulan, round(stok_ton)::int as stok_ton, round(cakupan_bulan::numeric, 2)::float8 as cakupan_bulan, status::text as status
+     -- stok fisik tidak bisa negatif: dipotong di 0 (habis), sama seperti dasbor
+     select tahun, bulan, round(greatest(stok_ton, 0))::int as stok_ton, round(greatest(cakupan_bulan, 0)::numeric, 2)::float8 as cakupan_bulan, status::text as status
        from app.estimasi_stok
       where model_run_id = (select id from run) and wilayah_id = $1 and skenario = 'TENGAH'
         and (tahun * 12 + bulan) >= (extract(year from now() at time zone 'Asia/Jakarta') * 12 + extract(month from now() at time zone 'Asia/Jakarta'))
@@ -162,7 +166,7 @@ export async function infoBerasMurah(w: Wilayah): Promise<InfoBerasMurah> {
   )
   const sphp = await q<{ arah: "masuk" | "keluar"; nama: string; jenis: "KABUPATEN" | "KOTA"; volume_ton: number; jarak_jalan_km: number | null }>(
     `with run as (
-       select id from app.model_run where jenis = 'K3_SPHP' and status = 'SELESAI' order by dibuat_pada desc limit 1
+       select m.id from app.model_run m where m.jenis = 'K3_SPHP' and m.status = 'SELESAI' and exists (select 1 from app.rekomendasi_sphp t where t.model_run_id = m.id) order by m.id desc limit 1
      )
      select case when r.ke_id = $1 then 'masuk' else 'keluar' end as arah,
             w.nama, w.jenis::text as jenis, round(r.volume_ton)::int as volume_ton, round(r.jarak_jalan_km)::int as jarak_jalan_km
