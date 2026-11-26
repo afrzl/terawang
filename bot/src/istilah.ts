@@ -48,7 +48,7 @@ const KATA_SALAM = himpun([
 const KATA_TERIMA_KASIH = himpun([
   "terima", "kasih", "makasih", "makasi", "maksih", "trims", "trimakasih", "terimakasih", "thanks", "thank", "you", "thx", "tq", "ty",
   "tengkyu", "nuwun", "matur", "suwun", "ok", "oke", "okay", "okey", "okei", "sip", "siap", "mantap", "mantab", "baik", "noted",
-  "banyak", "ya", "yaa", "min", "kak", "bot", "deh", "dong", "nih", "👍", "🙏",
+  "banyak", "bnyk", "byk", "ya", "yaa", "min", "kak", "bot", "deh", "dong", "nih", "👍", "🙏",
 ])
 
 // cocok longgar untuk ejaan bebas ("asslamualaikum", "helloww", "trimakasi"): selisih 1 huruf (>=5 huruf) atau 2 (>=8 huruf)
@@ -59,6 +59,9 @@ function mirip(k: string, himpunan: Set<string>): boolean {
   for (const h of himpunan) if (h.length >= 4 && Math.abs(h.length - k.length) <= batas && levenshtein(k, h) <= batas) return true
   return false
 }
+
+export const TERIMA_KASIH = "Sama-sama! Kalau mau cek lagi, ketik saja nama wilayahnya, misalnya *HARGA Kediri*."
+export const POLA_TERIMA_KASIH = /(ma?ka?si|trima|terima ?kasi|thx|thank|tq\b|nuwun|suwun|tengkyu)/
 
 export const CONTOH = "Contoh yang bisa kamu tanyakan:\n• *HARGA Malang*\n• *STOK Jember*\n• _beras di Surabaya naik nggak bulan depan?_\n\nKetik *BANTUAN* untuk semua perintah."
 
@@ -71,7 +74,7 @@ export function jawabBasaBasi(teks: string): string | null {
     return `Halo! 👋 Aku bot *TERAWANG*, siap bantu info beras di Jawa Timur: harga, stok, dan beras murah/SPHP.\n\n${CONTOH}`
   }
   if (kata.every((k) => mirip(k, KATA_TERIMA_KASIH))) {
-    return "Sama-sama! Kalau mau cek lagi, ketik saja nama wilayahnya, misalnya *HARGA Kediri*."
+    return TERIMA_KASIH
   }
   return null
 }

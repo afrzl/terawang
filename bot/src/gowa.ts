@@ -32,12 +32,13 @@ export async function kirim(tujuan: string, pesan: string): Promise<string | und
 export async function mengetik(tujuan: string, action: "start" | "stop"): Promise<void> {
   const phone = tujuan.includes("@") ? tujuan : `${tujuan.replace(/\D/g, "")}@s.whatsapp.net`
   try {
-    await fetch(`${config.gowa.url}/send/chat-presence`, {
+    const res = await fetch(`${config.gowa.url}/send/chat-presence`, {
       method: "POST",
       headers: header(),
       body: JSON.stringify({ phone, action }),
       signal: AbortSignal.timeout(5_000),
     })
+    if (!res.ok) console.warn(`[gowa] chat-presence ${action} ditolak ${res.status}: ${(await res.text()).slice(0, 200)}`)
   } catch {
     /* abaikan */
   }

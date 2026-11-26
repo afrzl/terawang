@@ -7,7 +7,7 @@ import { q } from "./db.ts"
 import { jawabBebas, llmAktif, pilahNiat } from "./llm.ts"
 import * as pagar from "./pagar.ts"
 import { pantau } from "./pantau.ts"
-import { buangSalam, CONTOH, jawabBasaBasi, jawabIstilah } from "./istilah.ts"
+import { buangSalam, CONTOH, jawabBasaBasi, jawabIstilah, POLA_TERIMA_KASIH, TERIMA_KASIH } from "./istilah.ts"
 import { cariDiKalimat, cocokkan, labelWilayah, normal, semuaWilayah, type Wilayah } from "./wilayah.ts"
 
 type Perintah = "harga" | "stok" | "sphp" | "peringatan" | "langganan" | "berhenti" | "lapor" | "bantuan"
@@ -215,7 +215,7 @@ async function pesanBebas(k: kontak.Kontak, teks: string, pilihan: Wilayah | nul
       const p = await pilahNiat(teks)
       pagar.catatToken(p.token)
       console.log(`[llm] pilah kontak=${k.id} niat=${p.niat} token=${p.token}`)
-      if (p.niat === "salam") return { ...sapa, intent: "salam_pilah" }
+      if (p.niat === "salam") return POLA_TERIMA_KASIH.test(normal(teks)) ? { teks: TERIMA_KASIH, intent: "salam_pilah", wilayahId: null } : { ...sapa, intent: "salam_pilah" }
       if (p.niat === "lain") return { teks: tolak.teks, intent: `tolak_${tolak.alasan}`, wilayahId: null }
       lolosPilah = true
     } catch (e) {

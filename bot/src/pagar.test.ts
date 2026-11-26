@@ -65,5 +65,6 @@ test("salam longgar: huruf berulang dan ejaan bebas", async () => {
   assert.match(jawabBasaBasi("asslamualaikum") ?? "", /^Waalaikumsalam/)
   assert.match(jawabBasaBasi("makasiii kak") ?? "", /Sama-sama/)
   assert.match(jawabBasaBasi("trimakasi") ?? "", /Sama-sama/)
+  assert.match(jawabBasaBasi("trimakasih bnyk") ?? "", /Sama-sama/)
   for (const s of ["padi", "harga beras", "stok jember", "siapa presiden"]) assert.equal(jawabBasaBasi(s), null, s)
 })
