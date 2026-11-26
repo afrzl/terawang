@@ -21,14 +21,17 @@ export function angkaDariTeks(teks: string): number[] {
 export function angkaDariData(data: unknown, keluar: number[] = []): number[] {
   if (typeof data === "number") keluar.push(data)
   else if (typeof data === "string") keluar.push(...angkaDariTeks(data.replace(/-/g, " ")))
-  else if (Array.isArray(data)) for (const x of data) angkaDariData(x, keluar)
+  else if (Array.isArray(data)) {
+    keluar.push(data.length) // "5 kab/kota", "38 wilayah": jumlah baris hasil fungsi
+    for (const x of data) angkaDariData(x, keluar)
+  }
   else if (data && typeof data === "object") for (const x of Object.values(data)) angkaDariData(x, keluar)
   return keluar
 }
 
 const dekat = (a: number, b: number) => Math.abs(a - b) <= Math.max(Math.abs(b) * 0.005, 0.051)
 
-/** Angka di jawaban yang tidak bisa dilacak ke data. Bilangan bulat kecil (<=31: tanggal, pekan, urutan) dan tahun dilewati. */
+/** Angka di jawaban yang tidak bisa dilacak ke data. Bilangan bulat <= 38 (tanggal, pekan, nomor urut, jumlah kab/kota Jatim) dan tahun dilewati. */
 export function angkaTakCocok(jawaban: string, data: unknown[], teksPengguna: string): number[] {
   const sumber = [...new Set(data.flatMap((d) => angkaDariData(d)))].filter((x) => Number.isFinite(x))
   const dariPengguna = angkaDariTeks(teksPengguna)
@@ -42,7 +45,7 @@ export function angkaTakCocok(jawaban: string, data: unknown[], teksPengguna: st
     }
   }
   return angkaDariTeks(jawaban).filter((n) => {
-    if (Number.isInteger(n) && n <= 31) return false
+    if (Number.isInteger(n) && n <= 38) return false
     if (Number.isInteger(n) && n >= 2000 && n <= 2100) return false
     if (dariPengguna.some((u) => dekat(n, u))) return false
     if (sumber.some((s) => dekat(n, s))) return false

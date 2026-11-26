@@ -266,6 +266,45 @@ export async function riwayatHarga(w: Wilayah, hari = 56) {
   return { wilayah: labelWilayah(w), rentang_hari: h, per_pekan: rows }
 }
 
+/**
+ * Produksi padi/beras satu kab/kota: angka BPS (silver.produksi_padi, tahunan/periode) beberapa tahun terakhir
+ * dan estimasi model K1 per bulan (app.prediksi_produksi, run terbaru) untuk tahun berjalan dan berikutnya.
+ */
+export async function infoProduksi(w: Wilayah) {
+  const [bps, model] = await Promise.all([
+    q<{ tahun: number; granularitas: string; bulan_awal: number; bulan_akhir: number; status_angka: string; luas_panen_ha: number | null; produksi_gkg_ton: number | null; produksi_beras_ton: number | null }>(
+      `select tahun, granularitas::text as granularitas, bulan_awal, bulan_akhir, status_angka::text as status_angka,
+              round(luas_panen_ha)::int as luas_panen_ha, round(produksi_gkg_ton)::int as produksi_gkg_ton, round(produksi_beras_ton)::int as produksi_beras_ton
+         from silver.produksi_padi
+        where wilayah_id = $1 and granularitas in ('TAHUNAN', 'PERIODE') and tahun >= extract(year from now())::int - 3
+        order by tahun desc, bulan_awal limit 12`,
+      [w.id],
+    ),
+    q<{ tahun: number; bulan: number; produksi_beras_ton: number; batas_bawah_ton: number | null; batas_atas_ton: number | null }>(
+      `with run as (
+         select m.id from app.model_run m where m.jenis = 'K1_PRODUKSI' and m.status = 'SELESAI'
+            and exists (select 1 from app.prediksi_produksi t where t.model_run_id = m.id)
+          order by m.id desc limit 1
+       )
+       select tahun, bulan, round(produksi_beras_ton)::int as produksi_beras_ton,
+              round(batas_bawah_ton)::int as batas_bawah_ton, round(batas_atas_ton)::int as batas_atas_ton
+         from app.prediksi_produksi
+        where model_run_id = (select id from run) and wilayah_id = $1 and tahun >= extract(year from now())::int
+        order by tahun, bulan limit 15`,
+      [w.id],
+    ),
+  ])
+  const perTahun = new Map<number, number>()
+  for (const m of model) perTahun.set(m.tahun, (perTahun.get(m.tahun) ?? 0) + m.produksi_beras_ton)
+  return {
+    wilayah: labelWilayah(w),
+    bps,
+    estimasi_model_bulanan: model,
+    estimasi_model_total_per_tahun: [...perTahun].map(([tahun, ton]) => ({ tahun, produksi_beras_ton: ton, bulan_tercakup: model.filter((m) => m.tahun === tahun).length })),
+    catatan: "BPS = angka resmi (TETAP/SEMENTARA/POTENSI). Estimasi model dari citra satelit, bukan angka resmi.",
+  }
+}
+
 /** Ringkasan Jatim: jumlah kab/kota per status gabungan pada tanggal status terakhir. */
 export async function ringkasanJatim() {
   return q<{ status: Tingkat; jumlah: number }>(

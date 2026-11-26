@@ -12,3 +12,7 @@ test("angka jawaban harus dari data", () => {
   assert.deepEqual(angkaTakCocok("Selisih premium dan medium Rp3.383/kg.", data, ""), []) // selisih dua angka data
   assert.deepEqual(angkaTakCocok("Harga medium Rp13.200/kg.", data, ""), [13200])
 })
+
+test("jumlah kab/kota dan nomor urut tidak dianggap asing", () => {
+  assert.deepEqual(angkaTakCocok("Urutan 38 kab/kota: 1. Kota Madiun 0,6 bulan", [{ daftar: [{ nilai: 0.6 }] }], ""), [])
+})
