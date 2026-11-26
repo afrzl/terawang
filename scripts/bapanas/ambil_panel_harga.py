@@ -9,6 +9,7 @@ Komoditas bawaan (level 1 = produsen, 3 = konsumen):
 
   python3 scripts/bapanas/ambil_panel_harga.py --mulai 2024-01-01 --akhir 2026-11-25 --keluar data/bapanas/panel_harga
   python3 scripts/bapanas/ambil_panel_harga.py --gabung --keluar data/bapanas/panel_harga     # hanya menyusun CSV dari cache
+  --segarkan 7: ambil ulang 7 hari terakhir walau sudah ada di cache (data hari terakhir bisa belum lengkap saat diambil).
 """
 import argparse
 import csv
@@ -97,6 +98,7 @@ def main():
     ap.add_argument("--jeda", type=float, default=0.5)
     ap.add_argument("--komoditas", default="", help="daftar level:id, mis. 1:5,3:109 (kosong = semua)")
     ap.add_argument("--gabung", action="store_true", help="hanya susun CSV dari cache")
+    ap.add_argument("--segarkan", type=int, default=0, help="ambil ulang N hari terakhir walau sudah ada di cache")
     a = ap.parse_args()
     if not a.gabung:
         pilih = {tuple(map(int, s.split(":"))) for s in a.komoditas.split(",") if s}
@@ -105,6 +107,10 @@ def main():
         for level, kom, nama in KOMODITAS:
             if pilih and (level, kom) not in pilih:
                 continue
+            for t in tgl[:a.segarkan]:
+                f = os.path.join(a.cache, f"{level}_{kom}", f"{t:%Y-%m-%d}.json")
+                if os.path.exists(f):
+                    os.remove(f)
             n = {"ok": 0, "ada": 0, "gagal": 0}
             with ThreadPoolExecutor(a.paralel) as ex:
                 for i, s in enumerate(ex.map(lambda t: ambil(level, kom, t, a.cache, a.jeda), tgl)):

@@ -63,8 +63,8 @@ def status_harga(harga: float, het: float | None, siaga_pct: float = 3.0) -> str
 
 
 # ---------------------------------------------------------------------------------------------------------------------
-# K3a operasional (Danang): scripts/k3/k3_harga_operasional.py. Dipakai pipeline; baseline naif di atas tetap untuk pembanding.
-VERSI_K3A = "k3a-harian-galat365-2026.11"
+# K3a operasional: scripts/k3/k3_harga_operasional.py (+ k3_peringatan_gabungan.py). Dipakai pipeline; baseline naif di atas tetap untuk pembanding.
+VERSI_K3A = "k3a-harian-ew60-gabungan-2026.11"
 HORIZON_K3A = (7, 14, 21, 28)
 
 

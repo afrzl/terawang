@@ -16,6 +16,15 @@ from ..resources import (Repo, SumberCitra, SumberHarga, SumberStatis, berkas_ef
 
 GRUP = "bronze"
 
+# Panel Harga Bapanas yang dipakai peringatan gabungan K3a (scripts/k3/k3_peringatan_gabungan.py).
+BAPANAS_K3 = ("beras_medium_penggilingan", "gkg_penggilingan", "gkp_petani", "beras_sphp_konsumen")
+
+
+def folder_bapanas() -> Path:
+    import os
+
+    return Path(os.environ.get("TERAWANG_BAPANAS_DIR", Path.home() / ".local/share/terawang/bapanas"))
+
 # Berkas data statis per sumber (terbit tahunan, diketik dari publikasi). Dipantau sensor `sensor_berkas_data`.
 BERKAS_STATIS = {
     "bps": "data/bps",
@@ -104,6 +113,39 @@ def bronze_titik_satelit(context: AssetExecutionContext, repo: Repo, sumber_citr
     hasil.metadata["jendela_terakhir"] = kol[-1]
     hasil.metadata["jumlah_jendela_12harian"] = len(kol) - 3
     return hasil
+
+
+@asset(group_name=GRUP, kinds={"csv"}, check_specs=_cek("bronze_bapanas"),
+       description="Panel Harga Bapanas harian per kab/kota Jatim (API publik): beras medium penggilingan, GKG, GKP, beras SPHP konsumen; "
+                   "bahan peringatan gabungan K3a. Disimpan di TERAWANG_BAPANAS_DIR (bawaan ~/.local/share/terawang/bapanas), "
+                   "cache per tanggal di ~/.cache/terawang-bapanas; gagal unduh -> CSV terakhir atau data/bapanas/panel_harga di repo.")
+def bronze_bapanas(context: AssetExecutionContext, repo: Repo) -> MaterializeResult:
+    import os
+    import shutil
+    import sys
+
+    import pandas as pd
+
+    folder = folder_bapanas()
+    folder.mkdir(parents=True, exist_ok=True)
+    berkas = [folder / f"kabkota_harian_{n}.csv" for n in BAPANAS_K3]
+    galat = None
+    try:
+        repo.jalankan([sys.executable, "scripts/bapanas/ambil_panel_harga.py", "--mulai", "2024-01-01", "--komoditas", "1:5,1:4,1:2,3:109",
+                       "--paralel", "1", "--jeda", "1.0", "--segarkan", "7", "--keluar", str(folder)], log=context.log)
+    except Exception as e:  # noqa: BLE001
+        galat = str(e)[:500]
+        context.log.warning(f"unduh Panel Harga Bapanas gagal: {galat}")
+    for b in berkas:  # cadangan: salinan di repo
+        if not b.exists() or b.stat().st_size < 100:
+            shutil.copy(repo.path / "data/bapanas/panel_harga" / b.name, b)
+    akhir = {b.stem.replace("kabkota_harian_", ""): str(pd.read_csv(b, usecols=["tanggal"]).tanggal.max()) for b in berkas}
+    lolos = galat is None
+    return MaterializeResult(data_version=DataVersion(checksum_gabungan(berkas)[:16]),
+                             metadata={"folder": str(folder), "tanggal_terakhir": akhir, "otomatis": "berhasil" if lolos else "gagal",
+                                       **({"galat_otomatis": MetadataValue.md(f"```\n{galat}\n```")} if galat else {})},
+                             check_results=[AssetCheckResult(asset_key="bronze_bapanas", check_name="otomatis_berhasil", passed=lolos,
+                                                             severity=AssetCheckSeverity.WARN)])
 
 
 @asset(group_name=GRUP, kinds={"csv"},

@@ -14,7 +14,7 @@ job_penuh = define_asset_job("pipeline_penuh", selection=AssetSelection.all(), d
 # Harian: hanya yang bergantung pada harga. Stok dan produksi dipakai dari run terakhir lewat input upstream.
 job_harga = define_asset_job(
     "pipeline_harga_harian",
-    selection=AssetSelection.assets("bronze_harga").downstream() | AssetSelection.assets("k1_prediksi_produksi", "k2_estimasi_stok"),
+    selection=AssetSelection.assets("bronze_harga", "bronze_bapanas").downstream() | AssetSelection.assets("k1_prediksi_produksi", "k2_estimasi_stok"),
     description="Ambil harga terbaru -> silver harga -> K3 -> status dan peringatan.",
 )
 
