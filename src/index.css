@@ -931,3 +931,7 @@ main.full{flex:1;min-height:0;position:relative}
 .tafsir-muat span:last-child{width:62%}
 @keyframes tafsirKilau{from{background-position:100% 0}to{background-position:-100% 0}}
 @media (prefers-reduced-motion:reduce){.tafsir-btn .putar,.tafsir-muat span{animation:none}}
+.story-cue-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;margin-top:6px}.story-cue-row .story-cue{margin-top:0}
+.story-arsip{display:inline-flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.story-arsip select{font:inherit;font-family:var(--f-body,inherit);text-transform:none;letter-spacing:0;font-size:13.5px;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:6px 28px 6px 10px;max-width:min(260px,70vw)}
+.story-lalu{display:block;margin-top:3px;font-style:normal;font-family:var(--f-mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3)}

@@ -58,6 +58,7 @@ let CFG = cfg()
 setInterval(() => (CFG = cfg()), 5 * 60_000).unref()
 
 export const tafsirAktif = () => Boolean(CFG.apiKey)
+export const modelOpenAI = () => CFG.model
 
 // ---------------------------------------------------------------- pembersihan masukan
 
@@ -251,7 +252,7 @@ function himpunanSah(m: Masukan, ringkasan: string[]): number[] {
 }
 
 /** Angka di teks label/ringkasan (format titik desimal maupun Indonesia). */
-function angkaLepas(s: string): number[] {
+export function angkaLepas(s: string): number[] {
   const out: number[] = []
   for (const m of s.matchAll(/-?\d+(?:[.,]\d+)*/g)) {
     const t = m[0]
@@ -327,20 +328,21 @@ const PROMPT = [
   "8. Bila data kosong atau terlalu sedikit, tulis persis: Data grafik ini belum cukup untuk ditafsirkan.",
 ].join("\n")
 
-type Pesan = { role: "system" | "user" | "assistant"; content: string }
+export type Pesan = { role: "system" | "user" | "assistant"; content: string }
 
-async function panggil(pesan: Pesan[]): Promise<{ teks: string; token: number }> {
-  const body: Record<string, unknown> = { model: CFG.model, messages: pesan, max_completion_tokens: CFG.maksKeluaran }
+/** Satu panggilan chat completions. `tambahan` menimpa isi body (mis. response_format, max_completion_tokens untuk edisi Cerita). */
+export async function panggil(pesan: Pesan[], tambahan: Record<string, unknown> = {}, batasMs = 40_000): Promise<{ teks: string; token: number }> {
+  const body: Record<string, unknown> = { model: CFG.model, messages: pesan, max_completion_tokens: CFG.maksKeluaran, ...tambahan }
   if (/^(gpt-[5-9]|o\d)/.test(CFG.model)) {
     if (CFG.reasoningEffort) body.reasoning_effort = CFG.reasoningEffort
   } else {
     body.temperature = 0.2
   }
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+  const res = await fetch(`${process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1"}/chat/completions`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${CFG.apiKey}` },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(40_000),
+    signal: AbortSignal.timeout(batasMs),
   })
   if (!res.ok) {
     const isi = await res.text()
@@ -379,7 +381,7 @@ let pakai = (() => {
   }
 })()
 
-function catat(token: number) {
+export function catat(token: number) {
   if (pakai.hari !== hariWib()) pakai = { hari: hariWib(), token: 0, panggilan: 0 }
   pakai.token += token
   pakai.panggilan += 1
