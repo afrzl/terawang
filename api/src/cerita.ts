@@ -11,7 +11,7 @@
  * Bila penyusunan gagal, halaman tetap menampilkan edisi terakhir yang ada; jadwal mencoba lagi tiap jam.
  *
  * Env: CERITA_JADWAL=0 mematikan jadwal, CERITA_HARI (1 = Senin), CERITA_JAM (6), CERITA_DIR (cadangan berkas),
- *      CERITA_IZINKAN_SIMULASI=1 (uji lokal tanpa database), CERITA_TOKEN (token internal; bawaan dibuat di ~/.config/terawang/cerita-token).
+ *      CERITA_SIMPAN=berkas (uji: simpan ke berkas saja), CERITA_IZINKAN_SIMULASI=1 (uji lokal tanpa database), CERITA_TOKEN (token internal; bawaan dibuat di ~/.config/terawang/cerita-token).
  */
 import { spawn } from "node:child_process"
 import crypto from "node:crypto"
@@ -133,7 +133,8 @@ export function pakaiPool(p: pg.Pool) {
 }
 
 async function siapkanTabel(): Promise<boolean> {
-  if (!pool) return false
+  // CERITA_SIMPAN=berkas: uji tanpa menyentuh database
+  if (!pool || process.env.CERITA_SIMPAN === "berkas") return false
   tabelSiap ??= pool
     .query(
       `create table if not exists app.cerita_pekan (
