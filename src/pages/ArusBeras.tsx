@@ -80,8 +80,8 @@ function Perdagangan() {
       </div>
       <Panel
         title="Alokasi pasokan antarkabupaten"
-        tafsir={KET_ARUS}
-        dataTafsir={{ total_ton: Math.round(total), lintas_kawasan_ton: Math.round(antar), wilayah_pemasok: nPemasok, arus: arusTafsir(mode === "sankey" ? semua : trade, 40) }}
+        tafsir={`${KET_ARUS}; daftar arus = 40 arus terbesar, total dan persen terhadap total pakai total_semua_arus_ton`}
+        dataTafsir={{ total_semua_arus_ton: Math.round(total), lintas_kawasan_ton: Math.round(antar), wilayah_pemasok: nPemasok, arus_terbesar: arusTafsir(trade, 40) }}
         actions={
           <div className="seg seg-s" role="group" aria-label="Tampilan aliran">
             <button type="button" aria-pressed={mode === "sankey"} onClick={() => setMode("sankey")}>

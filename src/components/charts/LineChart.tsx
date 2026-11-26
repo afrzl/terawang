@@ -206,8 +206,9 @@ function dataGaris(xDates: Date[], series: Series[], bands: Band[], refs: RefLin
       const hi = b.hi[i - b.off]
       if (lo != null && hi != null) {
         const p = b.nama ?? `pita${bands.length > 1 ? ` ${bi + 1}` : ""}`
-        r[`${p} bawah`] = bulPas(lo)
-        r[`${p} atas`] = bulPas(hi)
+        const pq = p.endsWith("P10–P90") ? [p.replace("P10–P90", "P10"), p.replace("P10–P90", "P90")] : [`${p} bawah`, `${p} atas`]
+        r[pq[0].trim()] = bulPas(lo)
+        r[pq[1].trim()] = bulPas(hi)
       }
     })
     if (splitAt != null && i >= splitAt) r[splitLabel] = "ya"
