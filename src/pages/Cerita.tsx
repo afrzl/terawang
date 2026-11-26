@@ -6,6 +6,7 @@ import { REGIONS, regionOf } from "@/lib/arus"
 import { byName, type Flow, type Wilayah } from "@/lib/data"
 import { useSesi } from "@/lib/sesi"
 import { nf } from "@/lib/format"
+import { EdisiPicker } from "@/components/ui/EdisiPicker"
 import { susunFakta, type LangkahFakta, type PetaLangkah } from "@/lib/ceritaFakta"
 
 /** Edisi pekanan dari /api/cerita (lihat api/src/cerita.ts). */
@@ -36,6 +37,12 @@ interface RingkasEdisi {
 }
 
 const BLN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
+/** "2026-W48" -> { no: "48", rentang: "23–29 Nov 2026" }. */
+function bagianPekan(p: string) {
+  const l = labelPekan(p).match(/^Pekan (\d+), (.*)$/)
+  return l ? { no: l[1], rentang: l[2] } : { no: p, rentang: "" }
+}
+
 /** "2026-W48" -> "Pekan 48, 23–29 Nov 2026". */
 function labelPekan(p: string) {
   const m = p.match(/^(\d{4})-W(\d{2})$/)
@@ -186,17 +193,11 @@ export default function Cerita() {
               Mulai membaca <ChevronDown size={15} />
             </a>
             {arsip.length > 0 && (
-              <label className="story-arsip">
-                <span>Edisi</span>
-                <select value={pekan ?? isi?.pekan ?? ""} onChange={(e) => setPekan(e.target.value || null)}>
-                  {!isi?.pekan && <option value="">Data langsung</option>}
-                  {arsip.map((a) => (
-                    <option key={a.pekan} value={a.pekan}>
-                      {labelPekan(a.pekan)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <EdisiPicker
+                opsi={arsip.map((a) => ({ pekan: a.pekan, ...bagianPekan(a.pekan), judul: a.judul }))}
+                nilai={pekan ?? isi?.pekan ?? null}
+                onPilih={(p) => setPekan(p)}
+              />
             )}
           </div>
         </div>

@@ -27,7 +27,7 @@ import path from "node:path"
 import express, { type Request, type Response } from "express"
 import pg from "pg"
 import { Galat, pemakaianTafsir, tafsirkan } from "./tafsir.js"
-import { POLA_PEKAN, ambilEdisi, daftarEdisi, mulaiJadwal, pakaiPool, tokenCocok } from "./cerita.js"
+import { POLA_PEKAN, ambilEdisi, daftarEdisi, mulaiJadwal, pakaiPool, tanpaSphp, tokenCocok } from "./cerita.js"
 
 const AWAL_TAHUN = 2026
 const AWAL_BULAN = 1
@@ -358,7 +358,10 @@ app.get("/api/cerita", async (req, res) => {
     if (!e) return res.status(404).json({ galat: "belum ada edisi" })
     const { aksi_sphp, ...publik } = e
     const boleh = aksi_sphp && (await berhak(req, "dasbor_sphp"))
-    res.set({ "Cache-Control": "no-store", Vary: "Cookie" }).json(boleh ? { ...publik, aksi_sphp } : publik)
+    if (boleh) return res.set({ "Cache-Control": "no-store", Vary: "Cookie" }).json({ ...publik, aksi_sphp })
+    // edisi lama bisa menyebut SPHP di dek; untuk publik kalimat itu dibuang
+    const bersih = { ...publik, judul: tanpaSphp(publik.judul) || publik.judul, dek: tanpaSphp(publik.dek) || publik.dek }
+    res.set({ "Cache-Control": "no-store", Vary: "Cookie" }).json(bersih)
   } catch (err) {
     console.error("[api] cerita:", err)
     res.status(500).json({ galat: "gagal membaca edisi" })
