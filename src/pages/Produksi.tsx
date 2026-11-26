@@ -3,7 +3,7 @@ import { useMemo, useState } from "react"
 import { Sprout } from "lucide-react"
 import { LineChart } from "@/components/charts/LineChart"
 import { ProdTreemap } from "@/components/charts/ProdTreemap"
-import { SatCompare, useCitraIndeks } from "@/components/charts/SatCompare"
+import { SatCompare, skorPerubahan, useCitraIndeks } from "@/components/charts/SatCompare"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
 import { PHASES, byName, type Wilayah } from "@/lib/data"
@@ -24,10 +24,14 @@ export default function Produksi() {
   const wil = useWilayah()
   const indeks = useCitraIndeks()
   const [cw, setCw] = useState<string | null>(null)
-  // Wilayah panel citra mengikuti filter sidebar. Bila banyak, dipilih yang sudah paling banyak tertanam; pintasan di panel bisa menggantinya.
+  // Wilayah panel citra mengikuti filter sidebar. Bila banyak, dipilih yang perubahan sebelum -> sesudah tanamnya paling jelas
+  // (tergenang lalu tertanam); pintasan di panel bisa menggantinya.
   const nama = wil.map((k) => k.n)
-  const tertanam = (n: string) => indeks.find((m) => m.lokasi === n)?.stat.tertanam_sesudah_pct ?? -1
-  const citraWil = cw && nama.includes(cw) ? cw : [...nama].sort((a, b) => tertanam(b) - tertanam(a))[0]
+  const skor = (n: string) => {
+    const m = indeks.find((x) => x.lokasi === n)
+    return m ? skorPerubahan(m) : -1
+  }
+  const citraWil = cw && nama.includes(cw) ? cw : [...nama].sort((a, b) => skor(b) - skor(a))[0]
   const { mulai, akhir, satuan } = useFilter()
   const sat = SATUAN[satuan]
   const berasT = sum(wil, (k) => produksiRentang(k, mulai, akhir)) / 1000 // ribu ton beras
@@ -104,9 +108,9 @@ export default function Produksi() {
 }
 
 function SatPanel({ wilayah, onPilih, kandidat }: { wilayah?: string; onPilih: (n: string) => void; kandidat: string[] }) {
-  if (!wilayah) return <Panel title="Sebelum dan sesudah tanam"><div className="pb"><div className="method">Tidak ada wilayah dipilih.</div></div></Panel>
+  if (!wilayah) return <Panel title="Perubahan lahan sawah"><div className="pb"><div className="method">Tidak ada wilayah dipilih.</div></div></Panel>
   return (
-    <Panel title={`Sebelum dan sesudah tanam · ${wilayah}`}>
+    <Panel title="Perubahan lahan sawah">
       <div className="pb">
         <SatCompare wilayah={wilayah} onPilih={onPilih} kandidat={kandidat} />
       </div>

@@ -205,6 +205,13 @@ function muatIndeks() {
   return indeksCache
 }
 
+/** Seberapa jelas perubahan sebelum -> sesudah tanam terlihat di kotak contoh: utamakan petak yang tergenang dulu lalu
+ *  tertanam (kontras air -> hijau). Kotak yang sebelumnya sudah hijau (tergenang 0%) diurutkan sesudahnya menurut % tertanam. */
+export function skorPerubahan(m: CitraMeta) {
+  const { genang_sebelum_pct: g, tertanam_sesudah_pct: t } = m.stat
+  return (g >= 10 ? 1000 : 0) + (g * t) / 100 + t / 1000
+}
+
 /** Daftar citra GEE (kosong sampai termuat). */
 export function useCitraIndeks() {
   const [daftar, setDaftar] = useState<CitraMeta[]>([])
@@ -235,20 +242,27 @@ export function SatCompare({ wilayah, onPilih, kandidat }: { wilayah?: string; o
     ? { before: asli.stat.genang_sebelum_pct, after: asli.stat.tertanam_sesudah_pct, lag: asli.stat.tertinggal_pct }
     : scene.stat
 
-  // Pintasan wilayah: bila semua wilayah terpilih, tampilkan yang sudah banyak tertanam (perubahan paling terlihat); bila disaring, tampilkan wilayah terpilih.
+  // Pintasan wilayah: bila semua wilayah terpilih, tampilkan yang perubahannya paling terlihat (tergenang -> tertanam dulu);
+  // bila disaring, tampilkan wilayah terpilih.
   const semua = !kandidat || kandidat.length >= WILAYAH.length
   const contoh = daftar
-    .filter((m) => (!kandidat || kandidat.includes(m.lokasi)) && (!semua || m.stat.tertanam_sesudah_pct >= 25))
-    .sort((a, b) => b.stat.tertanam_sesudah_pct - a.stat.tertanam_sesudah_pct)
+    .filter((m) => (!kandidat || kandidat.includes(m.lokasi)) && (!semua || m.stat.tertanam_sesudah_pct >= 20))
+    .sort((a, b) => skorPerubahan(b) - skorPerubahan(a))
     .slice(0, 6)
 
   return (
     <div className="sat">
       {contoh.length > 1 && (
-        <div className="wt-chips sat-contoh" role="group" aria-label="Wilayah yang sudah tertanam">
-          <span className="sat-contoh-t">{semua ? "Sudah tanam" : "Wilayah"}</span>
+        <div className="wt-chips sat-contoh" role="group" aria-label="Contoh wilayah">
+          <span className="sat-contoh-t">{semua ? "Contoh wilayah" : "Wilayah"}</span>
           {contoh.map((m) => (
-            <button key={m.folder} type="button" className={`wt-chip${m.lokasi === sel ? " on" : ""}`} onClick={() => select(m.lokasi)}>
+            <button
+              key={m.folder}
+              type="button"
+              className={`wt-chip${m.lokasi === sel ? " on" : ""}`}
+              onClick={() => select(m.lokasi)}
+              title={`Petak tergenang di citra awal ${nf(m.stat.genang_sebelum_pct, 0)}% · petak yang hijaunya bertambah ${nf(m.stat.tertanam_sesudah_pct, 0)}%`}
+            >
               {m.lokasi} · {nf(m.stat.tertanam_sesudah_pct, 0)}%
             </button>
           ))}
@@ -275,11 +289,11 @@ export function SatCompare({ wilayah, onPilih, kandidat }: { wilayah?: string; o
         </div>
         <span className="sat-tag l">
           {asli ? tgl(asli.tanggal_sebelum) : "30 Sep 2026"}
-          <span className="x"> · sebelum tanam</span>
+          <span className="x"> · awal</span>
         </span>
         <span className="sat-tag r">
           {asli ? tgl(asli.tanggal_sesudah) : "30 Okt 2026"}
-          <span className="x"> · sesudah tanam</span>
+          <span className="x"> · terbaru</span>
         </span>
         <span className="sat-note">
           {asli
@@ -293,16 +307,16 @@ export function SatCompare({ wilayah, onPilih, kandidat }: { wilayah?: string; o
           step={0.5}
           value={pos}
           onChange={(e) => setPos(+e.target.value)}
-          aria-label="Geser pembanding citra sebelum dan sesudah tanam"
+          aria-label="Geser pembanding citra tanggal awal dan terbaru"
         />
       </div>
       <div className="sat-stats">
         <div>
-          <span>Petak tergenang</span>
+          <span>Petak tergenang (citra awal)</span>
           <b>{nf(stat.before, 0)}%</b>
         </div>
         <div>
-          <span>Petak tertanam</span>
+          <span>Petak hijau bertambah (citra terbaru)</span>
           <b>{nf(stat.after, 0)}%</b>
         </div>
       </div>
