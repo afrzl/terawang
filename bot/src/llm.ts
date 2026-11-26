@@ -3,7 +3,7 @@
  * Semua angka diambil lewat function calling ke data.ts. Nomor WA tidak pernah dikirim ke OpenAI.
  */
 import { config } from "./config.ts"
-import { daftarPeringatan, infoBerasMurah, infoHarga, infoStok, ringkasanJatim } from "./data.ts"
+import { daftarPeringatan, infoBerasMurah, infoHarga, infoStok, ringkasanJatim, peringkatWilayah, type UkuranPeringkat } from "./data.ts"
 import { cocokkan, labelWilayah, semuaWilayah, type Wilayah } from "./wilayah.ts"
 
 type Pesan =
@@ -29,6 +29,20 @@ const ALAT = [
     parameters: { type: "object", properties: { wilayah: { type: "string" } }, additionalProperties: false },
   },
   { name: "tentang_terawang", description: "Penjelasan singkat TERAWANG, sumber data, arti status, SPHP, dan daftar perintah bot.", parameters: { type: "object", properties: {}, additionalProperties: false } },
+  {
+    name: "peringkat_wilayah",
+    description: "Peringkat kab/kota se-Jawa Timur: harga beras termurah/termahal atau stok paling tipis/longgar. Pakai untuk pertanyaan 'paling murah di mana', 'termahal', 'seluruh Jatim', 'mana yang defisit'.",
+    parameters: {
+      type: "object",
+      properties: {
+        ukuran: { type: "string", enum: ["harga_medium", "harga_premium", "stok_cakupan"] },
+        urutan: { type: "string", enum: ["terendah", "tertinggi"] },
+        jumlah: { type: "integer", minimum: 1, maximum: 10 },
+      },
+      required: ["ukuran", "urutan"],
+      additionalProperties: false,
+    },
+  },
   { name: "ringkasan_jatim", description: "Jumlah kab/kota Jawa Timur per status gabungan (aman/waspada/siaga).", parameters: { type: "object", properties: {}, additionalProperties: false } },
 ].map((f) => ({ type: "function" as const, function: f }))
 
@@ -46,10 +60,11 @@ const PROMPT_STATIS = [
   "5. Jawab bahasa Indonesia sehari-hari dengan sapaan \"kamu\" (jangan \"Anda\"), maksimal 6 baris, format WhatsApp (*tebal* seperlunya), tanpa tabel/judul markdown. Tulis jangka prakiraan sebagai \"2 pekan\"/\"4 pekan\", bukan 14d/28d.",
   "6. Stok adalah perkiraan model dengan stok awal asumsi; prakiraan harga bukan kepastian. Sebutkan bila relevan.",
   "7. Kalau wilayah ambigu (Kabupaten vs Kota), tanyakan balik.",
-  "8. Perintah yang ada HANYA: HARGA, STOK, SPHP, PERINGATAN, LANGGANAN, BERHENTI, LAPOR, BANTUAN. Jangan menyebut perintah lain.",
+  "8. Perintah yang ada HANYA: HARGA <wilayah>, STOK <wilayah>, SPHP <wilayah>, PERINGATAN, LANGGANAN <wilayah>, BERHENTI, LAPOR, BANTUAN. Jangan menyebut perintah lain (tidak ada 'HARGA seluruh').",
   "   Bila cocok, tutup dengan satu saran perintah di baris baru, mis. 'Ketik *HARGA Jember* untuk rinciannya.' Pakai wilayah yang sedang dibahas saja.",
   "9. Jangan membuka dengan salam (Halo, Hai); langsung ke jawaban. Keterangan seperti \"belum resmi\" hanya bila ada di hasil fungsi.",
   "10. Prakiraan harga hanya ada untuk 2 dan 4 pekan ke depan. Untuk jangka lebih jauh (mis. 2 bulan lagi), katakan jujur itu di luar jangkauan prakiraan TERAWANG, sebut prakiraan 4 pekan sebagai yang terjauh, dan sarankan LANGGANAN <wilayah> untuk peringatan dini.",
+  "11. Pertanyaan perbandingan se-Jatim (termurah, termahal, seluruh kab/kota, stok paling tipis/defisit) WAJIB dijawab dengan memanggil peringkat_wilayah, bukan meminta pengguna mengetik format lain.",
 ].join("\n")
 
 function promptDinamis(wilayahIngat: Wilayah | null, topik?: string): string {
@@ -69,13 +84,18 @@ const TENTANG = {
 }
 
 async function jalankanAlat(nama: string, argumen: string): Promise<{ hasil: unknown; wilayahId?: number }> {
-  let a: { wilayah?: string } = {}
+  let a: { wilayah?: string; [k: string]: unknown } = {}
   try {
     a = JSON.parse(argumen || "{}")
   } catch {
     return { hasil: { galat: "argumen tidak valid" } }
   }
   if (nama === "ringkasan_jatim") return { hasil: await ringkasanJatim() }
+  if (nama === "peringkat_wilayah") {
+    const p = a as { ukuran?: UkuranPeringkat; urutan?: "terendah" | "tertinggi"; jumlah?: number }
+    const ukuran = (["harga_medium", "harga_premium", "stok_cakupan"] as const).find((x) => x === p.ukuran) ?? "harga_medium"
+    return { hasil: { ukuran, urutan: p.urutan === "tertinggi" ? "tertinggi" : "terendah", daftar: await peringkatWilayah(ukuran, p.urutan === "tertinggi" ? "tertinggi" : "terendah", p.jumlah ?? 5) } }
+  }
   if (nama === "tentang_terawang") return { hasil: TENTANG }
   const daftar = await semuaWilayah()
   let w: Wilayah | undefined

@@ -54,3 +54,19 @@ test("jawaban istilah tanpa LLM", () => {
   assert.equal(jawabIstilah("beras SPHP di jember ada di mana"), null)
   assert.equal(jawabIstilah("harga di malang naik?"), null)
 })
+
+test("pertanyaan peringkat se-Jatim dikenali", async () => {
+  const { deteksiPeringkat } = await import("./bot.ts")
+  assert.deepEqual(deteksiPeringkat("sekarnag harga beras paling murah dimana ?"), { ukuran: "harga_medium", urutan: "terendah" })
+  assert.deepEqual(deteksiPeringkat("beras premium termahal di jatim"), { ukuran: "harga_premium", urutan: "tertinggi" })
+  assert.deepEqual(deteksiPeringkat("kabupaten mana yang stoknya defisit?"), { ukuran: "stok_cakupan", urutan: "terendah" })
+  assert.equal(deteksiPeringkat("harga beras di jember berapa"), null)
+})
+
+test("format peringkat", async () => {
+  const { teksPeringkat } = await import("./format.ts")
+  const t = teksPeringkat([{ wilayah: "Kab. Ngawi", nilai: 11800, tanggal: "2026-11-26", status: null }, { wilayah: "Kab. Jember", nilai: 12060, tanggal: "2026-11-26", status: null }], "harga_medium", "terendah")
+  assert.match(t, /termurah di Jawa Timur\* \(26 Nov 2026\)/)
+  assert.match(t, /1\. Kab\. Ngawi: Rp11\.800\/kg/)
+  assert.match(t, /Ketik \*HARGA <wilayah>\*/)
+})

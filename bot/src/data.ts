@@ -206,6 +206,50 @@ export async function daftarPeringatan(wilayahId?: number): Promise<ItemPeringat
   return rows.map(({ nama, wjenis, ...r }) => ({ ...r, wilayah: labelWilayah({ nama, jenis: wjenis }) }))
 }
 
+export type UkuranPeringkat = "harga_medium" | "harga_premium" | "stok_cakupan"
+export type ItemPeringkat = { wilayah: string; nilai: number; tanggal: string; status: string | null }
+
+/**
+ * Peringkat kab/kota Jatim. Harga: harga panel terakhir tiap wilayah (maks. 7 hari dari tanggal terbaru).
+ * Stok: cakupan bulan ini dari run K2 terbaru, skenario tengah, dipotong di 0 seperti dasbor.
+ */
+export async function peringkatWilayah(ukuran: UkuranPeringkat, urutan: "terendah" | "tertinggi", jumlah = 5): Promise<ItemPeringkat[]> {
+  const arah = urutan === "tertinggi" ? "desc" : "asc"
+  const n = Math.min(Math.max(Math.round(jumlah) || 5, 1), 10)
+  if (ukuran === "stok_cakupan") {
+    const rows = await q<{ nama: string; wjenis: "KABUPATEN" | "KOTA"; nilai: number; tanggal: string; status: string | null }>(
+      `with run as (
+         select m.id from app.model_run m where m.jenis = 'K2_STOK' and m.status = 'SELESAI'
+            and exists (select 1 from app.estimasi_stok t where t.model_run_id = m.id)
+          order by m.id desc limit 1
+       )
+       select w.nama, w.jenis::text as wjenis, round(greatest(e.cakupan_bulan, 0)::numeric, 2)::float8 as nilai,
+              format('%s-%s', e.tahun, lpad(e.bulan::text, 2, '0')) as tanggal, e.status::text as status
+         from app.estimasi_stok e join ref.wilayah w on w.id = e.wilayah_id
+        where e.model_run_id = (select id from run) and e.skenario = 'TENGAH' and e.cakupan_bulan is not null
+          and (e.tahun * 12 + e.bulan) = (extract(year from now() at time zone 'Asia/Jakarta') * 12 + extract(month from now() at time zone 'Asia/Jakarta'))
+        order by e.cakupan_bulan ${arah} limit $1`,
+      [n],
+    )
+    return rows.map(({ nama, wjenis, ...r }) => ({ ...r, wilayah: labelWilayah({ nama, jenis: wjenis }) }))
+  }
+  const kode = ukuran === "harga_premium" ? "beras_premium" : "beras_medium"
+  const rows = await q<{ nama: string; wjenis: "KABUPATEN" | "KOTA"; nilai: number; tanggal: string }>(
+    `with h as (
+       select distinct on (h.wilayah_id) h.wilayah_id, h.tanggal, h.harga_rata2_rp_kg as harga
+         from silver.harga_kabkota_harian h join ref.komoditas k on k.id = h.komoditas_id
+        where k.kode = $2 and h.harga_rata2_rp_kg is not null
+          and h.tanggal >= (select max(tanggal) - 7 from silver.harga_kabkota_harian)
+        order by h.wilayah_id, h.tanggal desc
+     )
+     select w.nama, w.jenis::text as wjenis, round(h.harga)::int as nilai, h.tanggal::text as tanggal
+       from h join ref.wilayah w on w.id = h.wilayah_id
+      order by h.harga ${arah} limit $1`,
+    [n, kode],
+  )
+  return rows.map(({ nama, wjenis, ...r }) => ({ ...r, status: null, wilayah: labelWilayah({ nama, jenis: wjenis }) }))
+}
+
 /** Ringkasan Jatim: jumlah kab/kota per status gabungan pada tanggal status terakhir. */
 export async function ringkasanJatim() {
   return q<{ status: Tingkat; jumlah: number }>(
