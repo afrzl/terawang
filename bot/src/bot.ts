@@ -271,6 +271,9 @@ async function pesanBebas(k: kontak.Kontak, teks: string, pilihan: Wilayah | nul
     pantau.llm = { ...pantau.llm, terakhir: Date.now(), ok: true, galat: "", token: r.token }
     console.log(`[llm] kontak=${k.id} token=${r.token} alat=${r.pakaiAlat} hari_ini=${pagar.pemakaianHariIni().token}`)
     const jawaban = pagar.rapikanJawaban(r.jawaban)
+    if (r.angkaAsing?.length) {
+      return { teks: `Maaf, aku belum bisa menjawab itu dengan data yang ada. Coba perintah baku:\n\n${BANTUAN}`, intent: "llm_angka_asing", wilayahId: null }
+    }
     if (!jawaban || pagar.angkaTanpaData(jawaban, r.pakaiAlat)) {
       return { teks: `Maaf, aku belum bisa menjawab itu dengan data yang ada. Coba perintah baku:\n\n${BANTUAN}`, intent: "llm_ditolak", wilayahId: null }
     }
