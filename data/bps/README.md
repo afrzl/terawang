@@ -9,6 +9,7 @@ Data resmi Badan Pusat Statistik, dikelompokkan **per topik**. Satu topik satu f
 | [produksi_padi/](produksi_padi/README.md) | Luas panen dan produksi padi (GKP, GKG, beras) Jawa Timur, kab/kota dan provinsi, 2024–2026 | Validasi K1, neraca stok K2 | Ada |
 | [konsumsi_beras/](konsumsi_beras/README.md) | Konsumsi beras per kapita: **38 kab/kota Jatim** (kg/minggu, Susenas Maret 2025) dan Indonesia + 38 provinsi (kg/bulan, Susenas Sep 2025) | Neraca stok K2 | Ada |
 | [penduduk/](penduduk/README.md) | Penduduk per kab/kota Jatim, 2020 (SP2020) dan proyeksi 2025–2026 | Neraca stok K2 | Ada |
+| `inflasi_kota_jatim_bulanan.csv` | Inflasi m-to-m, y-on-y, IHK umum + kelompok Makanan, Minuman & Tembakau + subkelompok Makanan, **11 kab/kota IHK Jatim**, Jan 2023–Okt 2026 (2023: 8 kota, 2018=100; 2024+: 2022=100). WebAPI domain 0000 var 1, 2249, 2245, 2223, 2250, 2212 (2018=100: 1709, 1890, 1905); y-on-y 2023 dihitung dari IHK. Beras per kota tidak ada di WebAPI. `scripts/bps/ambil_inflasi_kota.py` | Uji fitur K3 (`scripts/k3/uji_k3_fitur_inflasi.py`): tidak menaikkan PR-AUC | Ada |
 | `harga_gabah/` | Harga gabah dan beras tingkat produsen | K3 | Belum ada |
 
 ## Aturan penamaan
