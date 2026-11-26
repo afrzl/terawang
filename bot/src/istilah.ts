@@ -51,10 +51,21 @@ export function jawabBasaBasi(teks: string): string | null {
   const kata = normal(teks).split(" ").filter(Boolean)
   if (!kata.length || kata.length > 6) return null
   if (kata.every((k) => KATA_SALAM.has(k))) {
+    if (kata.some((k) => /^(as+alam|salam)/.test(k))) return `Waalaikumsalam 🙏 Aku bot *TERAWANG*, siap bantu info beras di Jawa Timur: harga, stok, dan beras murah/SPHP.\n\n${CONTOH}`
     return `Halo! 👋 Aku bot *TERAWANG*, siap bantu info beras di Jawa Timur: harga, stok, dan beras murah/SPHP.\n\n${CONTOH}`
   }
   if (kata.every((k) => KATA_TERIMA_KASIH.has(k))) {
     return "Sama-sama! Kalau mau cek lagi, ketik saja nama wilayahnya, misalnya *HARGA Kediri*."
   }
   return null
+}
+
+/** Buang salam di awal kalimat bila masih ada isi lain ("halo, harga jember" -> "harga jember"). */
+export function buangSalam(teks: string): string {
+  const kata = teks.trim().split(/\s+/)
+  let i = 0
+  while (i < kata.length - 1 && i < 4 && KATA_SALAM.has(normal(kata[i])) && normal(kata[i]) !== "terawang") i++
+  if (i === 0 || i >= kata.length) return teks
+  const sisa = kata.slice(i).join(" ").replace(/^[\s,.!-]+/, "")
+  return sisa || teks
 }

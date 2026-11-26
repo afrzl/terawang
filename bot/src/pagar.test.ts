@@ -48,3 +48,11 @@ test("salam dan terima kasih dibalas tanpa OpenAI", async () => {
   for (const s of ["makasih ya", "terima kasih banyak", "oke sip"]) assert.match(jawabBasaBasi(s) ?? "", /Sama-sama/)
   for (const s of ["halo harga beras malang", "siapa presiden indonesia", "helo stok jember"]) assert.equal(jawabBasaBasi(s), null)
 })
+
+test("salam di awal kalimat dibuang", async () => {
+  const { buangSalam, jawabBasaBasi } = await import("./istilah.ts")
+  assert.equal(buangSalam("halo, harga beras di jember berapa?"), "harga beras di jember berapa?")
+  assert.equal(buangSalam("Selamat pagi kak stok jember"), "stok jember")
+  assert.equal(buangSalam("helo"), "helo")
+  assert.match(jawabBasaBasi("assalamualaikum") ?? "", /^Waalaikumsalam/)
+})

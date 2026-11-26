@@ -7,7 +7,7 @@ import { q } from "./db.ts"
 import { jawabBebas, llmAktif } from "./llm.ts"
 import * as pagar from "./pagar.ts"
 import { pantau } from "./pantau.ts"
-import { jawabBasaBasi, jawabIstilah } from "./istilah.ts"
+import { buangSalam, jawabBasaBasi, jawabIstilah } from "./istilah.ts"
 import { cariDiKalimat, cocokkan, labelWilayah, normal, semuaWilayah, type Wilayah } from "./wilayah.ts"
 
 type Perintah = "harga" | "stok" | "sphp" | "peringatan" | "langganan" | "berhenti" | "lapor" | "bantuan"
@@ -20,7 +20,7 @@ const ALIAS: Record<string, Perintah> = {
   langganan: "langganan", daftar: "langganan", subscribe: "langganan",
   berhenti: "berhenti", stop: "berhenti", unsubscribe: "berhenti", unsub: "berhenti",
   lapor: "lapor", laporan: "lapor",
-  bantuan: "bantuan", menu: "bantuan", help: "bantuan", halo: "bantuan", hai: "bantuan", hi: "bantuan", start: "bantuan", mulai: "bantuan", info: "bantuan", p: "bantuan",
+  bantuan: "bantuan", menu: "bantuan", help: "bantuan",  start: "bantuan", mulai: "bantuan", info: "bantuan",
 }
 
 type Tunda =
@@ -255,6 +255,8 @@ export async function tanggapi(nomor: string, nama: string | undefined, teks: st
 }
 
 async function proses(nomor: string, k: kontak.Kontak, teks: string): Promise<Balasan> {
+  // "halo, harga beras di jember berapa?" -> salamnya dibuang, sisanya diproses biasa
+  teks = buangSalam(teks)
   const t = tunda.get(nomor)
   if (t && t.sampai < Date.now()) tunda.delete(nomor)
   const cmd = uraiPerintah(teks)
