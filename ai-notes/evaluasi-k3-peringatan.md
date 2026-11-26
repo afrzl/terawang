@@ -143,3 +143,17 @@ Semuanya sedikit lebih buruk. Penjelasan yang paling mungkin: informasinya sudah
 - Struktur model tidak perlu dirombak. Kajian menunjukkan model sederhana berbasis lag sulit dikalahkan; yang menaikkan hasil adalah definisi kejadian (KAPAN), gabungan EW60 + logit, dan `pg_het`.
 - Data yang kurang, urut perkiraan manfaat: (1) harga pedagang besar PIHPS BI (mata rantai antara penggilingan dan eceran, publik, harian); (2) tanggal perubahan harga BBM (penanda kejadian, mudah dibuat manual); (3) indeks ONI/IOD (NOAA/BoM, bulanan, gratis) untuk horizon lebih panjang; (4) stok dan penyaluran SPHP Bulog per kab (tidak publik, perlu permintaan data). Curah hujan CHIRPS lebih cocok untuk K1 daripada K3 jangka 1-4 minggu.
 - Batas utama tetap jumlah kejadian (31 episode lewat HET dalam 15 bulan). Menambah variabel tidak akan menaikkan F1 jauh di atas ±0,35 selama riwayat sependek ini.
+
+## Tambahan 26 Nov 2026 sore: harga pedagang besar dan produsen PIHPS BI
+
+Data: `data/pihps/` (endpoint publik `bi.go.id/hargapangan/WebSite/TabelHarga/GetGridDataDaerah`, skrip `scripts/pihps/ambil_pihps.py`), 1 Jan 2024 s.d. 25 Nov 2026, hanya hari kerja. Pedagang besar hanya 8 kota/kab (Surabaya, Malang, Kediri, Madiun, Probolinggo, Blitar, Jember, Banyuwangi); produsen beras medium I/super I 14 kab. `city_id` adalah id PIHPS, bukan kode BPS; padanan lewat nama.
+
+Uji (`scripts/k3/uji_k3_fitur_pihps.py`, KAPAN, walk-forward sama, ditambahkan di atas model gabungan + Bapanas):
+
+| Horizon | + Bapanas | + semua fitur PIHPS | + hanya pedagang besar/HET |
+|---|---|---|---|
+| 7 | PR-AUC 0,164 / F1 0,251 | 0,149 / 0,233 | 0,162 / 0,251 |
+| 14 | 0,250 / 0,330 | 0,227 / 0,326 | 0,241 / 0,326 |
+| 28 | 0,282 / 0,337 | 0,251 / 0,332 | 0,272 / 0,336 |
+
+PIHPS tidak menambah, di semua varian (juga pedagang besar + produsen tanpa/dengan penanda kosong). Sebabnya: pedagang besar hanya 8 lokasi sehingga 79% baris memakai median Jatim, produsen hanya 14 kab, dan informasinya sudah tertangkap harga penggilingan Bapanas (`pg_het`, 17-28 kab). Data PIHPS tetap disimpan untuk dasbor atau kajian transmisi harga, tetapi tidak dipakai di model peringatan.
