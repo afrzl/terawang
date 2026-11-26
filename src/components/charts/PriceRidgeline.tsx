@@ -3,6 +3,7 @@ import { HET, HET_PREMIUM, HIST, SIAGA_KALI, fcDates, fcHarga, histDates, seriHa
 import { dfmt, nf, rp, scale } from "@/lib/format"
 import { useTooltip } from "@/lib/tooltip"
 import { useWilayah } from "@/lib/filter"
+import { bul, useDataTafsir } from "@/lib/tafsir"
 
 const NH = 12
 const W = 760
@@ -35,6 +36,28 @@ export function PriceRidgeline({ jenis }: { jenis: Jenis[] }) {
       ...fcDates.map((d, h) => ({ d, fc: true, vals: wil.map((k) => fcHarga(k, j)[h].m), mine: rataF((k) => fcHarga(k, j)[h].m) })),
     ]
     return { j, weeks }
+  })
+  useDataTafsir("ridgeline", {
+    satuan: "rupiah per kg",
+    jumlah_wilayah: wil.length,
+    het: Object.fromEntries(jenis.map((j) => [j, hetOf(j)])),
+    pekan: seri.flatMap((q) =>
+      q.weeks.map((w) => {
+        const iMin = w.vals.indexOf(Math.min(...w.vals))
+        const iMax = w.vals.indexOf(Math.max(...w.vals))
+        return {
+          pekan: `${w.d.getFullYear()}-${String(w.d.getMonth() + 1).padStart(2, "0")}-${String(w.d.getDate()).padStart(2, "0")}`,
+          ...(ganda ? { jenis: q.j } : {}),
+          jenis_nilai: w.fc ? "prakiraan" : "aktual",
+          rata_rata: bul(w.mine, 0),
+          termurah: bul(w.vals[iMin], 0),
+          wilayah_termurah: wil[iMin]?.n,
+          termahal: bul(w.vals[iMax], 0),
+          wilayah_termahal: wil[iMax]?.n,
+          wilayah_di_atas_het: w.vals.filter((v) => v > hetOf(q.j)).length,
+        }
+      }),
+    ),
   })
   const all = seri.flatMap((q) => q.weeks.flatMap((w) => w.vals))
   const lo = Math.floor((Math.min(...all) - 250) / 100) * 100

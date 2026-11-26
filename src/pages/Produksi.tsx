@@ -12,6 +12,7 @@ import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
 import { BULAN_NAMA, N_BULAN, SATUAN, bulanLabel, useFilter, useWilayah } from "@/lib/filter"
 import { KpiPerWilayah, LegendaWilayah, usePerWilayah } from "@/lib/perWilayah"
+import { bul, useDataTafsir } from "@/lib/tafsir"
 import { PRODUKTIVITAS, luasPanen, produksiBatas, produksiPrevRentang, produksiRentang, yoyRentang } from "@/lib/petaLayers"
 
 const STEPS = ["--s1", "--s2", "--s3", "--s4", "--s5"]
@@ -130,6 +131,11 @@ function HarvestCalendar() {
   const H = m.t + top.length * rowH + 8
   const cw = (W - m.l - m.r) / N_BULAN
   const mx = Math.max(1e-6, ...cal.flat())
+  useDataTafsir("kalender", {
+    satuan: "ribu ha luas panen per bulan",
+    bulan_disorot: bulan.filter((i) => i >= mulai && i <= akhir).map(bulanLabel),
+    wilayah: top.map((k, r) => ({ wilayah: k.n, ...Object.fromEntries(bulan.map((i) => [bulanLabel(i), bul(cal[r][i], 2)])) })),
+  })
 
   return (
     <>
@@ -197,6 +203,11 @@ const SINYAL: [Sinyal, string][] = [
   ["vh", "VH"],
 ]
 const NPOS = 15
+const KET_SINYAL: Record<Sinyal, string> = {
+  evi: "EVI = indeks kehijauan tanaman dari Sentinel-2 (tanpa satuan, naik saat padi tumbuh), median titik sawah per akuisisi",
+  lswi: "LSWI = indeks kebasahan permukaan dari Sentinel-2 (tanpa satuan, naik saat sawah digenangi untuk tanam)",
+  vh: "VH = hamburan balik radar Sentinel-1 dalam dB (rendah saat sawah tergenang, naik saat tanaman tumbuh)",
+}
 
 /** Cadangan bila /api/deret tidak ada. DUMMY: deret EVI dan LSWI per 12 hari (Jun–Nov). Bentuknya mengikuti metodologi: LSWI naik saat sawah digenangi, lalu EVI naik setelah tanam. Ganti dengan s2_titik_12harian_kabkota. */
 function deretSpektral(k: Wilayah) {
@@ -247,7 +258,7 @@ function ProfilSatelitWil() {
   const hi = sin === "vh" ? Math.ceil(Math.max(...vals) + 0.5) : Math.ceil((Math.max(...vals) + 0.03) * 10) / 10
   const fmt = (v: number | null | undefined) => (v == null ? "belum ada citra" : `${nf(v, desimal)}${satuan}`)
   return (
-    <Panel title="Profil sinyal satelit per wilayah">
+    <Panel title="Profil sinyal satelit per wilayah" tafsir={KET_SINYAL[sin]}>
       <div className="pb chart">
         <div className="seg" style={{ marginBottom: 8 }} role="group" aria-label="Jenis sinyal">
           {SINYAL.map(([v, t]) => (
@@ -265,8 +276,8 @@ function ProfilSatelitWil() {
             H={250}
             sebarLabel
             series={data.flatMap((d) => [
-              ...(denganRata ? [{ vals: d.avg, color: warna(d.k), dash: "3 3", w: 1.2 }] : []),
-              { vals: d.cur, color: warna(d.k), w: 2.2, label: short(d.k.n) },
+              ...(denganRata ? [{ vals: d.avg, color: warna(d.k), dash: "3 3", w: 1.2, nama: `${d.k.n} rata-rata riwayat` }] : []),
+              { vals: d.cur, color: warna(d.k), w: 2.2, label: short(d.k.n), nama: `${d.k.n} musim ini` },
             ])}
             tip={(i) => (
               <>
@@ -329,7 +340,7 @@ function ProfilIsi({ wilayah }: { wilayah: string }) {
   const fmt = (v: number | null | undefined) => (v == null ? "belum ada citra" : `${nf(v, desimal)}${satuan}`)
 
   return (
-    <Panel title={`Profil sinyal satelit · ${k.n}`}>
+    <Panel title={`Profil sinyal satelit · ${k.n}`} tafsir={KET_SINYAL[sin]}>
       <div className="pb chart">
         <div className="seg" style={{ marginBottom: 8 }} role="group" aria-label="Jenis sinyal">
           {SINYAL.map(([v, t]) => (
@@ -381,6 +392,11 @@ function EstimateBars() {
     })
     .sort((a, b) => b.est - a.est)
     .slice(0, 16)
+  useDataTafsir("estimasi", {
+    satuan: `ribu ton ${sat.lab}`,
+    keterangan: "proyeksi model K1 dengan selang 90%, dibanding periode sama 2025 (BPS)",
+    wilayah: est.map((k) => ({ wilayah: k.n, proyeksi: bul(k.est, 1), selang_bawah: bul(k.lo, 1), selang_atas: bul(k.hi, 1), periode_sama_2025: bul(k.prev, 1) })),
+  })
   const W = 560
   const ml = 96
   const mr = 46
@@ -455,6 +471,10 @@ function PhaseBars() {
   const ps = wil.filter((k) => !k.isKota)
     .sort((a, b) => b.ph[2] + b.ph[3] - (a.ph[2] + a.ph[3]))
     .slice(0, 16)
+  useDataTafsir("fase", {
+    satuan: "persen luas sawah per fase tumbuh (citra satelit terbaru)",
+    wilayah: ps.map((k) => ({ wilayah: k.n, ...Object.fromEntries(PHASES.map((n, j) => [n, bul(k.ph[j], 0)])) })),
+  })
   const W = 560
   const ml = 96
   const H = MT + ps.length * ROW_H + 40

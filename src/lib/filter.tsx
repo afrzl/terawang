@@ -253,3 +253,6 @@ export function useFilter() {
 
 /** Wilayah yang lolos filter global. */
 export const useWilayah = () => useFilter().W
+
+/** Seperti useFilter, tetapi null di luar FilterProvider (dipakai Panel untuk konteks interpretasi). */
+export const useFilterOpsional = () => useContext(FilterContext)

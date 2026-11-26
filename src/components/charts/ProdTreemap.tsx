@@ -6,6 +6,7 @@ import { nf, short, sum } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
 import { squarify } from "@/lib/treemap"
+import { bul, useDataTafsir } from "@/lib/tafsir"
 
 const W = 720
 const H = 460
@@ -20,6 +21,13 @@ export function ProdTreemap() {
   const est = (k: Wilayah) => (produksiRentang(k, mulai, akhir) / 1000) * sat.f // ribu ton, satuan terpilih
   const total = sum(WILAYAH.filter(lolos), (k) => est(k))
   const groups = REGIONS.map((r) => ({ r, v: sum(r.members.filter((m) => lolos(byName[m])), (m) => est(byName[m])) })).filter((g) => g.v > 0)
+  useDataTafsir("treemap", {
+    satuan: `ribu ton ${sat.lab}`,
+    kawasan: groups.map((g) => ({ kawasan: g.r.short, produksi: bul(g.v, 1), porsi_persen: bul((g.v / total) * 100, 1) })),
+    wilayah: WILAYAH.filter(lolos)
+      .map((k) => ({ wilayah: k.n, kawasan: REGIONS.find((r) => r.members.includes(k.n))?.short ?? "", produksi: bul(est(k), 1), porsi_persen: bul((est(k) / total) * 100, 1), yoy_persen: bul(yoyRentang(k, mulai, akhir) * 100, 1) }))
+      .sort((a, b) => (b.produksi ?? 0) - (a.produksi ?? 0)),
+  })
   const outer = squarify(groups, (g) => g.v, { x: 0, y: 0, w: W, h: H })
 
   return (

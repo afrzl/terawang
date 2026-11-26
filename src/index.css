@@ -910,3 +910,24 @@ main.full{flex:1;min-height:0;position:relative}
 .kv2-wil .kv2-n{text-transform:none}
 .catatan-gab{margin:6px 0 0;font-size:12px;color:var(--ink-3);line-height:1.45}
 .sw-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:0}
+
+/* ---- Interpretasi grafik (tombol di kepala panel, src/components/ui/Tafsir.tsx) ---- */
+.ph-aksi{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}
+.tafsir-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--rule);background:transparent;color:var(--ink-2);font-size:12px;font-weight:600;cursor:pointer;line-height:1.2}
+.tafsir-btn:hover{background:var(--panel-2);color:var(--ink)}
+.tafsir-btn[aria-expanded="true"]{border-color:var(--accent);color:var(--accent)}
+.tafsir-btn:disabled{cursor:progress}
+.tafsir-btn .putar{animation:tafsirPutar .9s linear infinite}
+@keyframes tafsirPutar{to{transform:rotate(360deg)}}
+.tafsir{position:relative;margin:12px 16px 0;padding:10px 34px 10px 12px;border-left:3px solid var(--accent);background:var(--accent-soft)}
+.tafsir p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink)}
+.tafsir small{display:block;margin-top:6px;font-size:11px;color:var(--ink-3)}
+.tafsir.galat{border-left-color:var(--ink-3);background:var(--panel-2)}
+.tafsir.galat p{color:var(--ink-2)}
+.tafsir-tutup{position:absolute;top:8px;right:8px;display:grid;place-items:center;width:22px;height:22px;border:0;background:transparent;color:var(--ink-3);cursor:pointer}
+.tafsir-tutup:hover{color:var(--ink)}
+.tafsir-muat{display:grid;gap:7px;padding:3px 0}
+.tafsir-muat span{display:block;height:10px;background:linear-gradient(90deg,var(--rule-2),var(--panel),var(--rule-2));background-size:200% 100%;animation:tafsirKilau 1.2s ease-in-out infinite}
+.tafsir-muat span:last-child{width:62%}
+@keyframes tafsirKilau{from{background-position:100% 0}to{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){.tafsir-btn .putar,.tafsir-muat span{animation:none}}

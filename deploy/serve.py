@@ -26,11 +26,24 @@ class SPAHandler(http.server.SimpleHTTPRequestHandler):
             return self.proksi_api()
         return super().do_GET()
 
+    def do_POST(self):
+        if self.path == "/api" or self.path.startswith("/api/"):
+            return self.proksi_api()
+        self.send_error(405)
+
     def proksi_api(self):
-        kepala = {k: v for k, v in self.headers.items() if k.lower() in ("cookie", "accept", "user-agent")}
-        req = urllib.request.Request(API_UPSTREAM + self.path, headers=kepala)
+        kepala = {k: v for k, v in self.headers.items() if k.lower() in ("cookie", "accept", "user-agent", "content-type")}
+        kepala["X-Forwarded-For"] = self.headers.get("X-Forwarded-For") or self.client_address[0]
+        isi_req = None
+        if self.command == "POST":
+            n = int(self.headers.get("Content-Length") or 0)
+            if n > 65536:
+                self.send_error(413)
+                return
+            isi_req = self.rfile.read(n)
+        req = urllib.request.Request(API_UPSTREAM + self.path, data=isi_req, headers=kepala, method=self.command)
         try:
-            with urllib.request.urlopen(req, timeout=20) as r:
+            with urllib.request.urlopen(req, timeout=60) as r:
                 status, hdr, isi = r.status, r.headers, r.read()
         except urllib.error.HTTPError as e:
             status, hdr, isi = e.code, e.headers, e.read()

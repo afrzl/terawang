@@ -24,6 +24,10 @@ export default function ArusBeras() {
   )
 }
 
+const KET_ARUS = "alokasi pasokan beras antarkabupaten dari optimasi jarak (model), bukan arus dagang tercatat; ton per bulan"
+const arusTafsir = (xs: Trade[], n = 30) =>
+  xs.slice(0, n).map((t) => ({ dari: t.from.n, ke: t.to.n, ton: Math.round(t.ton), km: Math.round(t.km), lintas_kawasan: regionOf[t.from.n] !== regionOf[t.to.n] ? "ya" : "tidak" }))
+
 function Perdagangan() {
   const { lolos, W, akhir } = useFilter()
   const [mode, setMode] = useState<"sankey" | "matriks" | "chord">("sankey")
@@ -50,7 +54,15 @@ function Perdagangan() {
         ]}
       />
       <div className="grid-21">
-        <Panel title="Peta alokasi pasokan" className="panel-flex">
+        <Panel
+          title="Peta alokasi pasokan"
+          className="panel-flex"
+          tafsir={`${KET_ARUS}; warna peta = cakupan stok (bulan konsumsi) akhir ${bulanLabel(akhir)}`}
+          dataTafsir={{
+            arus_terbesar: arusTafsir(trade, 25),
+            cakupan_stok_bulan: W.map((k) => ({ wilayah: k.n, cakupan: Math.round(covBulan(k, akhir) * 100) / 100 })),
+          }}
+        >
           <div className="map">
             <PetaJatim
               layer="stokK2"
@@ -68,6 +80,8 @@ function Perdagangan() {
       </div>
       <Panel
         title="Alokasi pasokan antarkabupaten"
+        tafsir={`${KET_ARUS}; daftar arus = 40 arus terbesar, total dan persen terhadap total pakai total_semua_arus_ton`}
+        dataTafsir={{ total_semua_arus_ton: Math.round(total), lintas_kawasan_ton: Math.round(antar), wilayah_pemasok: nPemasok, arus_terbesar: arusTafsir(trade, 40) }}
         actions={
           <div className="seg seg-s" role="group" aria-label="Tampilan aliran">
             <button type="button" aria-pressed={mode === "sankey"} onClick={() => setMode("sankey")}>
@@ -101,12 +115,23 @@ function Perdagangan() {
         )}
       </Panel>
       <div className="grid-2">
-        <Panel title="Alokasi pasokan antarkawasan">
+        <Panel
+          title="Alokasi pasokan antarkawasan"
+          tafsir={KET_ARUS}
+          dataTafsir={{
+            antarkawasan_ton: REGIONS.flatMap((a, i) => REGIONS.map((b, j) => ({ dari: a.name, ke: b.name, ton: i === j ? 0 : Math.round(matrixOf(semua)[i][j]) }))).filter((x) => x.ton > 0),
+            dalam_kawasan_sendiri_ton: REGIONS.map((a, i) => ({ kawasan: a.name, ton: Math.round(matrixOf(semua)[i][i]) })),
+          }}
+        >
           <div className="pb chart" style={{ maxWidth: 680, margin: "0 auto" }}>
             <ChordArus matrix={matrixOf(semua)} />
           </div>
         </Panel>
-        <Panel title={`Neraca kawasan ${bulanLabel(akhir)}`}>
+        <Panel
+          title={`Neraca kawasan ${bulanLabel(akhir)}`}
+          tafsir="produksi dikurangi konsumsi per kawasan, ton per bulan; positif = surplus"
+          dataTafsir={regionStatsFor(akhir, semua).map((s) => ({ kawasan: s.r.name, produksi: Math.round(s.prod), konsumsi: Math.round(s.kons), surplus: Math.round(s.prod - s.kons), keluar_kawasan: Math.round(s.keluar), masuk_kawasan: Math.round(s.masuk) }))}
+        >
           <div className="pb chart">
             <RegionBalance bulan={akhir} trade={semua} />
           </div>
@@ -233,7 +258,7 @@ function Corridors({ trade }: { trade: Trade[] }) {
   const out = trade.filter((t) => t.from.n === k.n).reduce((a, t) => a + t.ton, 0)
   const inn = trade.filter((t) => t.to.n === k.n).reduce((a, t) => a + t.ton, 0)
   return (
-    <Panel title="Pasangan pemasok–penerima terbesar">
+    <Panel title="Pasangan pemasok–penerima terbesar" tafsir={KET_ARUS} dataTafsir={{ pasangan: arusTafsir(top, 10) }}>
       <div className="corr">
         {top.map((t) => (
           <div key={t.from.n + t.to.n} className="corr-row" onClick={() => select(t.to.n)}>

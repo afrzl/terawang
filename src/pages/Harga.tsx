@@ -232,6 +232,7 @@ function PricePanelWil({ jenis }: { jenis: Komoditas[] }) {
   return (
     <Panel
       title={`Harga beras ${kom} per wilayah`}
+      tafsir="Rupiah per kg, rata-rata pekanan; titik berlabel prakiraan = prakiraan model K3a; HET = harga eceran tertinggi"
       actions={
         jenis.length > 1 ? (
           <div className="seg seg-s" role="group" aria-label="Jenis beras pada grafik">
@@ -253,11 +254,11 @@ function PricePanelWil({ jenis }: { jenis: Komoditas[] }) {
           H={420}
           splitAt={HIST - 1}
           sebarLabel
-          bands={data.map((d) => ({ lo: [d.pNow].concat(d.fcLo), hi: [d.pNow].concat(d.fcHi), off: HIST - 1, color: warna(d.k), op: 0.08 }))}
+          bands={data.map((d) => ({ lo: [d.pNow].concat(d.fcLo), hi: [d.pNow].concat(d.fcHi), off: HIST - 1, color: warna(d.k), op: 0.08, nama: `${d.k.n} P10–P90` }))}
           refs={[{ v: het, label: `HET ${nf(het)}`, color: "var(--ink-2)" }]}
           series={data.flatMap((d) => [
-            { vals: d.harga, color: warna(d.k), w: 2 },
-            { vals: [d.pNow].concat(d.fcM), off: HIST - 1, color: warna(d.k), dash: "5 4", w: 2, label: short(d.k.n) },
+            { vals: d.harga, color: warna(d.k), w: 2, nama: d.k.n },
+            { vals: [d.pNow].concat(d.fcM), off: HIST - 1, color: warna(d.k), dash: "5 4", w: 2, label: short(d.k.n), nama: d.k.n },
           ])}
           tip={(i) => (
             <>
@@ -319,7 +320,10 @@ function PricePanelGab({ jenis }: { jenis: Komoditas[] }) {
   const d0 = data[0]
 
   return (
-    <Panel title={ganda ? "Harga beras" : `Harga beras ${d0.kom}`}>
+    <Panel
+      title={ganda ? "Harga beras" : `Harga beras ${d0.kom}`}
+      tafsir={`Rupiah per kg, rata-rata pekanan ${wil.length === WILAYAH.length ? "Jawa Timur" : wil.length === 1 ? wil[0].n : `${wil.length} wilayah`} (bobot penduduk); titik berlabel prakiraan = prakiraan model K3a`}
+    >
       <div className="pb chart">
         <LineChart
           xDates={dates}
@@ -334,6 +338,7 @@ function PricePanelGab({ jenis }: { jenis: Komoditas[] }) {
             off: HIST - 1,
             color: warna(d),
             op: ganda ? 0.12 : 0.16,
+            nama: `${d.kom} P10–P90`,
           }))}
           refs={data.flatMap((d) => [
             { v: d.het, label: `HET ${nf(d.het)}`, color: ganda ? WARNA_JENIS[d.kom] : "var(--ink-2)", dy: dekat(d, d.het) ? (d.fcM[3] >= d.het ? 16 : -7) : 4 },
@@ -341,7 +346,7 @@ function PricePanelGab({ jenis }: { jenis: Komoditas[] }) {
           ])}
           series={data.flatMap((d) => [
             ...(sebagian && !ganda ? [{ vals: d.prov, color: "var(--ink-3)", w: 1.5, label: "rata-rata Jatim", ly: d.pNow > d.prov[HIST - 1] ? 14 : -6 }] : []),
-            { vals: d.harga, color: garisHarga(d), w: 2.2 },
+            { vals: d.harga, color: garisHarga(d), w: 2.2, nama: `harga ${d.kom}` },
             {
               vals: [d.pNow].concat(d.fcM),
               off: HIST - 1,
@@ -349,6 +354,7 @@ function PricePanelGab({ jenis }: { jenis: Komoditas[] }) {
               dash: "5 4",
               w: 2.2,
               label: rp(d.fcM[3]),
+              nama: `harga ${d.kom}`,
               ly: dekat(d, d.het) ? (d.fcM[3] >= d.het ? -9 : 20) : !ganda && dekat(d, d.siaga) ? (d.fcM[3] >= d.siaga ? -9 : 20) : 4,
             },
           ])}
@@ -437,7 +443,7 @@ function PanelGkp() {
   const wilayahLabel = kab ? kab.nama : "Jawa Timur"
   return (
     <div className="grid-2">
-      <Panel title={`Harga GKP petani ${wilayahLabel}, bulanan`}>
+      <Panel title={`Harga GKP petani ${wilayahLabel}, bulanan`} tafsir="Rupiah per kg gabah kering panen di tingkat petani; titik berlabel prakiraan = prakiraan 1–3 bulan; HPP = harga pembelian pemerintah">
         <div className="pb chart">
           <LineChart
             xDates={dates}
@@ -447,11 +453,11 @@ function PanelGkp() {
             W={760}
             H={420}
             splitAt={n - 1}
-            bands={[{ lo: [pNow, ...fc.map((f) => f.p10)], hi: [pNow, ...fc.map((f) => f.p90)], off: n - 1, color: "var(--accent)", op: 0.16 }]}
+            bands={[{ lo: [pNow, ...fc.map((f) => f.p10)], hi: [pNow, ...fc.map((f) => f.p90)], off: n - 1, color: "var(--accent)", op: 0.16, nama: "P10–P90" }]}
             refs={[{ v: g.hpp_sekarang, label: `HPP ${nf(g.hpp_sekarang)}`, color: "var(--ink-2)", dy: 4 }]}
             series={[
-              { vals: rw.map((r) => r.harga), color: "var(--ink)", w: 2.2 },
-              { vals: [pNow, ...fc.map((f) => f.harga_prediksi)], off: n - 1, color: "var(--accent)", dash: "5 4", w: 2.2, label: rp(ujung.harga_prediksi) },
+              { vals: rw.map((r) => r.harga), color: "var(--ink)", w: 2.2, nama: "harga GKP" },
+              { vals: [pNow, ...fc.map((f) => f.harga_prediksi)], off: n - 1, color: "var(--accent)", dash: "5 4", w: 2.2, label: rp(ujung.harga_prediksi), nama: "harga GKP" },
             ]}
             tip={(i) => {
               if (i < n) {
