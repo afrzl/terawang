@@ -8,12 +8,18 @@ from .resources import folder_manual, semua_resource
 
 ASET = load_assets_from_modules([bronze, silver, model, status])
 
+# Semua job masuk satu antrean: run berikutnya menunggu run yang sedang jalan selesai (batas di DAGSTER_HOME/dagster.yaml,
+# run_queue.tag_concurrency_limits, ditulis deploy-pipeline.sh). Tanpa ini job harian dan pipeline_penuh dari sensor bisa menulis
+# silver_harga bersamaan dan gagal "Unique constraint failed".
+ANTREAN = {"terawang/antrean": "pipeline"}
+
 # Seluruh alur, dari sumber sampai peringatan.
-job_penuh = define_asset_job("pipeline_penuh", selection=AssetSelection.all(), description="Semua sumber -> silver -> K1, K2, K3, SPHP -> status dan peringatan.")
+job_penuh = define_asset_job("pipeline_penuh", selection=AssetSelection.all(), tags=ANTREAN, description="Semua sumber -> silver -> K1, K2, K3, SPHP -> status dan peringatan.")
 
 # Harian: hanya yang bergantung pada harga. Stok dan produksi dipakai dari run terakhir lewat input upstream.
 job_harga = define_asset_job(
     "pipeline_harga_harian",
+    tags=ANTREAN,
     selection=AssetSelection.assets("bronze_harga", "bronze_bapanas").downstream() | AssetSelection.assets("k1_prediksi_produksi", "k2_estimasi_stok"),
     description="Ambil harga terbaru -> silver harga -> K3 -> status dan peringatan.",
 )
@@ -21,6 +27,7 @@ job_harga = define_asset_job(
 # Citra baru: bronze_citra dan turunannya (K1 -> K2 -> SPHP, status, peringatan). K3 ikut agar status lengkap.
 job_citra = define_asset_job(
     "pipeline_citra",
+    tags=ANTREAN,
     selection=AssetSelection.assets("bronze_citra", "bronze_titik_satelit", "bronze_iklim").downstream() | AssetSelection.assets("k3_prediksi_harga"),
     description="Citra Sentinel terbaru dari GEE -> silver satelit dan deret titik sawah -> K1 (nowcast citra, produksi), K2, SPHP -> status dan peringatan.",
 )

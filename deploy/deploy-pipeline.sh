@@ -29,6 +29,26 @@ touch "$KUNCI"
 trap 'rm -f "$KUNCI"' EXIT
 pkill -f "[d]agster-daemon run" 2>/dev/null || true
 
+# 0b. Tunggu run yang sedang berjalan selesai (daemon sudah mati, jadi tidak ada run baru). Tanpa ini npm ci menghapus
+#     node_modules di tengah run dan langkah ingest gagal ("tsx: not found"). Batas tunggu DEPLOY_TUNGGU_MENIT (default 45).
+if [ -x "$VENV/bin/dotenv" ] && [ -x "$VENV/bin/python" ]; then
+  cek_run() {
+    ( cd pipeline && DAGSTER_HOME="$DAGSTER_HOME" "$VENV/bin/dotenv" -f .env run --no-override -- "$VENV/bin/python" -c '
+from dagster import DagsterInstance, DagsterRunStatus, RunsFilter
+with DagsterInstance.get() as i:
+    r = i.get_runs(RunsFilter(statuses=[DagsterRunStatus.STARTING, DagsterRunStatus.STARTED, DagsterRunStatus.CANCELING]))
+    print(" ".join(f"{x.job_name}:{x.run_id[:8]}" for x in r))' 2>/dev/null ) || echo "?"
+  }
+  for i in $(seq 1 $(( ${DEPLOY_TUNGGU_MENIT:-45} * 2 ))); do
+    AKTIF="$(cek_run)"
+    [ -z "$AKTIF" ] && break
+    [ "$AKTIF" = "?" ] && { echo "Status run Dagster tidak terbaca; lanjut deploy."; break; }
+    [ "$i" = 1 ] && echo "Menunggu run aktif selesai sebelum memasang ulang: $AKTIF"
+    sleep 30
+  done
+  if [ -n "$AKTIF" ] && [ "$AKTIF" != "?" ]; then echo "PERINGATAN: run masih berjalan setelah ${DEPLOY_TUNGGU_MENIT:-45} menit ($AKTIF); deploy dilanjutkan."; fi
+fi
+
 # 1. Lingkungan Python dan dependensi (models milik Danang + pipeline)
 [ -d "$VENV" ] || python3 -m venv "$VENV"
 "$VENV/bin/pip" install -q --upgrade pip
@@ -36,7 +56,12 @@ EXTRA="postgres"; grep -q "^TERAWANG_SUMBER_CITRA=gee" pipeline/.env && EXTRA="p
 "$VENV/bin/pip" install -q -e models -e "pipeline[$EXTRA]"
 
 # 2. Dependensi ingest (api/, Prisma) dan migrasi schema
-( cd api && npm ci --silent && set -a && . ../pipeline/.env && set +a && npx prisma migrate deploy && npx prisma generate )
+#    npm ci hanya bila package-lock.json berubah sejak pemasangan terakhir (npm ci selalu menghapus node_modules).
+LOCK_SHA="$(sha256sum api/package-lock.json | cut -d' ' -f1)"
+if [ "$(cat api/node_modules/.terawang-lock-sha 2>/dev/null)" != "$LOCK_SHA" ]; then
+  ( cd api && npm ci --silent && echo "$LOCK_SHA" > node_modules/.terawang-lock-sha )
+fi
+( cd api && set -a && . ../pipeline/.env && set +a && npx prisma migrate deploy && npx prisma generate )
 
 # 3. DAGSTER_HOME: riwayat run disimpan di Postgres kalau DAGSTER_PG_URL ada di .env, selain itu SQLite
 mkdir -p "$DAGSTER_HOME"
@@ -46,12 +71,20 @@ storage:
   postgres:
     postgres_url:
       env: DAGSTER_PG_URL
-telemetry:
-  enabled: false
 YAML
 else
-  printf 'telemetry:\n  enabled: false\n' > "$DAGSTER_HOME/dagster.yaml"
+  : > "$DAGSTER_HOME/dagster.yaml"
 fi
+# Satu antrean run: job bertag terawang/antrean=pipeline (definitions.py) jalan satu per satu.
+cat >> "$DAGSTER_HOME/dagster.yaml" <<YAML
+telemetry:
+  enabled: false
+run_queue:
+  tag_concurrency_limits:
+    - key: "terawang/antrean"
+      value: "pipeline"
+      limit: 1
+YAML
 
 NODE_BIN="$(dirname "$(command -v npm)")"
 
