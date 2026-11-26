@@ -1,0 +1,11 @@
+,nilai
+bps_awal,2016-01
+bps_akhir,2024-12
+bapanas_sambung,22
+rasio_bps_bapanas,1.0005
+bulan_tumpang,12
+korelasi_tumpang,0.961
+sampel_awal,2019-01
+sampel_akhir,2026-10
+orde,"(0, 1, 0)"
+musim,"(1, 0, 0, 12)"
