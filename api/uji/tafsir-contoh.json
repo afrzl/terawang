@@ -2975,5 +2975,556 @@
     }
    ]
   }
+ },
+ {
+  "grafik": "Harga beras medium per wilayah",
+  "judul": "Harga beras medium per wilayah",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "Blitar, Jember, Banyuwangi",
+   "jenis_beras": "medium dan premium",
+   "keterangan": "Rupiah per kg, rata-rata pekanan; titik berlabel prakiraan = prakiraan model K3a; HET = harga eceran tertinggi"
+  },
+  "data": {
+   "garis": [
+    "Banyuwangi",
+    "Blitar",
+    "Jember"
+   ],
+   "titik": [
+    {
+     "tanggal": "2026-05-10",
+     "Banyuwangi": 12713.92,
+     "Blitar": 12665.46,
+     "Jember": 12633.08
+    },
+    {
+     "tanggal": "2026-05-17",
+     "Banyuwangi": 12708.07,
+     "Blitar": 12697.25,
+     "Jember": 12630.23
+    },
+    {
+     "tanggal": "2026-05-24",
+     "Banyuwangi": 12732.07,
+     "Blitar": 12703.83,
+     "Jember": 12675.18
+    },
+    {
+     "tanggal": "2026-05-31",
+     "Banyuwangi": 12725.8,
+     "Blitar": 12711.6,
+     "Jember": 12638.05
+    },
+    {
+     "tanggal": "2026-06-07",
+     "Banyuwangi": 12735.36,
+     "Blitar": 12685.68,
+     "Jember": 12647.88
+    },
+    {
+     "tanggal": "2026-06-14",
+     "Banyuwangi": 12698.82,
+     "Blitar": 12696.67,
+     "Jember": 12625.28
+    },
+    {
+     "tanggal": "2026-06-21",
+     "Banyuwangi": 12711.42,
+     "Blitar": 12654.43,
+     "Jember": 12648.81
+    },
+    {
+     "tanggal": "2026-06-28",
+     "Banyuwangi": 12694.1,
+     "Blitar": 12679.82,
+     "Jember": 12639.24
+    },
+    {
+     "tanggal": "2026-07-05",
+     "Banyuwangi": 12680.57,
+     "Blitar": 12671.19,
+     "Jember": 12626.05
+    },
+    {
+     "tanggal": "2026-07-12",
+     "Banyuwangi": 12659.1,
+     "Blitar": 12637.5,
+     "Jember": 12589.59
+    },
+    {
+     "tanggal": "2026-07-19",
+     "Banyuwangi": 12686.46,
+     "Blitar": 12659.86,
+     "Jember": 12621.8
+    },
+    {
+     "tanggal": "2026-07-26",
+     "Banyuwangi": 12679.27,
+     "Blitar": 12661.7,
+     "Jember": 12592.9
+    },
+    {
+     "tanggal": "2026-08-02",
+     "Banyuwangi": 12707.58,
+     "Blitar": 12688.42,
+     "Jember": 12610.38
+    },
+    {
+     "tanggal": "2026-08-09",
+     "Banyuwangi": 12713.37,
+     "Blitar": 12688.35,
+     "Jember": 12660.37
+    },
+    {
+     "tanggal": "2026-08-16",
+     "Banyuwangi": 12712.54,
+     "Blitar": 12674.57,
+     "Jember": 12627.21
+    },
+    {
+     "tanggal": "2026-08-23",
+     "Banyuwangi": 12695.48,
+     "Blitar": 12683.31,
+     "Jember": 12663.03
+    },
+    {
+     "tanggal": "2026-08-30",
+     "Banyuwangi": 12734.13,
+     "Blitar": 12745.56,
+     "Jember": 12684.2
+    },
+    {
+     "tanggal": "2026-09-06",
+     "Banyuwangi": 12757.88,
+     "Blitar": 12769.61,
+     "Jember": 12708
+    },
+    {
+     "tanggal": "2026-09-13",
+     "Banyuwangi": 12778.6,
+     "Blitar": 12778.94,
+     "Jember": 12723.23
+    },
+    {
+     "tanggal": "2026-09-20",
+     "Banyuwangi": 12813.37,
+     "Blitar": 12834.52,
+     "Jember": 12708.19
+    },
+    {
+     "tanggal": "2026-09-27",
+     "Banyuwangi": 12837.89,
+     "Blitar": 12830.25,
+     "Jember": 12755.2
+    },
+    {
+     "tanggal": "2026-10-04",
+     "Banyuwangi": 12860.69,
+     "Blitar": 12857.34,
+     "Jember": 12764.63
+    },
+    {
+     "tanggal": "2026-10-11",
+     "Banyuwangi": 12862.93,
+     "Blitar": 12904.33,
+     "Jember": 12770.76
+    },
+    {
+     "tanggal": "2026-10-18",
+     "Banyuwangi": 12886.05,
+     "Blitar": 12917.51,
+     "Jember": 12793.43
+    },
+    {
+     "tanggal": "2026-10-25",
+     "Banyuwangi": 12904.36,
+     "Blitar": 12941.72,
+     "Jember": 12827.92
+    },
+    {
+     "tanggal": "2026-11-01",
+     "Banyuwangi": 12947.48,
+     "Blitar": 12983.62,
+     "Jember": 12856.93,
+     "Banyuwangi P10–P90 bawah": 12947.48,
+     "Banyuwangi P10–P90 atas": 12947.48,
+     "Blitar P10–P90 bawah": 12983.62,
+     "Blitar P10–P90 atas": 12983.62,
+     "Jember P10–P90 bawah": 12856.93,
+     "Jember P10–P90 atas": 12856.93,
+     "prakiraan": "ya"
+    },
+    {
+     "tanggal": "2026-11-08",
+     "Banyuwangi": 12972.83,
+     "Blitar": 13014.03,
+     "Jember": 12879.27,
+     "Banyuwangi P10–P90 bawah": 12854.83,
+     "Banyuwangi P10–P90 atas": 13090.83,
+     "Blitar P10–P90 bawah": 12896.03,
+     "Blitar P10–P90 atas": 13132.03,
+     "Jember P10–P90 bawah": 12761.27,
+     "Jember P10–P90 atas": 12997.27,
+     "prakiraan": "ya"
+    },
+    {
+     "tanggal": "2026-11-15",
+     "Banyuwangi": 12998.18,
+     "Blitar": 13044.44,
+     "Jember": 12901.61,
+     "Banyuwangi P10–P90 bawah": 12832.18,
+     "Banyuwangi P10–P90 atas": 13164.18,
+     "Blitar P10–P90 bawah": 12878.44,
+     "Blitar P10–P90 atas": 13210.44,
+     "Jember P10–P90 bawah": 12735.61,
+     "Jember P10–P90 atas": 13067.61,
+     "prakiraan": "ya"
+    },
+    {
+     "tanggal": "2026-11-22",
+     "Banyuwangi": 13023.53,
+     "Blitar": 13074.85,
+     "Jember": 12923.95,
+     "Banyuwangi P10–P90 bawah": 12809.53,
+     "Banyuwangi P10–P90 atas": 13237.53,
+     "Blitar P10–P90 bawah": 12860.85,
+     "Blitar P10–P90 atas": 13288.85,
+     "Jember P10–P90 bawah": 12709.95,
+     "Jember P10–P90 atas": 13137.95,
+     "prakiraan": "ya"
+    },
+    {
+     "tanggal": "2026-11-29",
+     "Banyuwangi": 13048.88,
+     "Blitar": 13105.26,
+     "Jember": 12946.29,
+     "Banyuwangi P10–P90 bawah": 12786.88,
+     "Banyuwangi P10–P90 atas": 13310.88,
+     "Blitar P10–P90 bawah": 12843.26,
+     "Blitar P10–P90 atas": 13367.26,
+     "Jember P10–P90 bawah": 12684.29,
+     "Jember P10–P90 atas": 13208.29,
+     "prakiraan": "ya"
+    }
+   ],
+   "garis_acuan": [
+    {
+     "nama": "HET 13.500",
+     "nilai": 13500
+    }
+   ]
+  }
+ },
+ {
+  "grafik": "Estimasi stok non-Bulog per wilayah",
+  "judul": "Estimasi stok non-Bulog per wilayah",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "Blitar, Jember, Banyuwangi",
+   "keterangan": "Cakupan stok dalam bulan konsumsi (stok dibagi konsumsi bulanan); kolom Des–Jan = prakiraan; batas aman 1 bulan, defisit di bawah 0,75 bulan"
+  },
+  "data": {
+   "garis": [
+    "Banyuwangi",
+    "Blitar",
+    "Jember"
+   ],
+   "titik": [
+    {
+     "tanggal": "2026-01-31",
+     "Banyuwangi": 5.09,
+     "Blitar": 3.93,
+     "Jember": 4.16
+    },
+    {
+     "tanggal": "2026-02-28",
+     "Banyuwangi": 5.09,
+     "Blitar": 3.93,
+     "Jember": 4.16
+    },
+    {
+     "tanggal": "2026-03-31",
+     "Banyuwangi": 5.09,
+     "Blitar": 3.93,
+     "Jember": 4.16
+    },
+    {
+     "tanggal": "2026-04-30",
+     "Banyuwangi": 5.09,
+     "Blitar": 3.93,
+     "Jember": 4.16
+    },
+    {
+     "tanggal": "2026-05-31",
+     "Banyuwangi": 5.01,
+     "Blitar": 3.88,
+     "Jember": 4.11
+    },
+    {
+     "tanggal": "2026-06-30",
+     "Banyuwangi": 4.61,
+     "Blitar": 3.55,
+     "Jember": 3.77
+    },
+    {
+     "tanggal": "2026-07-31",
+     "Banyuwangi": 4.32,
+     "Blitar": 3.38,
+     "Jember": 3.6
+    },
+    {
+     "tanggal": "2026-08-31",
+     "Banyuwangi": 4.05,
+     "Blitar": 3.15,
+     "Jember": 3.47
+    },
+    {
+     "tanggal": "2026-09-30",
+     "Banyuwangi": 3.61,
+     "Blitar": 2.86,
+     "Jember": 3.18
+    },
+    {
+     "tanggal": "2026-10-31",
+     "Banyuwangi": 3.4,
+     "Blitar": 2.66,
+     "Jember": 3.02
+    },
+    {
+     "tanggal": "2026-11-30",
+     "Banyuwangi": 3.05,
+     "Blitar": 2.42,
+     "Jember": 2.76,
+     "Banyuwangi P10–P90 bawah": 1.97,
+     "Banyuwangi P10–P90 atas": 4.13,
+     "Blitar P10–P90 bawah": 1.34,
+     "Blitar P10–P90 atas": 3.5,
+     "Jember P10–P90 bawah": 1.68,
+     "Jember P10–P90 atas": 3.84,
+     "Des–Jan": "ya"
+    },
+    {
+     "tanggal": "2026-12-31",
+     "Banyuwangi": 2.66,
+     "Blitar": 2.13,
+     "Jember": 2.49,
+     "Banyuwangi P10–P90 bawah": 1.58,
+     "Banyuwangi P10–P90 atas": 3.74,
+     "Blitar P10–P90 bawah": 1.05,
+     "Blitar P10–P90 atas": 3.21,
+     "Jember P10–P90 bawah": 1.41,
+     "Jember P10–P90 atas": 3.57,
+     "Des–Jan": "ya"
+    },
+    {
+     "tanggal": "2027-01-31",
+     "Banyuwangi": 2.16,
+     "Blitar": 1.75,
+     "Jember": 2.14,
+     "Banyuwangi P10–P90 bawah": 1.08,
+     "Banyuwangi P10–P90 atas": 3.23,
+     "Blitar P10–P90 bawah": 0.67,
+     "Blitar P10–P90 atas": 2.83,
+     "Jember P10–P90 bawah": 1.07,
+     "Jember P10–P90 atas": 3.22,
+     "Des–Jan": "ya"
+    }
+   ],
+   "garis_acuan": [
+    {
+     "nama": "batas aman",
+     "nilai": 1
+    },
+    {
+     "nama": "defisit",
+     "nilai": 0.75
+    }
+   ]
+  }
+ },
+ {
+  "grafik": "Profil sinyal satelit per wilayah",
+  "judul": "Profil sinyal satelit per wilayah",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "Blitar, Jember, Banyuwangi",
+   "satuan_produksi": "gabah kering giling (GKG)",
+   "keterangan": "EVI = indeks kehijauan tanaman dari Sentinel-2 (tanpa satuan, naik saat padi tumbuh), median titik sawah per akuisisi"
+  },
+  "data": {
+   "garis": [
+    "Banyuwangi rata-rata riwayat",
+    "Banyuwangi musim ini",
+    "Blitar rata-rata riwayat",
+    "Blitar musim ini",
+    "Jember rata-rata riwayat",
+    "Jember musim ini"
+   ],
+   "titik": [
+    {
+     "tanggal": "2026-06-01",
+     "Banyuwangi rata-rata riwayat": 0.21,
+     "Banyuwangi musim ini": 0.2,
+     "Blitar rata-rata riwayat": 0.21,
+     "Blitar musim ini": 0.2,
+     "Jember rata-rata riwayat": 0.2,
+     "Jember musim ini": 0.2
+    },
+    {
+     "tanggal": "2026-06-13",
+     "Banyuwangi rata-rata riwayat": 0.19,
+     "Banyuwangi musim ini": 0.2,
+     "Blitar rata-rata riwayat": 0.21,
+     "Blitar musim ini": 0.2,
+     "Jember rata-rata riwayat": 0.2,
+     "Jember musim ini": 0.2
+    },
+    {
+     "tanggal": "2026-06-25",
+     "Banyuwangi rata-rata riwayat": 0.2,
+     "Banyuwangi musim ini": 0.2,
+     "Blitar rata-rata riwayat": 0.21,
+     "Blitar musim ini": 0.2,
+     "Jember rata-rata riwayat": 0.2,
+     "Jember musim ini": 0.21
+    },
+    {
+     "tanggal": "2026-07-07",
+     "Banyuwangi rata-rata riwayat": 0.19,
+     "Banyuwangi musim ini": 0.19,
+     "Blitar rata-rata riwayat": 0.2,
+     "Blitar musim ini": 0.19,
+     "Jember rata-rata riwayat": 0.2,
+     "Jember musim ini": 0.19
+    },
+    {
+     "tanggal": "2026-07-19",
+     "Banyuwangi rata-rata riwayat": 0.21,
+     "Banyuwangi musim ini": 0.2,
+     "Blitar rata-rata riwayat": 0.19,
+     "Blitar musim ini": 0.19,
+     "Jember rata-rata riwayat": 0.2,
+     "Jember musim ini": 0.2
+    },
+    {
+     "tanggal": "2026-07-31",
+     "Banyuwangi rata-rata riwayat": 0.2,
+     "Banyuwangi musim ini": 0.2,
+     "Blitar rata-rata riwayat": 0.2,
+     "Blitar musim ini": 0.2,
+     "Jember rata-rata riwayat": 0.19,
+     "Jember musim ini": 0.21
+    },
+    {
+     "tanggal": "2026-08-12",
+     "Banyuwangi rata-rata riwayat": 0.21,
+     "Banyuwangi musim ini": 0.2,
+     "Blitar rata-rata riwayat": 0.21,
+     "Blitar musim ini": 0.2,
+     "Jember rata-rata riwayat": 0.21,
+     "Jember musim ini": 0.2
+    },
+    {
+     "tanggal": "2026-08-24",
+     "Banyuwangi rata-rata riwayat": 0.2,
+     "Banyuwangi musim ini": 0.2,
+     "Blitar rata-rata riwayat": 0.21,
+     "Blitar musim ini": 0.2,
+     "Jember rata-rata riwayat": 0.2,
+     "Jember musim ini": 0.21
+    },
+    {
+     "tanggal": "2026-09-05",
+     "Banyuwangi rata-rata riwayat": 0.2,
+     "Banyuwangi musim ini": 0.21,
+     "Blitar rata-rata riwayat": 0.21,
+     "Blitar musim ini": 0.2,
+     "Jember rata-rata riwayat": 0.2,
+     "Jember musim ini": 0.2
+    },
+    {
+     "tanggal": "2026-09-17",
+     "Banyuwangi rata-rata riwayat": 0.22,
+     "Banyuwangi musim ini": 0.21,
+     "Blitar rata-rata riwayat": 0.21,
+     "Blitar musim ini": 0.22,
+     "Jember rata-rata riwayat": 0.21,
+     "Jember musim ini": 0.21
+    },
+    {
+     "tanggal": "2026-09-29",
+     "Banyuwangi rata-rata riwayat": 0.23,
+     "Banyuwangi musim ini": 0.22,
+     "Blitar rata-rata riwayat": 0.24,
+     "Blitar musim ini": 0.22,
+     "Jember rata-rata riwayat": 0.24,
+     "Jember musim ini": 0.23
+    },
+    {
+     "tanggal": "2026-10-11",
+     "Banyuwangi rata-rata riwayat": 0.25,
+     "Banyuwangi musim ini": 0.23,
+     "Blitar rata-rata riwayat": 0.28,
+     "Blitar musim ini": 0.24,
+     "Jember rata-rata riwayat": 0.28,
+     "Jember musim ini": 0.24
+    },
+    {
+     "tanggal": "2026-10-23",
+     "Banyuwangi rata-rata riwayat": 0.29,
+     "Banyuwangi musim ini": 0.25,
+     "Blitar rata-rata riwayat": 0.32,
+     "Blitar musim ini": 0.29,
+     "Jember rata-rata riwayat": 0.34,
+     "Jember musim ini": 0.28
+    },
+    {
+     "tanggal": "2026-11-04",
+     "Banyuwangi rata-rata riwayat": 0.35,
+     "Banyuwangi musim ini": 0.29,
+     "Blitar rata-rata riwayat": 0.41,
+     "Blitar musim ini": 0.36,
+     "Jember rata-rata riwayat": 0.42,
+     "Jember musim ini": 0.35
+    }
+   ]
+  }
+ },
+ {
+  "grafik": "Produksi per wilayah",
+  "judul": "Produksi per wilayah",
+  "konteks": {
+   "periode": "Nov 2026",
+   "wilayah": "Blitar, Jember, Banyuwangi",
+   "satuan_produksi": "gabah kering giling (GKG)"
+  },
+  "data": {
+   "satuan": "ribu ton GKG",
+   "keterangan": "proyeksi model K1 dengan selang 90%, dibanding periode sama 2025 (BPS)",
+   "wilayah": [
+    {
+     "wilayah": "Jember",
+     "proyeksi": 124.6,
+     "selang_bawah": 118.4,
+     "selang_atas": 130.8,
+     "periode_sama_2025": 136.3
+    },
+    {
+     "wilayah": "Banyuwangi",
+     "proyeksi": 85,
+     "selang_bawah": 80.8,
+     "selang_atas": 89.3,
+     "periode_sama_2025": 95
+    },
+    {
+     "wilayah": "Blitar",
+     "proyeksi": 40,
+     "selang_bawah": 38,
+     "selang_atas": 42,
+     "periode_sama_2025": 50.3
+    }
+   ]
+  }
  }
 ]

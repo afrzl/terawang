@@ -400,7 +400,7 @@ export interface Hasil {
 }
 
 export async function tafsirkan(body: unknown, ip: string): Promise<Hasil & { cache: boolean }> {
-  if (!tafsirAktif()) throw new Galat(503, "Interpretasi belum diaktifkan (OPENAI_API_KEY belum diisi).")
+  if (!tafsirAktif()) throw new Galat(503, "Interpretasi belum aktif di server ini.")
   const m = periksaMasukan(body)
   const kunci = crypto.createHash("sha256").update(JSON.stringify([m.grafik, m.judul, m.konteks, m.data, CFG.model])).digest("hex")
   const c = cache.get(kunci)
