@@ -54,12 +54,29 @@ def maju_maks(df: pd.DataFrame, h: int) -> pd.DataFrame:
     return df[::-1].rolling(h, min_periods=h).max()[::-1].shift(-1)
 
 
+def _nama(s: str) -> str:
+    """Nama kab tanpa awalan: ref.wilayah memakai "Bangkalan"/"Kota Blitar", CSV SISKAPERBAPO "Kabupaten Bangkalan", Bapanas "Kab. Bangkalan"."""
+    s = str(s).strip()
+    for p in ("Kabupaten ", "Kab. ", "Kab "):
+        if s.startswith(p):
+            return s[len(p):].strip()
+    return s
+
+
+def _ke_kolom(nama: pd.Series, kolom) -> pd.Series:
+    """Petakan nama sumber ke nama kolom P (cocok setelah awalan kabupaten dibuang)."""
+    peta = {_nama(c): c for c in kolom}
+    return nama.map(lambda s: peta.get(_nama(s)))
+
+
 def _kons(v, P):
     return pd.DataFrame(np.repeat(np.asarray(v)[:, None], P.shape[1], 1), index=P.index, columns=P.columns)
 
 
-def pasar(folder_harga: str, H: pd.Series) -> pd.DataFrame:
+def pasar(folder_harga: str, H: pd.Series, kolom) -> pd.DataFrame:
     ps = pd.read_csv(os.path.join(folder_harga, "pasar_harian_beras_medium.csv.gz"), parse_dates=["tanggal"]).dropna(subset=["harga_rp_kg"])
+    ps["kabkota"] = _ke_kolom(ps.kabkota, kolom)
+    ps = ps.dropna(subset=["kabkota"])
     ps = ps[ps.tanggal >= H.first_valid_index()]
     ps["het"] = H.reindex(ps.tanggal).to_numpy()
     ps["di_atas"] = ps.harga_rp_kg > ps.het
@@ -90,7 +107,7 @@ def fitur_harga(P: pd.DataFrame, H: pd.Series, pas: pd.DataFrame) -> pd.DataFram
 
 def _seri_bapanas(folder: str, nama: str, P: pd.DataFrame) -> pd.DataFrame:
     b = pd.read_csv(os.path.join(folder, f"kabkota_harian_{nama}.csv"), parse_dates=["tanggal"])
-    b["kab"] = b.kabkota_sumber.str.strip().map(lambda s: "Kabupaten " + s[5:].strip() if s.startswith("Kab.") else s)
+    b["kab"] = _ke_kolom(b.kabkota_sumber, P.columns)
     return b.pivot_table(index="tanggal", columns="kab", values="harga_rp_kg").reindex(index=P.index, columns=P.columns)
 
 
@@ -138,7 +155,11 @@ def hitung(P: pd.DataFrame, het_kini: float, folder_harga: str, folder_bapanas: 
     kal = per horizon {ambang, f1, presisi, recall, terdeteksi, alarm_palsu, kejadian, auc, pr_auc}."""
     P = P[P.index >= HET_RIWAYAT[0][0] - pd.Timedelta(days=30)]
     H = het_seri(P.index, het_kini)
-    X = fitur_harga(P, H, pasar(folder_harga, H)).join(fitur_bapanas(folder_bapanas, P, H))
+    X = fitur_harga(P, H, pasar(folder_harga, H, P.columns)).join(fitur_bapanas(folder_bapanas, P, H))
+    cak = X.loc[X.index.get_level_values("tgl") >= MULAI_UJI]
+    log(f"  cakupan fitur (periode uji): pasar {cak.pasar_maks.notna().mean():.0%}, harga penggilingan kab sendiri {1 - cak.pg_hilang.mean():.0%}")
+    if cak.pasar_maks.notna().mean() < 0.5 or cak.pg_hilang.mean() > 0.9:
+        raise ValueError("nama kab di data pasar/Bapanas tidak cocok dengan kolom harga")
     L = np.log(P)
     atas = P.gt(H, axis=0).astype(float).where(P.notna() & H.notna().to_numpy()[:, None])
     t_acuan = P.index.max()
