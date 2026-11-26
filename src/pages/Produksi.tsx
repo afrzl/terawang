@@ -11,6 +11,7 @@ import { dfmt, hash, nf, rng, scale, short, sum, ticks } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
 import { BULAN_NAMA, N_BULAN, SATUAN, bulanLabel, useFilter, useWilayah } from "@/lib/filter"
+import { KpiPerWilayah, LegendaWilayah, usePerWilayah } from "@/lib/perWilayah"
 import { PRODUKTIVITAS, luasPanen, produksiBatas, produksiPrevRentang, produksiRentang, yoyRentang } from "@/lib/petaLayers"
 
 const STEPS = ["--s1", "--s2", "--s3", "--s4", "--s5"]
@@ -34,13 +35,25 @@ export default function Produksi() {
   const luasRb = (berasT * 1000) / PRODUKTIVITAS / 1000 // ribu ha
   const turun = wil.filter((k) => yoyRentang(k, mulai, akhir) < 0).length
   const yoy = prevT ? (prodT / prevT - 1) * 100 : 0
+  const { pisah, warna, wil: wilP } = usePerWilayah()
+  const prodWil = (k: Wilayah) => {
+    const v = (produksiRentang(k, mulai, akhir) / 1000) * sat.f
+    const y = yoyRentang(k, mulai, akhir) * 100
+    return (
+      <>
+        {v >= 1000 ? `${nf(v / 1000, 2)} jt` : `${nf(v, 0)} rb`} <small className={y < 0 ? "delta-dn" : "delta-up"}>{nf(y, 1)}%</small>
+      </>
+    )
+  }
 
   return (
     <section className="view">
       <ViewHeader icon={Sprout} title="Produksi" />
       <KpiStrip
         items={[
-          {
+          pisah
+            ? { k: satuan === "gkg" ? "Produksi padi (GKG), ton" : "Produksi beras, ton", v: <KpiPerWilayah wil={wilP} warna={warna} nilai={prodWil} />, t: "per wilayah, % = YoY" }
+            : {
             k: satuan === "gkg" ? "Produksi padi (GKG)" : "Produksi beras",
             v: prodT >= 1000 ? `${nf(prodT / 1000, 2)} jt ton` : `${nf(prodT, 0)} rb ton`,
             t: (
@@ -83,7 +96,7 @@ export default function Produksi() {
       </h2>
       <div className="grid-2">
         <SatPanel wilayah={citraWil} onPilih={setCw} kandidat={nama} />
-        <ProfilSatelit wilayah={citraWil} />
+        {pisah ? <ProfilSatelitWil /> : <ProfilSatelit wilayah={citraWil} />}
       </div>
     </section>
   )
@@ -202,6 +215,86 @@ function deretSpektral(k: Wilayah) {
     return { evi, lswi }
   }
   return { ini: bentuk(t0), rata: bentuk(t0 - 1 + R() * 0.8) }
+}
+
+/** Deret sinyal satu wilayah: dari pipeline bila ada, selain itu VH olahan citra + EVI/LSWI ilustrasi. */
+function deretWilayah(k: Wilayah, sin: Sinyal) {
+  const dr = DERET?.wilayah[k.n]
+  const N = DERET ? DERET.tanggal.length : NPOS
+  const trim = (xs: (number | null)[]) => {
+    const out = xs.slice(0, N)
+    while (out.length && out[out.length - 1] == null) out.pop()
+    return out
+  }
+  if (dr) return { cur: dr[sin] as (number | null)[], avg: dr[`${sin}Avg`] as (number | null)[] }
+  const sp = deretSpektral(k)
+  const sampai = trim(k.vh).length
+  return sin === "vh" ? { cur: trim(k.vh), avg: trim(k.vhAvg) } : { cur: sp.ini[sin].slice(0, sampai), avg: sp.rata[sin].slice(0, sampai) }
+}
+
+/** Profil sinyal satelit, satu garis "musim ini" per wilayah terpilih. Rata-rata riwayat (putus-putus) hanya ditampilkan bila paling banyak 3 wilayah. */
+function ProfilSatelitWil() {
+  const { wil, warna } = usePerWilayah()
+  const [sin, setSin] = useState<Sinyal>("evi")
+  const N = DERET ? DERET.tanggal.length : NPOS
+  const dates = DERET ? DERET.tanggal.map((t) => new Date(t + "T00:00:00")) : [...Array(N)].map((_, i) => new Date(2026, 5, 1 + i * 12))
+  const denganRata = wil.length <= 3
+  const data = wil.map((k) => ({ k, ...deretWilayah(k, sin) }))
+  const vals = data.flatMap((d) => [...d.cur, ...(denganRata ? d.avg : [])]).filter((v): v is number => v != null)
+  const desimal = sin === "vh" ? 1 : 2
+  const satuan = sin === "vh" ? " dB" : ""
+  const lo = sin === "vh" ? Math.floor(Math.min(...vals) - 0.5) : Math.max(0, Math.floor((Math.min(...vals) - 0.03) * 10) / 10)
+  const hi = sin === "vh" ? Math.ceil(Math.max(...vals) + 0.5) : Math.ceil((Math.max(...vals) + 0.03) * 10) / 10
+  const fmt = (v: number | null | undefined) => (v == null ? "belum ada citra" : `${nf(v, desimal)}${satuan}`)
+  return (
+    <Panel title="Profil sinyal satelit per wilayah">
+      <div className="pb chart">
+        <div className="seg" style={{ marginBottom: 8 }} role="group" aria-label="Jenis sinyal">
+          {SINYAL.map(([v, t]) => (
+            <button key={v} type="button" aria-pressed={sin === v} onClick={() => setSin(v)}>
+              {t}
+            </button>
+          ))}
+        </div>
+        {vals.length ? (
+          <LineChart
+            xDates={dates.slice(0, Math.max(...data.map((d) => Math.max(d.cur.length, denganRata ? d.avg.length : 0)), 1))}
+            yDom={[lo, hi]}
+            yFmt={(v) => nf(v, sin === "vh" ? (Number.isInteger(v) ? 0 : 1) : 2)}
+            W={480}
+            H={250}
+            sebarLabel
+            series={data.flatMap((d) => [
+              ...(denganRata ? [{ vals: d.avg, color: warna(d.k), dash: "3 3", w: 1.2 }] : []),
+              { vals: d.cur, color: warna(d.k), w: 2.2, label: short(d.k.n) },
+            ])}
+            tip={(i) => (
+              <>
+                <b>
+                  {dfmt(dates[i])} {dates[i].getFullYear()}
+                </b>
+                {data.map((d) => (
+                  <span key={d.k.n}>
+                    <br />
+                    <span className="sw-dot" style={{ background: warna(d.k) }} />
+                    {d.k.n} <span className="m">{fmt(d.cur[i])}</span>
+                    {denganRata && (
+                      <>
+                        , rata-rata <span className="m">{fmt(d.avg[i])}</span>
+                      </>
+                    )}
+                  </span>
+                ))}
+              </>
+            )}
+          />
+        ) : (
+          <div className="method">Belum ada deret satelit untuk wilayah ini.</div>
+        )}
+        <LegendaWilayah wil={wil} warna={warna} extra={<span>{denganRata ? "garis tegas = musim ini, putus-putus = rata-rata riwayat" : "musim ini"}</span>} />
+      </div>
+    </Panel>
+  )
 }
 
 function ProfilSatelit({ wilayah }: { wilayah?: string }) {

@@ -14,6 +14,8 @@ import { bulanLabel, useFilter, useWilayah } from "@/lib/filter"
 import { covBulan, statusHargaAt, type Komoditas } from "@/lib/petaLayers"
 import { useSesi } from "@/lib/sesi"
 import { Terkunci } from "@/components/ui/Terkunci"
+import { CatatanGabungan, KpiPerWilayah, LegendaWilayah, usePerWilayah } from "@/lib/perWilayah"
+import { short } from "@/lib/format"
 
 
 const flowColumns: Column<Flow>[] = [
@@ -69,7 +71,21 @@ export default function Harga() {
       ))}
     </div>
   )
-  const kpiHarga = ganda
+  const { pisah, warna, wil: wilP } = usePerWilayah()
+  const kpiHarga = pisah
+    ? [
+        {
+          k: ganda ? "Harga per wilayah (medium / premium)" : `Harga ${jenis[0]} per wilayah`,
+          v: <KpiPerWilayah wil={wilP} warna={warna} nilai={(k) => jenis.map((j) => rp(pNowHarga(k, j))).join(" / ")} />,
+          t: "pekan terakhir",
+        },
+        {
+          k: "Status 4 pekan",
+          v: <KpiPerWilayah wil={wilP} warna={warna} nilai={(k) => jenis.map((j) => STATUS[statusHargaAt(k, 4, j)].lab).join(" / ")} />,
+          t: ganda ? "medium / premium" : "estimasi 4 pekan",
+        },
+      ]
+    : ganda
     ? [
         { k: "Harga rata-rata Jatim", v: baris((r) => rp(r.rata)), t: "menurut jumlah penduduk" },
         { k: "Wilayah Siaga / Waspada", v: baris((r) => `${r.nS} / ${r.nW}`), t: "estimasi 4 pekan" },
@@ -195,6 +211,86 @@ function PanelPeta({ jenis }: { jenis: Komoditas[] }) {
 }
 
 function PricePanel({ jenis }: { jenis: Komoditas[] }) {
+  const { pisah } = usePerWilayah()
+  return pisah ? <PricePanelWil jenis={jenis} /> : <PricePanelGab jenis={jenis} />
+}
+
+/** Satu garis per wilayah terpilih (2 sampai 6 wilayah). Bila dua jenis dipilih, jenis ditukar dengan tombol di panel supaya warna hanya berarti wilayah. */
+function PricePanelWil({ jenis }: { jenis: Komoditas[] }) {
+  const { wil, warna } = usePerWilayah()
+  const [pilih, setPilih] = useState<Komoditas>("medium")
+  const kom = jenis.length > 1 ? (jenis.includes(pilih) ? pilih : jenis[0]) : jenis[0]
+  const het = kom === "premium" ? HET_PREMIUM : HET
+  const dates = histDates.concat(fcDates)
+  const data = wil.map((k) => {
+    const harga = seriHarga(k, kom)
+    const fc = fcHarga(k, kom)
+    return { k, harga, fcM: fc.map((f) => f.m), fcLo: fc.map((f) => f.lo), fcHi: fc.map((f) => f.hi), pNow: harga[HIST - 1] }
+  })
+  const lo = Math.min(het, ...data.flatMap((d) => [...d.harga, ...d.fcLo])) - 150
+  const hi = Math.max(het, ...data.flatMap((d) => d.fcHi)) + 120
+  return (
+    <Panel
+      title={`Harga beras ${kom} per wilayah`}
+      actions={
+        jenis.length > 1 ? (
+          <div className="seg seg-s" role="group" aria-label="Jenis beras pada grafik">
+            {jenis.map((j) => (
+              <button key={j} type="button" aria-pressed={kom === j} onClick={() => setPilih(j)} style={{ textTransform: "capitalize" }}>
+                {j}
+              </button>
+            ))}
+          </div>
+        ) : undefined
+      }
+    >
+      <div className="pb chart">
+        <LineChart
+          xDates={dates}
+          yDom={[Math.floor(lo / 100) * 100, Math.ceil(hi / 100) * 100]}
+          yFmt={(v) => nf(v)}
+          W={760}
+          H={420}
+          splitAt={HIST - 1}
+          sebarLabel
+          bands={data.map((d) => ({ lo: [d.pNow].concat(d.fcLo), hi: [d.pNow].concat(d.fcHi), off: HIST - 1, color: warna(d.k), op: 0.08 }))}
+          refs={[{ v: het, label: `HET ${nf(het)}`, color: "var(--ink-2)" }]}
+          series={data.flatMap((d) => [
+            { vals: d.harga, color: warna(d.k), w: 2 },
+            { vals: [d.pNow].concat(d.fcM), off: HIST - 1, color: warna(d.k), dash: "5 4", w: 2, label: short(d.k.n) },
+          ])}
+          tip={(i) => (
+            <>
+              <b>
+                {dfmt(dates[i])} {dates[i].getFullYear()}
+                {i >= HIST ? ", prakiraan" : ""}
+              </b>
+              {[...data]
+                .sort((a, b) => (i >= HIST ? b.fcM[i - HIST] - a.fcM[i - HIST] : b.harga[i] - a.harga[i]))
+                .map((d) => (
+                  <span key={d.k.n}>
+                    <br />
+                    <span className="sw-dot" style={{ background: warna(d.k) }} />
+                    {d.k.n} <span className="m">{rp(i >= HIST ? d.fcM[i - HIST] : d.harga[i])}</span>
+                    {i >= HIST && (
+                      <>
+                        {" "}
+                        (P10–P90 <span className="m">{rp(d.fcLo[i - HIST])}–{rp(d.fcHi[i - HIST])}</span>)
+                      </>
+                    )}
+                  </span>
+                ))}
+            </>
+          )}
+        />
+        <LegendaWilayah wil={wil} warna={warna} extra={<span>garis putus = prakiraan 4 pekan, pita = P10–P90</span>} />
+      </div>
+    </Panel>
+  )
+}
+
+/** Satu garis gabungan (rata-rata menurut jumlah penduduk): untuk satu wilayah, atau lebih dari 6 wilayah. */
+function PricePanelGab({ jenis }: { jenis: Komoditas[] }) {
   const wil = useWilayah()
   const ganda = jenis.length > 1
   const dates = histDates.concat(fcDates)
@@ -290,6 +386,9 @@ function PricePanel({ jenis }: { jenis: Komoditas[] }) {
         />
       </div>
       {ganda && <LegendaJenis />}
+      <div style={{ padding: "0 16px 12px" }}>
+        <CatatanGabungan n={wil.length} total={WILAYAH.length} />
+      </div>
     </Panel>
   )
 }

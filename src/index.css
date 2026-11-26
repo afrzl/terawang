@@ -905,3 +905,8 @@ main.full{flex:1;min-height:0;position:relative}
 .terkunci p{margin:2px 0 0;font-size:13px}
 .btn-masuk{display:inline-flex;padding:7px 14px;border-radius:0;background:var(--accent);color:var(--onaccent);font-weight:600;text-decoration:none;font-size:13px}
 .terkunci-ringkas{display:inline-flex;gap:4px;align-items:center;font-size:12.5px;color:var(--accent)}
+.kv2-wil{gap:1px}
+.kv2-wil b{font-size:16px}
+.kv2-wil .kv2-n{text-transform:none}
+.catatan-gab{margin:6px 0 0;font-size:12px;color:var(--ink-3);line-height:1.45}
+.sw-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:0}

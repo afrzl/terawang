@@ -47,11 +47,13 @@ interface LineChartProps {
   tip?: (i: number) => React.ReactNode
   /** Format label sumbu x (bawaan: tanggal + bulan). */
   xFmt?: (d: Date) => string
+  /** Jauhkan label ujung garis yang bertumpuk (untuk grafik banyak garis). */
+  sebarLabel?: boolean
 }
 
 const M = { l: 58, r: 96, t: 14, b: 28 }
 
-export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], points = [], splitAt, splitLabel = "prakiraan", W = 720, H = 280, tip, xFmt = dfmt }: LineChartProps) {
+export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], points = [], splitAt, splitLabel = "prakiraan", W = 720, H = 280, tip, xFmt = dfmt, sebarLabel = false }: LineChartProps) {
   const { show, hide } = useTooltip()
   const svgRef = useRef<SVGSVGElement>(null)
   const [hover, setHover] = useState<number | null>(null)
@@ -72,6 +74,29 @@ export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], p
   const onLeave = () => {
     setHover(null)
     hide()
+  }
+
+  // Posisi label ujung: bila sebarLabel, label diurutkan menurut tinggi lalu didorong supaya berjarak paling sedikit 13 px.
+  const lyAuto = new Map<number, number>()
+  const dyRef = new Map<number, number>()
+  if (sebarLabel) {
+    // Label garis (kunci si >= 0) dan label garis acuan (kunci -1 - ri) disebar bersama karena berada di kolom yang sama.
+    const lab = [
+      ...series
+        .map((se, si) => ({ key: si, v: se.vals[se.vals.length - 1] }))
+        .filter((l) => series[l.key].label && l.v != null)
+        .map((l) => ({ key: l.key, base: y(l.v as number) + 4 })),
+      ...refs.map((r, ri) => ({ key: -1 - ri, base: y(r.v) + (r.dy ?? 4) })),
+    ].sort((a, b) => a.base - b.base)
+    const pos = lab.map((l) => l.base)
+    for (let i = 1; i < pos.length; i++) pos[i] = Math.max(pos[i], pos[i - 1] + 13)
+    // Geser balik ke atas bila melewati batas bawah.
+    const geser = Math.max(0, (pos[pos.length - 1] ?? 0) - (H - M.b + 10))
+    lab.forEach((l, i) => {
+      const d = pos[i] - geser - l.base
+      if (l.key >= 0) lyAuto.set(l.key, d + 4)
+      else dyRef.set(-1 - l.key, d + (refs[-1 - l.key].dy ?? 4))
+    })
   }
 
   const toPts = (vals: Val[], off: number) => vals.map((v, i) => (v == null ? null : ([x(i + off), y(v)] as const))).filter((p) => p !== null)
@@ -110,10 +135,10 @@ export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], p
         const d = `M${lo.map((p) => p.join(",")).join("L")}L${hi.map((p) => p.join(",")).join("L")}Z`
         return <path key={bi} d={d} fill={b.color} opacity={b.op ?? 0.16} />
       })}
-      {refs.map((r) => (
+      {refs.map((r, ri) => (
         <g key={r.label}>
           <line x1={M.l} x2={W - M.r} y1={y(r.v)} y2={y(r.v)} stroke={r.color} strokeWidth={1.3} strokeDasharray="5 4" />
-          <text x={W - M.r + 6} y={y(r.v) + (r.dy ?? 4)} className="lab" style={{ fill: r.color }}>
+          <text x={W - M.r + 6} y={y(r.v) + (dyRef.get(ri) ?? r.dy ?? 4)} className="lab" style={{ fill: r.color }}>
             {r.label}
           </text>
         </g>
@@ -138,7 +163,7 @@ export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], p
             {se.label && last != null && (
               <>
                 <circle cx={x(li + off)} cy={y(last)} r={3.5} fill={se.color} stroke="var(--panel)" strokeWidth={2} />
-                <text x={x(li + off) + 8} y={y(last) + (se.ly ?? 4)} className="lab-b">
+                <text x={x(li + off) + 8} y={y(last) + (lyAuto.get(si) ?? se.ly ?? 4)} className="lab-b">
                   {se.label}
                 </text>
               </>

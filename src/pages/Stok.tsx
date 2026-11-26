@@ -9,8 +9,10 @@ import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
 import { StokPill } from "@/components/ui/Pill"
 import { binColor, type StokStatus, type Wilayah } from "@/lib/data"
-import { nf, scale, sum, ticks } from "@/lib/format"
+import { nf, scale, short, sum, ticks } from "@/lib/format"
 import { BULAN_KINI, N_BULAN, bulanLabel, useFilter, useWilayah } from "@/lib/filter"
+import { CatatanGabungan, KpiPerWilayah, LegendaWilayah, usePerWilayah } from "@/lib/perWilayah"
+import { WILAYAH } from "@/lib/data"
 import { cakupanBatas, covBulan, dataK2, produksiBeras, surplusTon } from "@/lib/petaLayers"
 
 const SS: Record<string, number> = { surplus: -1, cukup: 0, tipis: 1, defisit: 2 }
@@ -20,6 +22,7 @@ const akhirBulan = (i: number) => new Date(2026, i + 1, 0)
 
 export default function Stok() {
   const wil = useWilayah()
+  const { pisah, warna, wil: wilP } = usePerWilayah()
   const { akhir } = useFilter()
   const cT = sum(wil, (k) => k.C)
   const covRata = cT ? sum(wil, (k) => covBulan(k, akhir) * k.C) / cT : 0
@@ -80,14 +83,18 @@ export default function Stok() {
       <ViewHeader icon={Warehouse} title="Stok" />
       <KpiStrip
         items={[
-          { k: "Stok non-Bulog", v: `${nf(stT / 1000, 1)} rb ton`, t: `akhir ${bulanLabel(akhir)}` },
-          { k: "Cakupan stok", v: `${nf(covRata, 2)} bulan`, t: "bulan konsumsi" },
+          pisah
+            ? { k: "Stok non-Bulog", v: <KpiPerWilayah wil={wilP} warna={warna} nilai={(k) => `${nf(covBulan(k, akhir) * k.C, 1)} rb ton`} />, t: `akhir ${bulanLabel(akhir)}` }
+            : { k: "Stok non-Bulog", v: `${nf(stT / 1000, 1)} rb ton`, t: `akhir ${bulanLabel(akhir)}` },
+          pisah
+            ? { k: "Cakupan stok", v: <KpiPerWilayah wil={wilP} warna={warna} nilai={(k) => `${nf(covBulan(k, akhir), 2)} bln`} />, t: "bulan konsumsi" }
+            : { k: "Cakupan stok", v: `${nf(covRata, 2)} bulan`, t: "bulan konsumsi" },
           { k: "Konsumsi bulanan", v: `${nf(cT, 0)} rb ton`, t: `${nf(sum(wil, (k) => k.pop) / 1000, 1)} juta jiwa` },
           { k: "Wilayah defisit", v: `${nDef} dari ${wil.length}`, t: `${nTip} tipis` },
         ]}
       />
       <div className="grid-21">
-        <KalmanPanel wil={wil} />
+        {pisah ? <KalmanPanelWil /> : <KalmanPanel wil={wil} />}
         <NeracaPanel wil={wil} />
       </div>
       <Panel title="Stok dan Konsumsi per Wilayah">
@@ -131,6 +138,61 @@ function simpangan(k: Wilayah) {
     sd.push(Math.min(1.6, Math.sqrt(v)))
   }
   return sd
+}
+
+/** Satu garis cakupan per wilayah terpilih (2 sampai 6 wilayah), dengan pita P10–P90 tipis. */
+function KalmanPanelWil() {
+  const { wil, warna } = usePerWilayah()
+  const dates = [...Array(N_BULAN)].map((_, i) => akhirBulan(i))
+  const data = wil.map((k) => ({ k, c: dates.map((_, i) => covBulan(k, i)), sd: simpangan(k) }))
+  const top = Math.max(1.6, ...data.flatMap((d) => d.c)) * 1.12
+  const z = dataK2 ? 1.2816 : 0.674
+  return (
+    <Panel title="Estimasi stok non-Bulog per wilayah">
+      <div className="pb chart">
+        <LineChart
+          xDates={dates}
+          yDom={[0, top]}
+          yFmt={(v) => nf(v, 1)}
+          W={720}
+          H={290}
+          splitAt={BULAN_KINI}
+          splitLabel="Des–Jan"
+          sebarLabel
+          bands={data.map((d) => ({
+            lo: d.c.slice(BULAN_KINI).map((v, j) => Math.max(0, v - z * d.sd[BULAN_KINI + j])),
+            hi: d.c.slice(BULAN_KINI).map((v, j) => Math.min(top, v + z * d.sd[BULAN_KINI + j])),
+            off: BULAN_KINI,
+            color: warna(d.k),
+            op: 0.1,
+          }))}
+          refs={[
+            { v: 1, label: "batas aman", color: "var(--warn)", dy: -3 },
+            { v: 0.75, label: "defisit", color: "var(--crit)", dy: 9 },
+          ]}
+          series={data.flatMap((d) => [
+            { vals: d.c.slice(0, BULAN_KINI + 1), color: warna(d.k), w: 2 },
+            { vals: d.c.slice(BULAN_KINI), off: BULAN_KINI, color: warna(d.k), dash: "5 4", w: 2, label: short(d.k.n) },
+          ])}
+          tip={(i) => (
+            <>
+              <b>{bulanLabel(i)}</b>
+              {[...data]
+                .sort((a, b) => b.c[i] - a.c[i])
+                .map((d) => (
+                  <span key={d.k.n}>
+                    <br />
+                    <span className="sw-dot" style={{ background: warna(d.k) }} />
+                    {d.k.n} <span className="m">{nf(d.c[i], 2)} bln</span>
+                  </span>
+                ))}
+            </>
+          )}
+        />
+        <LegendaWilayah wil={wil} warna={warna} extra={<span>cakupan dalam bulan konsumsi</span>} />
+      </div>
+    </Panel>
+  )
 }
 
 function KalmanPanel({ wil }: { wil: Wilayah[] }) {
@@ -203,6 +265,7 @@ function KalmanPanel({ wil }: { wil: Wilayah[] }) {
             estimasi stok
           </span>
         </div>
+        <CatatanGabungan n={wil.length} total={WILAYAH.length} />
       </div>
     </Panel>
   )
@@ -258,7 +321,7 @@ function NeracaPanel({ wil }: { wil: Wilayah[] }) {
   const bw = (W - m.l - m.r) / bars.length
 
   return (
-    <Panel title={`Neraca ${bulanLabel(akhir)}`}>
+    <Panel title={`Neraca ${bulanLabel(akhir)}${wil.length > 1 && wil.length < WILAYAH.length ? `, gabungan ${wil.length} wilayah` : ""}`}>
       <div className="pb chart">
         <svg viewBox={`0 0 ${W} ${H}`} role="img">
           <g className="grid">
