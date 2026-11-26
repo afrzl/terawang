@@ -303,28 +303,42 @@ const SUMBER_LUAS: Record<string, string> = {
   taksiran_musiman: "rata-rata musiman 3 tahun",
 }
 
-/** Harga GKP petani Jatim bulanan + prakiraan 1-3 bulan (gabungan naif + SARIMAX HPP + luas panen), dari /api/gkp. */
+type BarisGkp = { bulan_target: string; harga_prediksi: number; p10: number; p90: number; luas_panen_ha?: number; sumber_luas?: string }
+
+/** Harga GKP petani bulanan + prakiraan 1-3 bulan, dari /api/gkp. Bila filter wilayah memilih satu kab/kota yang punya data
+ * Bapanas, panel menampilkan kab itu; selain itu Jawa Timur. */
 function PanelGkp() {
   const g = GKP!
-  const rw = g.riwayat
-  const fc = g.prakiraan
+  const wil = useWilayah()
+  const satu = wil.length === 1 ? wil[0].n : null
+  const kab = satu ? g.kabupaten?.find((k) => k.nama === satu) : undefined
+  const rw = kab ? kab.riwayat.map((r) => ({ ...r, sumber: "Bapanas" })) : g.riwayat
+  const fc: BarisGkp[] = kab ? kab.prakiraan : g.prakiraan
   const n = rw.length
   const dates = rw.map((r) => tglBulan(r.bulan)).concat(fc.map((f) => tglBulan(f.bulan_target)))
   const pNow = rw[n - 1].harga
   const lo = Math.min(...rw.map((r) => r.harga), ...fc.map((f) => f.p10), g.hpp_sekarang) - 150
   const hi = Math.max(...rw.map((r) => r.harga), ...fc.map((f) => f.p90)) + 150
   const ujung = fc[fc.length - 1]
-  const mape = (h: number) => g.uji_mundur[`h${h}`]?.mape
-  const kolom: Column<(typeof fc)[number]>[] = [
+  const uji = kab ? g.uji_mundur_kab : g.uji_mundur
+  const mape = (h: number) => uji?.[`h${h}`]?.mape
+  // Riwayat kab bisa bolong (bulan tanpa data Bapanas): garis disambung antar bulan yang ada.
+  const bulanAcuan = kab ? rw[n - 1].bulan : g.bulan_acuan
+  const kolom: Column<BarisGkp>[] = [
     { head: "Bulan", cell: (f) => <b>{labelBulan(tglBulan(f.bulan_target))}</b> },
     { head: "Prakiraan", right: true, num: true, cell: (f) => rp(f.harga_prediksi) },
     { head: "P10–P90", right: true, num: true, cell: (f) => `${rp(f.p10)}–${rp(f.p90)}` },
-    { head: "Luas panen", right: true, num: true, cell: (f) => `${nf(f.luas_panen_ha / 1000)} rb ha` },
-    { head: "Sumber luas", cell: (f) => SUMBER_LUAS[f.sumber_luas] ?? f.sumber_luas },
+    ...(kab
+      ? []
+      : [
+          { head: "Luas panen", right: true, num: true, cell: (f: BarisGkp) => `${nf((f.luas_panen_ha ?? 0) / 1000)} rb ha` },
+          { head: "Sumber luas", cell: (f: BarisGkp) => SUMBER_LUAS[f.sumber_luas ?? ""] ?? f.sumber_luas },
+        ]),
   ]
+  const wilayahLabel = kab ? kab.nama : "Jawa Timur"
   return (
     <div className="grid-2">
-      <Panel title="Harga GKP petani Jawa Timur, bulanan">
+      <Panel title={`Harga GKP petani ${wilayahLabel}, bulanan`}>
         <div className="pb chart">
           <LineChart
             xDates={dates}
@@ -366,11 +380,24 @@ function PanelGkp() {
           />
         </div>
       </Panel>
-      <Panel title="Prakiraan harga GKP 1–3 bulan">
+      <Panel title={`Prakiraan harga GKP ${wilayahLabel} 1–3 bulan`}>
         <DataTable rows={fc} columns={kolom} rowKey={(f) => f.bulan_target} rowName={(f) => f.bulan_target} pageSize={3} />
         <p style={{ padding: "12px 16px", margin: 0, fontSize: 12, color: "var(--ink-3)", lineHeight: 1.5 }}>
-          Gabungan rata-rata model naif (harga bulan terakhir) dan SARIMAX dengan HPP gabah dan luas panen padi Jatim. Harga sampai{" "}
-          {labelBulan(tglBulan(g.bulan_acuan))}: BPS sampai Des 2024, sesudahnya panel harga Bapanas. Galat uji mundur 36 bulan (MAPE):{" "}
+          {kab ? (
+            <>
+              Rata-rata harga {kab.nama} bulan terakhir dan prakiraan Jawa Timur yang disesuaikan dengan selisih harga {kab.nama} terhadap
+              rata-rata provinsi 3 bulan terakhir
+              {kab.metode === "rasio_provinsi" ? ` (data ${kab.nama} terakhir ${labelBulan(tglBulan(kab.bulan_data_terakhir))}, jadi hanya bagian provinsi)` : ""}.
+              Harga panel Bapanas, data sampai {labelBulan(tglBulan(bulanAcuan))}. Galat uji mundur seluruh kab/kota (MAPE):{" "}
+            </>
+          ) : (
+            <>
+              Gabungan rata-rata model naif (harga bulan terakhir) dan SARIMAX dengan HPP gabah dan luas panen padi Jatim. Harga sampai{" "}
+              {labelBulan(tglBulan(g.bulan_acuan))}: BPS sampai Des 2024, sesudahnya panel harga Bapanas.
+              {satu ? ` Bapanas belum punya harga GKP ${satu} yang cukup baru, jadi yang tampil angka provinsi.` : ""} Galat uji mundur 36 bulan
+              (MAPE):{" "}
+            </>
+          )}
           {[1, 2, 3].map((h) => `${h} bln ${mape(h) != null ? nf(mape(h)!, 1) : "–"}%`).join(", ")}.
         </p>
       </Panel>
