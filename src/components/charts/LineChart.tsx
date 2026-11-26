@@ -1,6 +1,7 @@
 import { useRef, useState } from "react"
 import { clamp, dfmt, scale, ticks } from "@/lib/format"
 import { useTooltip } from "@/lib/tooltip"
+import { bul, useDataTafsir } from "@/lib/tafsir"
 
 type Val = number | null
 
@@ -13,6 +14,8 @@ export interface Series {
   label?: string
   /** Geser vertikal label ujung garis. */
   ly?: number
+  /** Nama garis untuk data interpretasi (bawaan: label). Garis bernama sama digabung (mis. riwayat + prakiraan). */
+  nama?: string
 }
 
 export interface Band {
@@ -21,6 +24,8 @@ export interface Band {
   off: number
   color: string
   op?: number
+  /** Nama pita untuk data interpretasi, mis. "Blitar selang 80%". */
+  nama?: string
 }
 
 export interface RefLine {
@@ -55,6 +60,7 @@ const M = { l: 58, r: 96, t: 14, b: 28 }
 
 export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], points = [], splitAt, splitLabel = "prakiraan", W = 720, H = 280, tip, xFmt = dfmt, sebarLabel = false }: LineChartProps) {
   const { show, hide } = useTooltip()
+  useDataTafsir("garis", dataGaris(xDates, series, bands, refs, splitAt, splitLabel, xFmt))
   const svgRef = useRef<SVGSVGElement>(null)
   const [hover, setHover] = useState<number | null>(null)
   const n = xDates.length
@@ -178,4 +184,31 @@ export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], p
       <rect x={M.l} y={M.t} width={W - M.l - M.r} height={H - M.t - M.b} fill="transparent" onMouseMove={onMove} onMouseLeave={onLeave} />
     </svg>
   )
+}
+
+/** Data yang digambar, satu baris per titik sumbu x: nilai tiap garis (nama = label garis), batas pita, dan penanda prakiraan. */
+function dataGaris(xDates: Date[], series: Series[], bands: Band[], refs: RefLine[], splitAt: number | undefined, splitLabel: string, xFmt: (d: Date) => string) {
+  const nama = series.map((s, i) => s.nama || s.label || `garis ${i + 1}`)
+  const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  const titik = xDates.map((d, i) => {
+    const r: Record<string, string | number | null> = { tanggal: ymd(d) }
+    const lab = xFmt(d)
+    if (lab && !lab.includes(String(d.getDate()))) r.label = lab
+    series.forEach((s, si) => {
+      const v = s.vals[i - (s.off ?? 0)]
+      if (v != null) r[nama[si]] = bul(v)
+    })
+    bands.forEach((b, bi) => {
+      const lo = b.lo[i - b.off]
+      const hi = b.hi[i - b.off]
+      if (lo != null && hi != null) {
+        const p = b.nama ?? `pita${bands.length > 1 ? ` ${bi + 1}` : ""}`
+        r[`${p} bawah`] = bul(lo)
+        r[`${p} atas`] = bul(hi)
+      }
+    })
+    if (splitAt != null && i >= splitAt) r[splitLabel] = "ya"
+    return r
+  }).filter((r) => Object.keys(r).length > 1)
+  return { garis: [...new Set(nama)], titik, garis_acuan: refs.length ? refs.map((r) => ({ nama: r.label, nilai: bul(r.v) })) : undefined }
 }

@@ -9,6 +9,7 @@
  *   GET /api/deret     deret EVI/LSWI/VH per wilayah (deret_satelit.json keluaran aset deret_satelit_wilayah)
  *   GET /api/gkp       harga GKP petani Jatim bulanan + prakiraan 1-3 bulan (gkp_prakiraan.json keluaran aset k3_prakiraan_gkp)
  *   GET /api/bulog     stok Bulog Jatim bulanan dan pengadaan per kantor cabang (silver.stok_bulog_bulanan, silver.pengadaan_bulog)
+ *   POST /api/tafsir   interpretasi singkat satu grafik dari data yang dikirim dasbor (OpenAI, lihat tafsir.ts)
  *   GET /api/status    ringkas: model_run terakhir per jenis (untuk cek kesehatan)
  *
  * Deret bulanan memakai indeks 0 = Jan 2026 sampai bulan kini + 2 (horizon K2), sama dengan dasbor (src/lib/api.ts).
@@ -22,6 +23,7 @@ import os from "node:os"
 import path from "node:path"
 import express, { type Request, type Response } from "express"
 import pg from "pg"
+import { Galat, pemakaianTafsir, tafsirkan } from "./tafsir.js"
 
 const AWAL_TAHUN = 2026
 const AWAL_BULAN = 1
@@ -314,6 +316,18 @@ app.get("/api/status", kirim("status", async () => ({
   runs: await q(`select distinct on (jenis) jenis::text, id, nama_versi, status::text, dibuat_pada, selesai_pada from app.model_run order by jenis, id desc`),
   harga_terakhir: (await q<{ t: Date }>(`select max(tanggal) t from silver.harga_kabkota_harian`))[0]?.t ?? null,
 })))
+app.post("/api/tafsir", express.json({ limit: "64kb" }), async (req, res) => {
+  // IP asli dari Traefik/serve.py; hanya untuk batas pemakaian per perangkat.
+  const ip = String(req.headers["x-forwarded-for"] ?? req.socket.remoteAddress ?? "").split(",")[0].trim()
+  try {
+    res.set("Cache-Control", "no-store").json(await tafsirkan(req.body, ip))
+  } catch (e) {
+    if (e instanceof Galat) return res.status(e.status).json({ galat: e.message })
+    console.error("[api] tafsir:", e)
+    res.status(500).json({ galat: "interpretasi gagal dibuat" })
+  }
+})
+app.get("/api/tafsir/status", (_req, res) => res.set("Cache-Control", "no-store").json(pemakaianTafsir()))
 app.use("/api", (_req, res) => res.status(404).json({ galat: "tidak ada" }))
 
 const HOST = process.env.API_HOST ?? "127.0.0.1"

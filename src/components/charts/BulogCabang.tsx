@@ -1,5 +1,6 @@
 import { PENGADAAN_CABANG, TAHUN_PENGADAAN } from "@/lib/bulog"
 import { nf } from "@/lib/format"
+import { bul, useDataTafsir } from "@/lib/tafsir"
 
 /** Daftar kantor cabang Bulog Jatim: pengadaan beras tahun terakhir yang tersedia dan tahun sebelumnya (data asli).
  *  Stok per cabang tidak dipublikasikan, jadi tidak ditampilkan. */
@@ -9,6 +10,11 @@ export function BulogCabang() {
   const tot = rows.reduce((a, r) => a + r.ton, 0)
   const adaLalu = rows.some((r) => r.tonLalu != null)
   const totLalu = rows.reduce((a, r) => a + (r.tonLalu ?? 0), 0)
+  useDataTafsir("cabang", {
+    satuan: "ton beras pengadaan per tahun",
+    cabang: rows.map((r) => ({ cabang: r.cabang, [`pengadaan_${TAHUN_PENGADAAN}`]: bul(r.ton * 1000, 0), ...(adaLalu ? { [`pengadaan_${TAHUN_PENGADAAN - 1}`]: bul(r.tonLalu == null ? null : r.tonLalu * 1000, 0) } : {}) })),
+    total: { [`pengadaan_${TAHUN_PENGADAAN}`]: bul(tot * 1000, 0), ...(adaLalu ? { [`pengadaan_${TAHUN_PENGADAAN - 1}`]: bul(totLalu * 1000, 0) } : {}) },
+  })
 
   return (
     <div className="tbl-wrap cab">

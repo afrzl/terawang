@@ -2,6 +2,7 @@ import { STOK_BULOG, TAHUN_STOK_BULOG } from "@/lib/bulog"
 import { BULAN_NAMA } from "@/lib/filter"
 import { nf, scale, ticks } from "@/lib/format"
 import { useTooltip } from "@/lib/tooltip"
+import { bul, useDataTafsir } from "@/lib/tafsir"
 
 const W = 760
 const H = 500
@@ -11,6 +12,11 @@ const M = { l: 52, r: 16, t: 16, b: 30 }
 export function BulogStok() {
   const { show, hide } = useTooltip()
   const d = STOK_BULOG
+  useDataTafsir("bulog", {
+    satuan: "ribu ton beras, tingkat provinsi Jawa Timur",
+    tahun: TAHUN_STOK_BULOG,
+    bulan: d.map((r) => ({ bulan: `${BULAN_NAMA[r.bulan - 1]} ${TAHUN_STOK_BULOG}`, persediaan_akhir: bul(r.akhir, 1), pemasukan: bul(r.masuk, 1), pengeluaran: bul(r.keluar, 1) })),
+  })
   const ymax = Math.max(...d.map((r) => Math.max(r.akhir, r.masuk, r.keluar))) * 1.1
   const y = scale(0, ymax, H - M.b, M.t)
   const SLOT = 12

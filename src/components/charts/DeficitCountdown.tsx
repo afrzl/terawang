@@ -4,6 +4,7 @@ import { DAY, dfmt, nf } from "@/lib/format"
 import { covBulan } from "@/lib/petaLayers"
 import { useSelection } from "@/lib/selection"
 import { useWilayah } from "@/lib/filter"
+import { bul, useDataTafsir } from "@/lib/tafsir"
 
 const DEF = 0.75
 /** Tanggal acuan hitung mundur: tanggal run K2 (model menghitung dari "hari ini" saat run); tanpa API = hari ini. */
@@ -51,6 +52,12 @@ export function DeficitCountdown() {
     .map((x) => ({ k: x.k, d: x.r.d, cov: x.r.cov }))
     .sort((a, b) => a.d - b.d || a.cov - b.cov)
   const shown = list.slice(0, 8)
+  useDataTafsir("defisit", {
+    keterangan: "wilayah yang paling cepat jatuh ke batas defisit (cakupan 0,75 bulan konsumsi), dihitung dari tanggal acuan",
+    tanggal_acuan: ACUAN.toISOString().slice(0, 10),
+    wilayah_berisiko: list.length,
+    wilayah: shown.map(({ k, d, cov }) => ({ wilayah: k.n, cakupan_bulan: bul(cov, 2), hari_menuju_defisit: d, tanggal_defisit: d === 0 ? "sudah di bawah" : new Date(+ACUAN + d * DAY).toISOString().slice(0, 10) })),
+  })
 
   const SKALA = 1.5
   return (
