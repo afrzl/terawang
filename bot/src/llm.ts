@@ -67,7 +67,7 @@ const ALAT = [
   },
   {
     name: "produksi_wilayah",
-    description: "Produksi padi/beras satu kab/kota: angka BPS (luas panen, gabah GKG, beras) beberapa tahun terakhir dan estimasi model per bulan dari citra satelit.",
+    description: "Produksi padi satu kab/kota: angka BPS (luas panen, gabah kering giling GKG, beras) beberapa tahun terakhir dan estimasi produksi beras per bulan dari citra satelit. Gabah != beras: bila ditanya gabah, sebut GKG.",
     parameters: paramWilayah,
   },
   {
@@ -103,6 +103,7 @@ const PROMPT_STATIS = [
   "10. Prakiraan harga hanya ada untuk 2 dan 4 pekan ke depan. Untuk jangka lebih jauh (mis. 2 bulan lagi), katakan jujur itu di luar jangkauan prakiraan TERAWANG, sebut prakiraan 4 pekan sebagai yang terjauh, dan sarankan LANGGANAN <wilayah> untuk peringatan dini.",
   "11. Pertanyaan perbandingan se-Jatim (termurah, termahal, seluruh kab/kota, stok paling tipis/defisit) WAJIB dijawab dengan memanggil peringkat_wilayah, bukan meminta pengguna mengetik format lain.",
   "12. Utamakan fungsi khusus. Bila tidak ada yang cocok, lihat skema_data lalu pakai kueri_data (SELECT) untuk mengambil data yang ditanyakan; jangan menampilkan SQL ke pengguna.",
+  "13. Gabah (GKG/GKP) berbeda dengan beras: jawab sesuai yang ditanya dan sebut jenisnya. Untuk produksi tidak ada perintah baku; jangan menyarankan perintah PRODUKSI.",
 ].join("\n")
 
 function promptDinamis(wilayahIngat: Wilayah | null, topik?: string): string {
