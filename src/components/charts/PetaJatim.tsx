@@ -27,10 +27,12 @@ interface PetaJatimProps {
   getValue?: (k: Wilayah) => number
   /** Label nilai di tooltip bila `getValue` dipakai. */
   valueLabel?: string
+  /** Jumlah rute SPHP terbesar yang digambar (bawaan 7). */
+  maksRute?: number
 }
 
 /** Peta choropleth 38 kabupaten/kota Jawa Timur, opsional dengan rute penyaluran SPHP. */
-export function PetaJatim({ layer, flows = false, flowList, labels = true, arcs, muted = false, getValue, valueLabel }: PetaJatimProps) {
+export function PetaJatim({ layer, flows = false, flowList, labels = true, arcs, muted = false, getValue, valueLabel, maksRute = 7 }: PetaJatimProps) {
   const { sel, select } = useSelection()
   const { lolos } = useFilter()
   const { show, hide } = useTooltip()
@@ -67,7 +69,9 @@ export function PetaJatim({ layer, flows = false, flowList, labels = true, arcs,
   // Kiriman lokal (asal sama dengan tujuan): total ton per kabupaten, digambar sebagai lingkaran di lokasi cabang.
   const lokal = new Map<string, number>()
   for (const f of semuaRute) if (f.from === f.to) lokal.set(f.from.n, (lokal.get(f.from.n) ?? 0) + f.ton)
-  const sourceNames = [...new Set(semuaRute.map((f) => f.from.n))]
+  const ruteTampil = rute.slice(0, maksRute)
+  const tonMaks = Math.max(1, ...ruteTampil.map((f) => f.ton))
+  const lokalMaks = Math.max(1, ...lokal.values())
 
   return (
     <svg viewBox="0 0 1165 490" role="img" aria-label="Peta Jawa Timur">
@@ -75,7 +79,7 @@ export function PetaJatim({ layer, flows = false, flowList, labels = true, arcs,
       <text className="sea" x="430" y="470">S A M U D R A &#160; H I N D I A</text>
       <text className="sea" x="1040" y="250">SELAT BALI</text>
       {WILAYAH.filter((k) => GEO[k.n].d).map((k) => (
-        <path key={k.n} className="kab" d={GEO[k.n].d} fill={fillOf(k)} opacity={muted ? 0.55 : 1} {...handlers(k.n)} />
+        <path key={k.n} className="kab" d={GEO[k.n].d} fill={fillOf(k)} opacity={muted || flows ? 0.55 : 1} {...handlers(k.n)} />
       ))}
       <circle
         className="kab"
@@ -91,20 +95,25 @@ export function PetaJatim({ layer, flows = false, flowList, labels = true, arcs,
       {flows && (
         <>
           <defs>
-            <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M0,0L10,5L0,10z" fill="var(--accent)" />
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">
+              <path d="M0,1L10,5L0,9z" fill="var(--accent)" />
             </marker>
           </defs>
-          {rute.map((f, i) => {
+          {/* Hanya rute terbesar yang digambar; sisanya ada di teks/tabel. Garis tipis, tebal sesuai volume. */}
+          {ruteTampil.map((f, i) => {
             const a = GEO[f.from.n].c
             const b = GEO[f.to.n].c
-            const mx = (a[0] + b[0]) / 2
-            const my = (a[1] + b[1]) / 2 - Math.hypot(b[0] - a[0], b[1] - a[1]) * 0.22
-            const dd = `M${a[0]},${a[1]}Q${mx},${my} ${b[0]},${b[1]}`
-            const w = clamp(Math.sqrt(f.ton) / 12, 2, 6.5)
+            const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1
+            // ujung garis berhenti sedikit sebelum pusat tujuan supaya mata panah tidak menutup titik
+            const bx = b[0] - ((b[0] - a[0]) / len) * 9
+            const by = b[1] - ((b[1] - a[1]) / len) * 9
+            const mx = (a[0] + b[0]) / 2 + ((b[1] - a[1]) / len) * len * 0.18
+            const my = (a[1] + b[1]) / 2 - ((b[0] - a[0]) / len) * len * 0.18
+            const dd = `M${a[0]},${a[1]}Q${mx},${my} ${bx},${by}`
+            const w = 1.4 + 3.4 * Math.sqrt(f.ton / tonMaks)
             return (
               <g key={i} style={{ pointerEvents: "none" }}>
-                <path d={dd} fill="none" stroke="var(--panel)" strokeWidth={w + 3.5} strokeLinecap="round" opacity={0.9} />
+                <path d={dd} fill="none" stroke="var(--panel)" strokeWidth={w + 2.5} strokeLinecap="round" opacity={0.85} />
                 <path d={dd} fill="none" stroke="var(--accent)" strokeWidth={w} strokeLinecap="round" markerEnd="url(#ah)" />
               </g>
             )
@@ -112,54 +121,39 @@ export function PetaJatim({ layer, flows = false, flowList, labels = true, arcs,
           {[...lokal].map(([n, ton]) => {
             const c = GEO[n].c
             return (
-              <circle key={`l${n}`} cx={c[0]} cy={c[1]} r={clamp(5 + Math.sqrt(ton) * 0.22, 7, 26)} fill="var(--panel)" fillOpacity={0.5} stroke="var(--accent)" strokeWidth={2.6} style={{ pointerEvents: "none" }} />
+              <circle key={`l${n}`} cx={c[0]} cy={c[1]} r={4 + 14 * Math.sqrt(ton / lokalMaks)} fill="var(--accent)" fillOpacity={0.22} stroke="var(--accent)" strokeWidth={1.4} style={{ pointerEvents: "none" }} />
             )
           })}
-          {sourceNames.map((n) => {
+          {[...new Set(ruteTampil.map((f) => f.from.n))].map((n) => {
             const c = GEO[n].c
-            return (
-              <g key={n} transform={`translate(${c[0]},${c[1]})`} style={{ pointerEvents: "none" }}>
-                <circle r={13} fill="var(--accent)" stroke="#fff" strokeWidth={2.2} />
-                <g transform="translate(-8,-8) scale(0.667)" fill="none" stroke="#fff" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35Z" />
-                  <path d="M6 18h12" />
-                  <path d="M6 14h12" />
-                  <rect width="12" height="12" x="6" y="10" />
-                </g>
-              </g>
-            )
+            return <circle key={`s${n}`} cx={c[0]} cy={c[1]} r={4.5} fill="var(--accent)" stroke="var(--panel)" strokeWidth={1.8} style={{ pointerEvents: "none" }} />
           })}
           {(() => {
-            // Label nama wilayah di bawah titiknya; yang berdekatan digeser ke bawah agar tidak bertumpuk.
-            const FS = 21
-            const items = [...new Set(semuaRute.flatMap((f) => [f.from.n, f.to.n]))]
-              .map((n) => {
-                const c = GEO[n].c
-                const ton = lokal.get(n)
-                const r = ton ? clamp(5 + Math.sqrt(ton) * 0.22, 13, 26) : 13
-                return { n, x: c[0], y: c[1] + r + FS, ton }
-              })
-              .sort((a, b) => a.y - b.y)
+            // Label hanya untuk wilayah tujuan rute yang digambar; yang berdekatan digeser agar tidak bertumpuk.
+            const FS = 17
+            const items = [...new Set(ruteTampil.map((f) => f.to.n))]
+              .map((n) => ({ n, x: GEO[n].c[0], y: GEO[n].c[1] - 12 }))
+              .sort((p, q) => p.y - q.y)
             for (let i = 0; i < items.length; i++)
-              for (let j = 0; j < i; j++)
-                if (Math.abs(items[i].x - items[j].x) < 190 && Math.abs(items[i].y - items[j].y) < (items[j].ton ? 2 * FS : FS) + 2) items[i].y = items[j].y + (items[j].ton ? 2 * FS : FS) + 2
+              for (let j = 0; j < i; j++) if (Math.abs(items[i].x - items[j].x) < 120 && Math.abs(items[i].y - items[j].y) < FS + 2) items[i].y = items[j].y + FS + 2
             return items.map((it) => (
               <text
                 key={`t${it.n}`}
                 x={it.x}
                 y={it.y}
                 textAnchor="middle"
-                style={{ fontSize: FS, fontWeight: 600, fill: "var(--ink)", stroke: "var(--panel)", strokeWidth: 5, paintOrder: "stroke", pointerEvents: "none" }}
+                style={{ fontSize: FS, fontWeight: 650, fill: "var(--ink)", stroke: "var(--panel)", strokeWidth: 4.5, paintOrder: "stroke", pointerEvents: "none" }}
               >
                 {short(it.n)}
-                {it.ton ? (
-                  <tspan x={it.x} dy={FS - 3} style={{ fontSize: FS - 4, fontWeight: 500 }}>
-                    {nf(it.ton)} ton untuk wilayah sendiri
-                  </tspan>
-                ) : null}
               </text>
             ))
           })()}
+          {rute.length > 0 && (
+            <text x={18} y={26} style={{ fontSize: 14, fill: "var(--ink-2)", pointerEvents: "none" }}>
+              {ruteTampil.length < rute.length ? `${ruteTampil.length} rute terbesar dari ${rute.length}` : `${rute.length} rute`}
+              {lokal.size > 0 ? " · lingkaran = disalurkan di wilayah cabang sendiri" : ""}
+            </text>
+          )}
         </>
       )}
       {arcs && (
