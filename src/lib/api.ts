@@ -116,6 +116,18 @@ export interface GkpData {
   riwayat: { bulan: string; harga: number; sumber: string }[]
   prakiraan: { bulan_target: string; horizon_bulan: number; harga_prediksi: number; p10: number; p90: number; luas_panen_ha: number; sumber_luas: string; hpp: number }[]
   uji_mundur: Record<string, { n: number; mape: number | null }>
+  /** Per kab/kota (Bapanas); belum ada pada berkas versi 0.1. */
+  kabupaten?: GkpKab[]
+  uji_mundur_kab?: Record<string, { n: number; mape: number | null; mape_naif?: number | null }>
+}
+
+export interface GkpKab {
+  nama: string
+  bulan_data_terakhir: string
+  /** gabungan = rata-rata naif kab dan provinsi x rasio; rasio_provinsi = kab tanpa data bulan acuan. */
+  metode: string
+  riwayat: { bulan: string; harga: number }[]
+  prakiraan: { bulan_target: string; horizon_bulan: number; harga_prediksi: number; p10: number; p90: number }[]
 }
 
 const [k1, k2, k3a, k3b, citra, bulog, deret, gkp] = await Promise.all([
