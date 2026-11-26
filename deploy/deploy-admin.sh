@@ -2,7 +2,8 @@
 # Pasang dan jalankan halaman admin TERAWANG (https://terawang.tech/admin) di VPS tanpa sudo.
 # Jalankan dari root worktree pipeline SETELAH deploy-pipeline.sh: bash deploy/deploy-admin.sh
 #
-# Variabel: ADMIN_HOST (default 127.0.0.1; isi IP bridge Docker, mis. 172.19.0.1, agar Traefik bisa menjangkau),
+# Variabel: ADMIN_HOST (default 172.19.0.1, IP bridge Docker yang dijangkau Traefik, kalau alamat itu ada di mesin ini;
+#           kalau tidak ada, 127.0.0.1),
 #           ADMIN_PORT (default 3071), DAGSTER_HOST/DAGSTER_PORT (GraphQL Dagster, default 127.0.0.1:3070).
 # Sekali saja sesudahnya (sebagai root): salin deploy/traefik-admin.yml ke /opt/traefik/dynamic/terawang-admin.yml,
 #   dan bila firewall INPUT = DROP: ufw allow in on <br-...> from 172.19.0.0/16 to 172.19.0.1 port 3071 proto tcp
@@ -11,7 +12,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 APP_DIR="$(pwd)"
 VENV="$APP_DIR/.venv-pipeline"
-ADMIN_HOST="${ADMIN_HOST:-127.0.0.1}"
+if [ -z "${ADMIN_HOST:-}" ]; then
+  if ip -4 -o addr show 2>/dev/null | grep -q ' 172\.19\.0\.1/'; then ADMIN_HOST=172.19.0.1; else ADMIN_HOST=127.0.0.1; fi
+fi
 ADMIN_PORT="${ADMIN_PORT:-3071}"
 DAGSTER_HOST="${DAGSTER_HOST:-127.0.0.1}"
 DAGSTER_PORT="${DAGSTER_PORT:-3070}"
