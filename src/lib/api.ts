@@ -106,7 +106,19 @@ export interface DeretData {
   wilayah: Record<string, Record<"evi" | "lswi" | "vh" | "eviAvg" | "lswiAvg" | "vhAvg", (number | null)[]>>
 }
 
-const [k1, k2, k3a, k3b, citra, bulog, deret] = await Promise.all([
+/** Harga GKP petani Jatim bulanan (BPS disambung Bapanas) + prakiraan 1-3 bulan, keluaran aset k3_prakiraan_gkp. */
+export interface GkpData {
+  versi: string
+  dibuat: string
+  bulan_acuan: string
+  harga_bulan_acuan: number
+  hpp_sekarang: number
+  riwayat: { bulan: string; harga: number; sumber: string }[]
+  prakiraan: { bulan_target: string; horizon_bulan: number; harga_prediksi: number; p10: number; p90: number; luas_panen_ha: number; sumber_luas: string; hpp: number }[]
+  uji_mundur: Record<string, { n: number; mape: number | null }>
+}
+
+const [k1, k2, k3a, k3b, citra, bulog, deret, gkp] = await Promise.all([
   muat<K1Data>("/api/produksi"),
   muat<K2Data>("/api/stok"),
   muat<K3aData>("/api/harga"),
@@ -114,7 +126,10 @@ const [k1, k2, k3a, k3b, citra, bulog, deret] = await Promise.all([
   muat<unknown>("/api/citra", 4000),
   muat<BulogData>("/api/bulog"),
   muat<DeretData>("/api/deret", 4000),
+  muat<GkpData>("/api/gkp", 4000),
 ])
+/** Prakiraan harga GKP; null = belum ada (panel GKP disembunyikan). */
+export const GKP: GkpData | null = gkp
 /** Stok dan pengadaan Bulog dari database; null = salinan di bundle (src/lib/bulog.ts). */
 export const BULOG: BulogData | null = bulog
 /** Deret EVI/LSWI/VH per wilayah dari pipeline; null = tidak ada. */

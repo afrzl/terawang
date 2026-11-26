@@ -45,11 +45,13 @@ interface LineChartProps {
   W?: number
   H?: number
   tip?: (i: number) => React.ReactNode
+  /** Format label sumbu x (bawaan: tanggal + bulan). */
+  xFmt?: (d: Date) => string
 }
 
 const M = { l: 58, r: 96, t: 14, b: 28 }
 
-export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], points = [], splitAt, splitLabel = "prakiraan", W = 720, H = 280, tip }: LineChartProps) {
+export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], points = [], splitAt, splitLabel = "prakiraan", W = 720, H = 280, tip, xFmt = dfmt }: LineChartProps) {
   const { show, hide } = useTooltip()
   const svgRef = useRef<SVGSVGElement>(null)
   const [hover, setHover] = useState<number | null>(null)
@@ -97,7 +99,7 @@ export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], p
       {xDates.map((d, i) =>
         i % step === 0 || i === n - 1 ? (
           <text key={i} x={x(i)} y={H - M.b + 16} textAnchor="middle">
-            {dfmt(d)}
+            {xFmt(d)}
           </text>
         ) : null,
       )}
