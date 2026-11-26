@@ -4,17 +4,18 @@ import { Map as MlMap, Marker, ScaleControl, setWorkerUrl, type GeoJSONSource, t
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { Box, ChevronDown, ChevronUp, Compass, Crosshair, Map as MapIcon, Minus, Plus, RotateCcw, RotateCw, Type } from "lucide-react"
-import { LAYERS, binColor, byName, type LayerKey, type Wilayah } from "@/lib/data"
+import { LAYERS, binColor, binIndex, byName, type LayerKey, type Wilayah } from "@/lib/data"
 import { warnaSpec, type LayerSpec } from "@/lib/petaLayers"
 import { fallbackKab, loadGeeKab, type KabCollection } from "@/lib/geo"
 import { usePeta } from "@/lib/peta"
 import { regionOf, tradeFor } from "@/lib/arus"
 import { flowsBulan, gabungRute } from "@/lib/data"
-import { nf, rp, short } from "@/lib/format"
+import { nf, short } from "@/lib/format"
 import { useFilter, useWilayah } from "@/lib/filter"
 import { useSelection } from "@/lib/selection"
 import { useTheme } from "@/lib/theme"
 import { useTooltip } from "@/lib/tooltip"
+import { BarisKini } from "@/components/charts/PetaJatim"
 
 setWorkerUrl(workerUrl)
 
@@ -251,7 +252,7 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
           <br />
           {namaNilai}: <span className="m">{fmtVal(k)}</span>
           <br />
-          Harga kini <span className="m">{rp(k.pNow)}</span> · stok <span className="m">{nf(k.cov, 2)}</span> bln
+          <BarisKini k={k} />
         </>,
         e.originalEvent,
       )
@@ -302,7 +303,7 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
           // Tinggi menara 3D mengikuti kelas nilai: kelas tertinggi = menara tertinggi.
           const bins = spec ? spec.bins : d.bins
           const v = k ? val(k) : 0
-          const bi = Math.max(0, bins.findIndex((b) => v >= b[0] && v < b[1]))
+          const bi = binIndex(bins, v)
           const h = k && lolos(k) ? ((bi + 1) / bins.length) * TINGGI_MAKS : 400
           return { ...f, properties: { ...f.properties, fill, h } }
         }),

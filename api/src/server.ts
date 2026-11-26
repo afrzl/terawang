@@ -82,8 +82,14 @@ async function runTerbaru(jenis: string, tabel: string, syarat = "true", per?: s
       args,
     )
   if (!per) return (await pilih("true", "desc", [jenis]))[0] ?? null
-  // Mode tanggal acuan (edisi Cerita pekan lalu): run terakhir yang sudah ada pada `per`; bila belum ada sama sekali, run paling awal.
-  return (await pilih("m.dibuat_pada <= $2::timestamptz", "desc", [jenis, per]))[0] ?? (await pilih("true", "asc", [jenis]))[0] ?? null
+  // Mode tanggal acuan (edisi Cerita pekan lalu): run terakhir yang sudah ada pada `per`. Bila belum ada sama sekali (edisi
+  // yang disusun mundur sebelum pipeline jalan), pakai run paling awal dari VERSI MODEL YANG SEDANG DIPAKAI, bukan run paling awal
+  // seluruhnya: run-run pertama adalah uji coba versi lama (mis. K2 run 2 dengan cakupan negatif dan Ngawi 113 bulan).
+  const ada = (await pilih("m.dibuat_pada <= $2::timestamptz", "desc", [jenis, per]))[0]
+  if (ada) return ada
+  const kini = (await pilih("true", "desc", [jenis]))[0]
+  if (!kini) return null
+  return (await pilih("m.nama_versi = $2", "asc", [jenis, kini.nama_versi]))[0] ?? kini
 }
 
 const metaRun = (r: Run, jenis_data: string | null) => ({
@@ -140,12 +146,17 @@ async function stok(per?: string) {
     const i = idxBulan(r.tahun, r.bulan)
     if (i < 0 || i >= N) continue
     const w = (wilayah[r.kab] ??= { cakupan: kosong(N), p10: kosong(N), p90: kosong(N), stok: kosong(N), status: kosong(N), konsumsi: null })
-    const cak = angka(r.cak)
+    const cakMentah = angka(r.cak)
+    // Stok fisik tidak bisa di bawah nol. Neraca K2 kadang menghasilkan stok negatif (kebutuhan melebihi pasokan dalam neraca);
+    // nilai itu dipotong di 0 (= habis, tetap berstatus DEFISIT) di sini, supaya dasbor, peta, Laporan pekan, dan interpretasi
+    // memakai angka yang sama dan tidak menampilkan "−21 bulan konsumsi".
+    const cak = cakMentah === null ? null : Math.max(0, cakMentah)
     if (r.sk === "TENGAH") {
       w.cakupan[i] = cak
-      w.stok[i] = angka(r.stok)
+      const st = angka(r.stok)
+      w.stok[i] = st === null ? null : Math.max(0, st)
       w.status[i] = r.st
-      if (w.konsumsi === null && cak) w.konsumsi = Number(r.stok) / cak
+      if (w.konsumsi === null && cakMentah) w.konsumsi = Number(r.stok) / cakMentah
     } else if (r.sk === "RENDAH") w.p10[i] = cak
     else if (r.sk === "TINGGI") w.p90[i] = cak
   }

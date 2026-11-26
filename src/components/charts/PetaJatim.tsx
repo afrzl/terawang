@@ -3,6 +3,19 @@ import { clamp, nf, rp, short } from "@/lib/format"
 import { useFilter } from "@/lib/filter"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
+import { BULAN_KINI } from "@/lib/api"
+
+const BLN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
+
+/** Baris kedua tooltip peta: harga terakhir dan cakupan stok akhir bulan berjalan, dengan bulan disebut
+ *  supaya tidak tertukar dengan nilai lapisan (mis. cakupan akhir bulan lain). */
+export function BarisKini({ k }: { k: Wilayah }) {
+  return (
+    <>
+      Harga kini <span className="m">{rp(k.pNow)}</span> · stok akhir {BLN[BULAN_KINI % 12]} <span className="m">{nf(k.cov, 2)}</span> bln
+    </>
+  )
+}
 
 const LABELS = ["Kota Surabaya", "Lamongan", "Ngawi", "Jember", "Banyuwangi", "Sumenep", "Malang", "Bojonegoro", "Pacitan", "Sampang"]
 
@@ -27,12 +40,15 @@ interface PetaJatimProps {
   getValue?: (k: Wilayah) => number
   /** Label nilai di tooltip bila `getValue` dipakai. */
   valueLabel?: string
+  /** Tampilkan baris "harga kini · stok bulan ini" di tooltip (bawaan ya). Matikan untuk peta arsip (Laporan pekan),
+   *  karena nilainya data terkini, bukan data edisi yang ditampilkan. */
+  infoKini?: boolean
   /** Jumlah rute SPHP terbesar yang digambar (bawaan 7). */
   maksRute?: number
 }
 
 /** Peta choropleth 38 kabupaten/kota Jawa Timur, opsional dengan rute penyaluran SPHP. */
-export function PetaJatim({ layer, flows = false, flowList, labels = true, arcs, muted = false, getValue, valueLabel, maksRute = 7 }: PetaJatimProps) {
+export function PetaJatim({ layer, flows = false, flowList, labels = true, arcs, muted = false, getValue, valueLabel, maksRute = 7, infoKini = true }: PetaJatimProps) {
   const { sel, select } = useSelection()
   const { lolos } = useFilter()
   const { show, hide } = useTooltip()
@@ -47,8 +63,12 @@ export function PetaJatim({ layer, flows = false, flowList, labels = true, arcs,
         <b>{n}</b>
         <br />
         {valueLabel ?? d.title.split(",")[0]}: <span className="m">{d.na?.(k) ? "sawah < 1.500 ha" : d.fmt(val(k))}</span>
-        <br />
-        Harga kini <span className="m">{rp(k.pNow)}</span> · stok <span className="m">{nf(k.cov, 2)}</span> bln
+        {infoKini && (
+          <>
+            <br />
+            <BarisKini k={k} />
+          </>
+        )}
       </>
     )
   }

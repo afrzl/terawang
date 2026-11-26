@@ -1,4 +1,4 @@
-import { HET, HET_PREMIUM, HIST, fcHarga, flowsBulan, statusDari, statusK3a, type HargaStatus, type Wilayah } from "@/lib/data"
+import { HET, HET_PREMIUM, HIST, binIndex, fcHarga, flowsBulan, statusDari, statusK3a, type HargaStatus, type Wilayah } from "@/lib/data"
 import { BULAN_KINI, IDX_AKHIR, K1, K2 } from "@/lib/api"
 import { nf, rp, sum } from "@/lib/format"
 
@@ -298,6 +298,5 @@ export function makeSpec(key: SpecKey, c: SpecCtx): LayerSpec {
 
 export function warnaSpec(s: LayerSpec, k: Wilayah) {
   const v = s.val(k)
-  const b = s.bins.find((b) => v >= b[0] && v < b[1]) ?? s.bins[s.bins.length - 1]
-  return `var(${b[2]})`
+  return `var(${s.bins[binIndex(s.bins, v)][2]})`
 }
