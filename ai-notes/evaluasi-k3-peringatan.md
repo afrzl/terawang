@@ -157,3 +157,18 @@ Uji (`scripts/k3/uji_k3_fitur_pihps.py`, KAPAN, walk-forward sama, ditambahkan d
 | 28 | 0,282 / 0,337 | 0,251 / 0,332 | 0,272 / 0,336 |
 
 PIHPS tidak menambah, di semua varian (juga pedagang besar + produsen tanpa/dengan penanda kosong). Sebabnya: pedagang besar hanya 8 lokasi sehingga 79% baris memakai median Jatim, produsen hanya 14 kab, dan informasinya sudah tertangkap harga penggilingan Bapanas (`pg_het`, 17-28 kab). Data PIHPS tetap disimpan untuk dasbor atau kajian transmisi harga, tetapi tidak dipakai di model peringatan.
+
+## Tambahan 26 Nov 2026 sore: inflasi bulanan kab/kota IHK (BPS)
+
+Data: `data/bps/inflasi_kota_jatim_bulanan.csv` (WebAPI BPS, skrip `scripts/bps/ambil_inflasi_kota.py`), Jan 2023 s.d. Okt 2026, 11 kab/kota IHK Jatim (8 pada 2023). Ukuran: umum, kelompok makanan-minuman-tembakau, subkelompok makanan (m-to-m, y-on-y, IHK). Beras per kota tidak tersedia di WebAPI. Fitur harian memakai bulan terakhir yang sudah rilis (bulan m dianggap terbit 1 bulan m+1); 27 kab tanpa IHK diisi median 11 kota.
+
+Uji (`scripts/k3/uji_k3_fitur_inflasi.py`, KAPAN, walk-forward sama), PR-AUC:
+
+| Model | 7 | 14 | 28 |
+|---|---|---|---|
+| EW60 + logit + Bapanas | 0,164 | 0,250 | 0,282 |
+| + semua fitur inflasi | 0,150 | 0,244 | 0,264 |
+| + inflasi makanan m-to-m | 0,157 | 0,240 | 0,271 |
+| + inflasi makanan y-on-y | 0,163 | 0,248 | 0,275 |
+
+Tidak menambah. Inflasi bulanan terbit sebulan kemudian (terlambat untuk horizon 7-28 hari), hanya 11 dari 38 kab/kota, dan isinya sudah tercermin di harga harian. Tidak dipakai.
