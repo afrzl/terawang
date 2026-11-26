@@ -5,7 +5,9 @@
  * Tanpa OPENAI_API_KEY: hanya mencetak ringkasan hitung tiap grafik.
  */
 import fs from "node:fs"
-import { periksaMasukan, ringkas, tafsirAktif, tafsirkan } from "./tafsir.js"
+process.env.TAFSIR_BATAS_IP_10MENIT ??= "1000"
+process.env.TAFSIR_BATAS_IP_HARIAN ??= "1000"
+const { periksaMasukan, ringkas, tafsirAktif, tafsirkan } = await import("./tafsir.js")
 
 const [berkas, ...pilih] = process.argv.slice(2)
 const semua = JSON.parse(fs.readFileSync(berkas ?? "uji/tafsir-contoh.json", "utf8")) as unknown[]
