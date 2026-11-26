@@ -7,7 +7,9 @@
  *   3. memanggil OpenAI (key hanya di server, konfigurasi sama dengan bot WhatsApp),
  *   4. mencocokkan setiap angka di jawaban dengan angka di data/ringkasan; angka yang tidak cocok
  *      memicu satu kali tulis ulang, lalu kalimatnya dibuang bila masih tidak cocok.
- * Batas pemakaian: per IP (10 menit dan harian), anggaran token harian global (tersimpan di berkas), cache per grafik+data.
+ * Batas pemakaian: per IP (10 menit dan harian), anggaran token harian global (tersimpan di berkas).
+ * Cache menurut isi: kunci = hash judul + filter + data + model + prompt, tanpa kedaluwarsa waktu, disimpan di berkas.
+ * Data yang sama selalu dijawab dari cache (untuk semua pengunjung); data berubah (mis. sesudah pipeline jalan) = kunci baru = interpretasi baru.
  */
 import crypto from "node:crypto"
 import fs from "node:fs"
@@ -48,7 +50,7 @@ function cfg() {
     batasIp10Menit: angkaEnv("TAFSIR_BATAS_IP_10MENIT", 12),
     batasIpHarian: angkaEnv("TAFSIR_BATAS_IP_HARIAN", 80),
     maksKeluaran: angkaEnv("TAFSIR_MAKS_KELUARAN", 2500),
-    cacheJam: angkaEnv("TAFSIR_CACHE_JAM", 12),
+    cacheMaks: angkaEnv("TAFSIR_CACHE_MAKS", 5000),
   }
 }
 let CFG = cfg()
@@ -406,7 +408,32 @@ export const pemakaianTafsir = () => ({ ...pakai, batas_token: CFG.tokenHarian, 
 
 // ---------------------------------------------------------------- cache + alur utama
 
-const cache = new Map<string, { v: Hasil; sampai: number }>()
+const BERKAS_CACHE = process.env.TAFSIR_CACHE ?? path.join(os.homedir(), ".local/share/terawang/tafsir-cache.json")
+/** Map menjaga urutan sisip: entri terlama dibuang lebih dulu bila melewati batas. */
+const cache = new Map<string, Hasil>(
+  (() => {
+    try {
+      return Object.entries(JSON.parse(fs.readFileSync(BERKAS_CACHE, "utf8")) as Record<string, Hasil>)
+    } catch {
+      return []
+    }
+  })(),
+)
+let tundaSimpan: NodeJS.Timeout | null = null
+function simpanCache() {
+  if (tundaSimpan) return
+  tundaSimpan = setTimeout(() => {
+    tundaSimpan = null
+    try {
+      fs.mkdirSync(path.dirname(BERKAS_CACHE), { recursive: true })
+      fs.writeFileSync(BERKAS_CACHE + ".tmp", JSON.stringify(Object.fromEntries(cache)))
+      fs.renameSync(BERKAS_CACHE + ".tmp", BERKAS_CACHE)
+    } catch (e) {
+      console.error("[tafsir] gagal menyimpan cache:", e)
+    }
+  }, 2000)
+}
+const VERSI_PROMPT = crypto.createHash("sha256").update(PROMPT).digest("hex").slice(0, 12)
 const sedang = new Map<string, Promise<Hasil>>()
 
 export interface Hasil {
@@ -420,9 +447,9 @@ export interface Hasil {
 export async function tafsirkan(body: unknown, ip: string): Promise<Hasil & { cache: boolean }> {
   if (!tafsirAktif()) throw new Galat(503, "Interpretasi belum aktif di server ini.")
   const m = periksaMasukan(body)
-  const kunci = crypto.createHash("sha256").update(JSON.stringify([m.grafik, m.judul, m.konteks, m.data, CFG.model])).digest("hex")
+  const kunci = crypto.createHash("sha256").update(JSON.stringify([m.grafik, m.judul, m.konteks, m.data, CFG.model, VERSI_PROMPT])).digest("hex")
   const c = cache.get(kunci)
-  if (c && c.sampai > Date.now()) return { ...c.v, cache: true }
+  if (c) return { ...c, cache: true }
   const jalan = sedang.get(kunci)
   if (jalan) return { ...(await jalan), cache: true }
 
@@ -430,8 +457,9 @@ export async function tafsirkan(body: unknown, ip: string): Promise<Hasil & { ca
   const p = hasilkan(m).finally(() => sedang.delete(kunci))
   sedang.set(kunci, p)
   const v = await p
-  if (cache.size > 1000) cache.clear()
-  cache.set(kunci, { v, sampai: Date.now() + CFG.cacheJam * 3600_000 })
+  cache.set(kunci, v)
+  while (cache.size > CFG.cacheMaks) cache.delete(cache.keys().next().value!)
+  simpanCache()
   return { ...v, cache: false }
 }
 
