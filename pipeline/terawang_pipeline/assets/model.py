@@ -161,6 +161,40 @@ def k3_rekomendasi_sphp(context: AssetExecutionContext, repo: Repo, db: Database
     return rute
 
 
+def berkas_gkp() -> Path:
+    """Prakiraan harga GKP bulanan (dibaca dasbor/API kelak)."""
+    return Path(os.environ.get("TERAWANG_GKP_JSON", Path.home() / ".local/share/terawang/gkp_prakiraan.json"))
+
+
+@asset(group_name=GRUP, kinds={"python", "json"},
+       description="K3 GKP: prakiraan harga GKP petani Jatim bulanan 1-3 bulan, gabungan 50:50 naif + SARIMAX (log HPP + log luas panen; "
+                   "luas bulan target = potensi BPS bila terbit, selain itu rata-rata musiman 3 tahun), P10-P90 dari uji mundur 36 bulan "
+                   "(scripts/k3/k3_gkp_operasional.py). Harga Bapanas GKP petani diperbarui dulu (scripts/bapanas/ambil_panel_harga.py). "
+                   "-> gkp_prakiraan.json (dibaca API /api/gkp).")
+def k3_prakiraan_gkp(context: AssetExecutionContext, repo: Repo, db: Database, sumber_citra: SumberCitra) -> MaterializeResult:
+    hari_ini = sekarang().date()
+    folder = folder_lapisan() / "bapanas"
+    # Ambil 45 hari terakhir ke cache (~/.cache/terawang-bapanas); CSV disusun dari seluruh cache. Riwayat lama tetap
+    # dari berkas repo bila cache belum punya.
+    mulai = (hari_ini - pd.Timedelta(days=45)).isoformat()
+    if os.environ.get("TERAWANG_GKP_TANPA_AMBIL") != "1":
+        try:
+            repo.jalankan([sys.executable, "scripts/bapanas/ambil_panel_harga.py", "--komoditas", "1:2", "--mulai", mulai,
+                           "--keluar", str(folder)], log=context.log)
+        except RuntimeError as e:
+            context.log.warning(f"Bapanas gagal diperbarui, pakai berkas terakhir: {e}")
+    dir_bapanas = folder if (folder / "kabkota_harian_gkp_petani.csv").exists() else None
+    # Tidak dicatat di app.model_run: jenis K3_HARGA dibaca bot/API sebagai run K3a terbaru (lihat bot/src/data.ts).
+    R, par = k3_harga.prakiraan_gkp(repo.path, _env_danang(repo, db, sumber_citra), hari_ini=hari_ini, dir_bapanas=dir_bapanas)
+    isi = {**par, "dibuat": sekarang().isoformat(timespec="seconds"), "riwayat": par.pop("riwayat", []), "prakiraan": R.to_dict(orient="records")}
+    keluar = berkas_gkp()
+    keluar.parent.mkdir(parents=True, exist_ok=True)
+    keluar.write_text(json.dumps(isi, ensure_ascii=False, indent=1, default=str))
+    return MaterializeResult(metadata={"versi": k3_harga.VERSI_K3_GKP, "bulan_acuan": par["bulan_acuan"],
+                                       "harga_bulan_acuan": par["harga_bulan_acuan"], "berkas": str(keluar),
+                                       "uji_mundur_mape": json.dumps(par["uji_mundur"]), "prakiraan": _md(R)})
+
+
 def berkas_deret() -> Path:
     """Deret satelit per kab/kota untuk dasbor (dibaca API /api/deret)."""
     return Path(os.environ.get("TERAWANG_DERET_JSON", Path.home() / ".local/share/terawang/deret_satelit.json"))

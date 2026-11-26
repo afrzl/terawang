@@ -76,3 +76,16 @@ def prediksi_harga_k3a(akar, env: dict[str, str]) -> tuple[pd.DataFrame, dict]:
         ko = modul("k3_harga_operasional")
         R, het, kal = ko.hitung(cetak=False)
         return R, ko.parameter_run(het, kal)
+
+
+# K3 GKP: prakiraan harga GKP petani Jatim bulanan 1-3 bulan (gabungan naif + SARIMAX HPP + luas panen),
+# scripts/k3/k3_gkp_operasional.py. Butuh statsmodels.
+VERSI_K3_GKP = "k3-gkp-sarimax-gab-0.1"
+
+
+def prakiraan_gkp(akar, env: dict[str, str], hari_ini=None, dir_bapanas=None) -> tuple[pd.DataFrame, dict]:
+    """Keluaran (R, parameter): R = bulan_acuan, bulan_target, horizon_bulan, harga_prediksi, p10, p90, luas_panen_ha, sumber_luas, hpp."""
+    from .danang import di_repo, modul
+
+    with di_repo(akar, env):
+        return modul("k3_gkp_operasional").hitung(hari_ini=hari_ini, dir_bapanas=dir_bapanas)
