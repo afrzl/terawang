@@ -93,7 +93,9 @@ cd pipeline && ../.venv-pipeline/bin/dagster dev   # buka http://localhost:3000,
 cd ~/terawang && bash deploy/deploy-pipeline.sh
 ```
 
-Skrip memasang venv, menjalankan migrasi, menyalakan `dagster-webserver` dan `dagster-daemon`, dan mendaftarkan cron penjaga.
+Skrip memasang venv, menjalankan migrasi, menyalakan satu code server permanen (`dagster code-server start`, gRPC
+`127.0.0.1:4266`, env dari `pipeline/.env`) yang dipakai `dagster-webserver` dan `dagster-daemon`, dan mendaftarkan cron penjaga
+`deploy/pipeline-ensure.sh`. Setelah `pipeline/.env` berubah: `bash deploy/pipeline-ensure.sh --muat-ulang` (halaman admin memakai ini).
 Router Traefik: `deploy/traefik-dagster.yml` (disalin ke `/opt/traefik/dynamic/`). UI publik berjalan `--read-only`; menjalankan pipeline manual
 dilakukan di VPS: `cd ~/terawang-pipeline/pipeline && set -a && . ./.env && set +a && DAGSTER_HOME=~/dagster_home ../.venv-pipeline/bin/dagster job execute -m terawang_pipeline.definitions -j pipeline_penuh`.
 

@@ -15,6 +15,7 @@ VENV="$APP_DIR/.venv-pipeline"
 export DAGSTER_HOME="${DAGSTER_HOME:-$HOME/dagster_home}"
 DAGSTER_PORT="${DAGSTER_PORT:-3070}"
 DAGSTER_HOST="${DAGSTER_HOST:-127.0.0.1}"
+DAGSTER_GRPC_PORT="${DAGSTER_GRPC_PORT:-4266}"  # code server permanen, hanya di 127.0.0.1
 # 1 = UI publik hanya bisa melihat (tanpa tombol Materialize/Launch). Jadwal dan sensor tetap jalan lewat daemon.
 DAGSTER_READ_ONLY="${DAGSTER_READ_ONLY:-1}"
 RO_FLAG=""; [ "$DAGSTER_READ_ONLY" = "1" ] && RO_FLAG="--read-only"
@@ -26,7 +27,7 @@ RO_FLAG=""; [ "$DAGSTER_READ_ONLY" = "1" ] && RO_FLAG="--read-only"
 KUNCI="$APP_DIR/deploy/.deploy-berjalan"
 touch "$KUNCI"
 trap 'rm -f "$KUNCI"' EXIT
-pkill -f "dagster-daemon run -m terawang_pipeline.definitions" 2>/dev/null || true
+pkill -f "[d]agster-daemon run" 2>/dev/null || true
 
 # 1. Lingkungan Python dan dependensi (models milik Danang + pipeline)
 [ -d "$VENV" ] || python3 -m venv "$VENV"
@@ -54,29 +55,47 @@ fi
 
 NODE_BIN="$(dirname "$(command -v npm)")"
 
-# 4. Tulis penjaga proses, lalu jalankan ulang webserver dan daemon
+# 4. Tulis penjaga proses, lalu jalankan ulang code server, webserver, dan daemon.
+#    Satu code server permanen (gRPC di 127.0.0.1:$DAGSTER_GRPC_PORT) dipakai webserver dan daemon. Tanpa ini daemon membuat
+#    code server baru tiap menit (impor ulang modul pipeline ~200 MB, beberapa detik CPU) yang ikut memperlambat webserver.
 cat > "$APP_DIR/deploy/pipeline-ensure.sh" <<SH
 #!/usr/bin/env bash
-# Dibuat oleh deploy-pipeline.sh. Menyalakan webserver dan daemon Dagster kalau mati (dipanggil cron tiap menit).
+# Dibuat oleh deploy-pipeline.sh. Menyalakan code server, webserver, dan daemon Dagster kalau mati (dipanggil cron tiap menit).
+#   --paksa       jalan walau deploy sedang berlangsung
+#   --muat-ulang  hentikan ketiganya dulu (mis. setelah pipeline/.env berubah), lalu nyalakan lagi
 # PATH cron minimal: folder Node ditulis di sini supaya aset silver bisa memanggil npm.
 export DAGSTER_HOME="$DAGSTER_HOME"
 export PATH="$NODE_BIN:\$PATH"
 cd "$APP_DIR/pipeline"
-[ -f "$APP_DIR/deploy/.deploy-berjalan" ] && [ "\${1:-}" != "--paksa" ] && exit 0  # deploy sedang berjalan
-pgrep -f "dagster-webserver -m terawang_pipeline.definitions .*--port $DAGSTER_PORT" >/dev/null || (setsid nohup "$VENV/bin/dagster-webserver" -m terawang_pipeline.definitions --host "$DAGSTER_HOST" --port "$DAGSTER_PORT" $RO_FLAG >>"$APP_DIR/deploy/dagster-webserver.log" 2>&1 < /dev/null &)
-pgrep -f "dagster-daemon run -m terawang_pipeline.definitions" >/dev/null || (setsid nohup "$VENV/bin/dagster-daemon" run -m terawang_pipeline.definitions >>"$APP_DIR/deploy/dagster-daemon.log" 2>&1 < /dev/null &)
+ARG="\${1:-}"
+[ -f "$APP_DIR/deploy/.deploy-berjalan" ] && [ -z "\$ARG" ] && exit 0  # deploy sedang berjalan
+POLA_CS="[d]agster code-server start -m terawang_pipeline.definitions -h 127.0.0.1 -p $DAGSTER_GRPC_PORT"
+POLA_WS="[d]agster-webserver --grpc-host 127.0.0.1 --grpc-port $DAGSTER_GRPC_PORT .*--port $DAGSTER_PORT"
+POLA_DM="[d]agster-daemon run --grpc-host 127.0.0.1 --grpc-port $DAGSTER_GRPC_PORT"
+POLA_LAMA="[d]agster-(webserver|daemon) .*-m terawang_pipeline.definitions"  # proses gaya lama (tanpa code server permanen)
+henti() {  # hentikan proses yang cocok, tunggu sampai 90 detik, lalu paksa
+  pkill -f "\$1" 2>/dev/null || true
+  for i in \$(seq 1 45); do pgrep -f "\$1" >/dev/null || return 0; sleep 2; done
+  pkill -9 -f "\$1" 2>/dev/null || true
+}
+if [ "\$ARG" = "--muat-ulang" ]; then
+  henti "\$POLA_WS"; henti "\$POLA_DM"; henti "\$POLA_CS"
+fi
+pgrep -f "\$POLA_LAMA" >/dev/null && henti "\$POLA_LAMA"
+baru=0
+if ! pgrep -f "\$POLA_CS" >/dev/null; then
+  # code-server tidak memuat pipeline/.env sendiri (webserver dan daemon memuatnya dari cwd), jadi lewat dotenv run
+  (setsid nohup "$VENV/bin/dotenv" -f "$APP_DIR/pipeline/.env" run --no-override -- "$VENV/bin/dagster" code-server start -m terawang_pipeline.definitions -h 127.0.0.1 -p $DAGSTER_GRPC_PORT >>"$APP_DIR/deploy/dagster-codeserver.log" 2>&1 < /dev/null &)
+  for i in \$(seq 1 60); do "$VENV/bin/dagster" api grpc-health-check -p $DAGSTER_GRPC_PORT >/dev/null 2>&1 && break; sleep 2; done
+  baru=1
+fi
+# code server baru: webserver dan daemon dinyalakan ulang supaya tersambung ke server yang baru
+if [ "\$baru" = 1 ]; then henti "\$POLA_WS"; henti "\$POLA_DM"; fi
+pgrep -f "\$POLA_WS" >/dev/null || (setsid nohup "$VENV/bin/dagster-webserver" --grpc-host 127.0.0.1 --grpc-port $DAGSTER_GRPC_PORT --host "$DAGSTER_HOST" --port "$DAGSTER_PORT" $RO_FLAG >>"$APP_DIR/deploy/dagster-webserver.log" 2>&1 < /dev/null &)
+pgrep -f "\$POLA_DM" >/dev/null || (setsid nohup "$VENV/bin/dagster-daemon" run --grpc-host 127.0.0.1 --grpc-port $DAGSTER_GRPC_PORT >>"$APP_DIR/deploy/dagster-daemon.log" 2>&1 < /dev/null &)
 SH
 chmod +x "$APP_DIR/deploy/pipeline-ensure.sh"
-pkill -f "dagster-webserver -m terawang_pipeline.definitions .*--port $DAGSTER_PORT" 2>/dev/null || true
-pkill -f "dagster-daemon run -m terawang_pipeline.definitions" 2>/dev/null || true
-# Tunggu proses lama benar-benar berhenti (code server bisa butuh sampai 60 detik); kalau tidak, pipeline-ensure melihatnya
-# masih hidup dan tidak menyalakan yang baru sampai cron menit berikutnya.
-for i in $(seq 1 45); do
-  pgrep -f "dagster-(webserver|daemon) .*terawang_pipeline.definitions" >/dev/null || break
-  sleep 2
-done
-pkill -9 -f "dagster-(webserver|daemon) .*terawang_pipeline.definitions" 2>/dev/null || true
-bash "$APP_DIR/deploy/pipeline-ensure.sh" --paksa
+bash "$APP_DIR/deploy/pipeline-ensure.sh" --muat-ulang
 
 # 5. Cron: jaga proses tetap hidup (juga setelah reboot)
 CRON_LINE="* * * * * bash $APP_DIR/deploy/pipeline-ensure.sh"

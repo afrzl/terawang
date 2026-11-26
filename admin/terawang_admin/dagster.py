@@ -177,19 +177,15 @@ def luncurkan(job: str, pengguna: str) -> str:
 
 
 def mulai_ulang_pipeline() -> str:
-    """Muat ulang webserver dan daemon Dagster supaya pipeline/.env yang baru terbaca."""
+    """Muat ulang code server, webserver, dan daemon Dagster supaya pipeline/.env yang baru terbaca."""
     berjalan = run_berjalan()
     if berjalan:
         raise GalatDagster(f"Ada run yang sedang berjalan ({', '.join(berjalan)}). Tunggu selesai dulu supaya tidak terputus.")
     jaga = pengaturan.REPO / "deploy/pipeline-ensure.sh"
     if not jaga.exists():
         raise GalatDagster("deploy/pipeline-ensure.sh tidak ada; jalankan deploy-pipeline.sh dulu.")
-    # pola [d]agster supaya pkill tidak ikut membunuh shell yang menjalankan perintah ini
-    perintah = ('pkill -f "[d]agster-webserver -m terawang_pipeline.definitions" ; pkill -f "[d]agster-daemon run -m terawang_pipeline.definitions" ; '
-                # tunggu proses lama (termasuk code server) benar-benar berhenti, maks 90 detik, baru nyalakan lagi
-                'for i in $(seq 1 90); do pgrep -f "[d]agster-(webserver|daemon) .*terawang_pipeline.definitions" >/dev/null || break; sleep 1; done ; '
-                'pkill -9 -f "[d]agster-(webserver|daemon) .*terawang_pipeline.definitions" ; '
-                f'bash "{jaga}" --paksa')
+    # --muat-ulang: hentikan code server, webserver, dan daemon (menunggu sampai 90 detik), lalu nyalakan lagi dengan .env baru
+    perintah = f'bash "{jaga}" --muat-ulang'
     subprocess.Popen(["bash", "-c", perintah], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return "Dagster sedang dimuat ulang (menunggu proses lama berhenti, bisa sampai 90 detik). Status kembali setelah itu."
 
