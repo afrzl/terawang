@@ -86,3 +86,23 @@ Catatan kehati-hatian: hanya 26-29 episode uji; selisih antar model belum diuji 
 - Tadesse, G., Algieri, B., Kalkuhl, M., von Braun, J. (2014). Drivers and triggers of international food price spikes and volatility. Food Policy 47, 117-128. doi:10.1016/j.foodpol.2013.08.014
 - Lentz, E.C., Michelson, H., Baylis, K., Zhou, Y. (2019). A data-driven approach improves food insecurity crisis prediction. World Development 122, 399-409. doi:10.1016/j.worlddev.2019.06.008
 - Richardson, D.S. (2000). Skill and relative economic value of the ECMWF ensemble prediction system. QJRMS 126, 649-667 (DOI Wiley belum terverifikasi; versi memo ECMWF doi:10.21957/2xjs554nr)
+
+## Tambahan 26 Nov 2026 siang: fitur dari Panel Harga Bapanas
+
+Data: `data/bapanas/panel_harga/` (harian per kab Jatim, 1 Jan 2024 s.d. 25 Nov 2026, ditarik dengan `scripts/bapanas/ambil_panel_harga.py` dari API publik Panel Harga Bapanas; 26-38 kab per komoditas). Uji: `scripts/k3/uji_k3_fitur_bapanas.py`, kejadian KAPAN, semua model dilatih sejak Jun 2024, walk-forward bulanan, periode uji sama.
+
+Fitur baru: harga beras medium penggilingan kab terhadap HET (`pg_het`, cadangan median Jatim bila kab kosong), perubahan 28 hari harga penggilingan, GKG, GKP, dan penanda SPHP beredar (harga beras SPHP tercatat di kab). Harga medium non-SPHP dibuang dari versi utama karena serinya baru ±321 hari, sehingga penanda kosongnya ikut menangkap efek periode (hasil dengan non-SPHP: `data/satelit/k3_uji_fitur_bapanas_dengan_ns.csv`, PR-AUC sedikit lebih tinggi tetapi tidak bisa dipercaya).
+
+| Horizon | Model | PR-AUC | F1 maks | Presisi @ recall episode >= 50% |
+|---|---|---|---|---|
+| 7 | EW60 + logit | 0,148 | 0,262 | 0,10 |
+| 7 | EW60 + logit + Bapanas | **0,164** | 0,251 | 0,11 |
+| 14 | EW60 + logit | 0,226 | 0,300 | 0,18 |
+| 14 | EW60 + logit + Bapanas | **0,250** | **0,330** | 0,20 |
+| 28 | EW60 + logit | 0,253 | 0,341 | 0,30 |
+| 28 | EW60 + logit + Bapanas | **0,282** | 0,337 | **0,36** |
+
+- PR-AUC naik 10-11% di semua horizon. Uji dengan fitur acak (data tiruan) hanya menggeser PR-AUC ±0,01, jadi kenaikan 0,016-0,029 kemungkinan nyata, tetapi kecil.
+- F1 maksimum hampir tidak berubah (kecuali 14 hari +0,03); keuntungan terutama pada presisi di tingkat recall menengah.
+- Fitur terkuat: **harga beras di penggilingan terhadap HET** (koefisien terstandar +0,8 s.d. +0,9, kedua setelah jarak harga eceran ke HET). Sesuai dugaan: saat margin penggilingan ke HET menipis, eceran menyusul lewat HET.
+- Rekomendasi: masukkan `pg_het` ke model gabungan. Harga pedagang besar (PIHPS BI) belum diuji.

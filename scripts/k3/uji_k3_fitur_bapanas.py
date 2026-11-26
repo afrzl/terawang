@@ -24,7 +24,9 @@ import uji_k3_peringatan as U  # noqa: E402
 
 DIRB = sys.argv[1] if len(sys.argv) > 1 else "data/bapanas/panel_harga"
 KECIL = ["d", "di_het", "atas90", "atas365", "hari_sejak_atas", "pasar_di_het", "pasar_di_atas", "pasar_maks", "m28", "prov_atas"]
-BARU = ["pg_het", "pg_m28", "pg_hilang", "gkg_m28", "gkp_m28", "ns_het", "ns_hilang", "sphp_ada", "sphp_prov"]
+BARU = ["pg_het", "pg_m28", "pg_hilang", "gkg_m28", "gkp_m28", "sphp_ada", "sphp_prov"]
+if os.environ.get("PAKAI_NS"):  # non-SPHP baru ±321 hari; penanda kosongnya ikut menangkap efek periode, jadi bawaan tidak dipakai
+    BARU += ["ns_het", "ns_hilang"]
 MULAI_LATIH = pd.Timestamp("2024-06-01")
 
 
