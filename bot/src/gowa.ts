@@ -28,6 +28,39 @@ export async function kirim(tujuan: string, pesan: string): Promise<string | und
   }
 }
 
+/** Indikator "sedang mengetik..." di WhatsApp. Gagal diabaikan (hanya kosmetik). */
+export async function mengetik(tujuan: string, action: "start" | "stop"): Promise<void> {
+  const phone = tujuan.includes("@") ? tujuan : `${tujuan.replace(/\D/g, "")}@s.whatsapp.net`
+  try {
+    await fetch(`${config.gowa.url}/send/chat-presence`, {
+      method: "POST",
+      headers: header(),
+      body: JSON.stringify({ phone, action }),
+      signal: AbortSignal.timeout(5_000),
+    })
+  } catch {
+    /* abaikan */
+  }
+}
+
+/** Tampilkan "mengetik..." selama `kerja` berjalan: mulai setelah jeda singkat, diulang tiap 8 detik. */
+export async function sambilMengetik<T>(tujuan: string, kerja: () => Promise<T>): Promise<T> {
+  let aktif = false
+  const mulai = () => {
+    aktif = true
+    void mengetik(tujuan, "start")
+  }
+  const t1 = setTimeout(mulai, 600) // jawaban instan (perintah baku) tidak perlu indikator
+  const ulang = setInterval(() => aktif && void mengetik(tujuan, "start"), 8_000)
+  try {
+    return await kerja()
+  } finally {
+    clearTimeout(t1)
+    clearInterval(ulang)
+    if (aktif) void mengetik(tujuan, "stop")
+  }
+}
+
 export async function sehat(): Promise<{ ok: boolean; detail: string }> {
   try {
     const res = await fetch(`${config.gowa.url}/app/devices`, { headers: header(), signal: AbortSignal.timeout(5_000) })

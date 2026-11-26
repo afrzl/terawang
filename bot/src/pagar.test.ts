@@ -56,3 +56,14 @@ test("salam di awal kalimat dibuang", async () => {
   assert.equal(buangSalam("helo"), "helo")
   assert.match(jawabBasaBasi("assalamualaikum") ?? "", /^Waalaikumsalam/)
 })
+
+test("salam longgar: huruf berulang dan ejaan bebas", async () => {
+  const { jawabBasaBasi } = await import("./istilah.ts")
+  for (const s of ["halloo", "haiii", "hellow", "hy kak", "misi", "met pagi", "selamat malam min", "pagiii", "asslamualaikum", "p p", "helloww", "asalamu'alaikum", "hallo kakk"]) {
+    assert.ok(jawabBasaBasi(s), s)
+  }
+  assert.match(jawabBasaBasi("asslamualaikum") ?? "", /^Waalaikumsalam/)
+  assert.match(jawabBasaBasi("makasiii kak") ?? "", /Sama-sama/)
+  assert.match(jawabBasaBasi("trimakasi") ?? "", /Sama-sama/)
+  for (const s of ["padi", "harga beras", "stok jember", "siapa presiden"]) assert.equal(jawabBasaBasi(s), null, s)
+})

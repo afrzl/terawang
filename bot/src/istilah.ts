@@ -1,5 +1,5 @@
 /** Jawaban baku untuk pertanyaan istilah ("apa itu SPHP?"), tanpa OpenAI. */
-import { normal } from "./wilayah.ts"
+import { levenshtein, normal } from "./wilayah.ts"
 
 const ISTILAH: { pola: RegExp; teks: string }[] = [
   {
@@ -34,27 +34,43 @@ export function jawabIstilah(teks: string): string | null {
 
 // ---- salam dan basa-basi: dibalas ramah tanpa OpenAI
 
-const KATA_SALAM = new Set([
-  "halo", "hallo", "helo", "hello", "hai", "hay", "hi", "hei", "hey", "pagi", "siang", "sore", "malam", "selamat",
-  "assalamualaikum", "assalamu", "alaikum", "assalamualaikum", "asalamualaikum", "assalammualaikum", "salam", "permisi",
-  "punten", "tes", "test", "ping", "p", "min", "admin", "kak", "bang", "mas", "mbak", "pak", "bu", "bot", "terawang", "wr", "wb", "semua",
+// huruf berulang diringkas dulu: "halloo" -> "halo", "haiii" -> "hai", "assalamualaikum" -> "asalamualaikum"
+const ringkas = (k: string) => k.replace(/(.)\1+/g, "$1")
+const himpun = (xs: string[]) => new Set(xs.map(ringkas))
+
+const KATA_SALAM = himpun([
+  "halo", "hallo", "helo", "hello", "hellow", "helow", "hai", "hay", "hi", "hy", "hei", "hey", "heh", "woi", "oi", "hola",
+  "pagi", "siang", "sore", "malam", "selamat", "met", "slmt", "pgi",
+  "assalamualaikum", "asalamualaikum", "assalammualaikum", "assalamu", "alaikum", "salam", "salamualaikum", "ass", "askum", "aslm",
+  "permisi", "misi", "punten", "nuwun", "sewu", "tes", "test", "testing", "ping", "p", "min", "admin", "kak", "ka", "kakak",
+  "bang", "mas", "mbak", "mba", "pak", "bu", "bot", "terawang", "wr", "wb", "semua", "gan", "sob", "bro", "sis", "dong", "ya",
 ])
-const KATA_TERIMA_KASIH = new Set([
-  "terima", "kasih", "makasih", "makasi", "trims", "thanks", "thank", "you", "thx", "tq", "tengkyu", "nuwun", "matur",
-  "ok", "oke", "okay", "okey", "sip", "siap", "mantap", "mantab", "baik", "noted", "banyak", "ya", "yaa", "min", "kak", "bot",
+const KATA_TERIMA_KASIH = himpun([
+  "terima", "kasih", "makasih", "makasi", "maksih", "trims", "trimakasih", "terimakasih", "thanks", "thank", "you", "thx", "tq", "ty",
+  "tengkyu", "nuwun", "matur", "suwun", "ok", "oke", "okay", "okey", "okei", "sip", "siap", "mantap", "mantab", "baik", "noted",
+  "banyak", "ya", "yaa", "min", "kak", "bot", "deh", "dong", "nih", "👍", "🙏",
 ])
 
-const CONTOH = "Contoh yang bisa kamu tanyakan:\n• *HARGA Malang*\n• *STOK Jember*\n• _beras di Surabaya naik nggak bulan depan?_\n\nKetik *BANTUAN* untuk semua perintah."
+// cocok longgar untuk ejaan bebas ("asslamualaikum", "helloww", "trimakasi"): selisih 1 huruf (>=5 huruf) atau 2 (>=8 huruf)
+function mirip(k: string, himpunan: Set<string>): boolean {
+  if (himpunan.has(k)) return true
+  if (k.length < 5) return false
+  const batas = k.length >= 8 ? 2 : 1
+  for (const h of himpunan) if (h.length >= 4 && Math.abs(h.length - k.length) <= batas && levenshtein(k, h) <= batas) return true
+  return false
+}
+
+export const CONTOH = "Contoh yang bisa kamu tanyakan:\n• *HARGA Malang*\n• *STOK Jember*\n• _beras di Surabaya naik nggak bulan depan?_\n\nKetik *BANTUAN* untuk semua perintah."
 
 /** Balasan untuk pesan yang isinya hanya salam ("helo") atau ucapan terima kasih. */
 export function jawabBasaBasi(teks: string): string | null {
-  const kata = normal(teks).split(" ").filter(Boolean)
+  const kata = normal(teks).split(" ").filter(Boolean).map(ringkas)
   if (!kata.length || kata.length > 6) return null
-  if (kata.every((k) => KATA_SALAM.has(k))) {
-    if (kata.some((k) => /^(as+alam|salam)/.test(k))) return `Waalaikumsalam 🙏 Aku bot *TERAWANG*, siap bantu info beras di Jawa Timur: harga, stok, dan beras murah/SPHP.\n\n${CONTOH}`
+  if (kata.every((k) => mirip(k, KATA_SALAM))) {
+    if (kata.some((k) => /^(as+a?lam|salam|ass$|askum|aslm)/.test(k))) return `Waalaikumsalam 🙏 Aku bot *TERAWANG*, siap bantu info beras di Jawa Timur: harga, stok, dan beras murah/SPHP.\n\n${CONTOH}`
     return `Halo! 👋 Aku bot *TERAWANG*, siap bantu info beras di Jawa Timur: harga, stok, dan beras murah/SPHP.\n\n${CONTOH}`
   }
-  if (kata.every((k) => KATA_TERIMA_KASIH.has(k))) {
+  if (kata.every((k) => mirip(k, KATA_TERIMA_KASIH))) {
     return "Sama-sama! Kalau mau cek lagi, ketik saja nama wilayahnya, misalnya *HARGA Kediri*."
   }
   return null
@@ -64,7 +80,7 @@ export function jawabBasaBasi(teks: string): string | null {
 export function buangSalam(teks: string): string {
   const kata = teks.trim().split(/\s+/)
   let i = 0
-  while (i < kata.length - 1 && i < 4 && KATA_SALAM.has(normal(kata[i])) && normal(kata[i]) !== "terawang") i++
+  while (i < kata.length - 1 && i < 4 && KATA_SALAM.has(ringkas(normal(kata[i]))) && normal(kata[i]) !== "terawang") i++
   if (i === 0 || i >= kata.length) return teks
   const sisa = kata.slice(i).join(" ").replace(/^[\s,.!-]+/, "")
   return sisa || teks

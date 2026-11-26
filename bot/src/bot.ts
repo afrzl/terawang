@@ -4,10 +4,10 @@ import { daftarPeringatan, infoBerasMurah, infoHarga, infoStok } from "./data.ts
 import { BANTUAN, teksBerasMurah, teksHarga, teksPeringatan, teksPilihWilayah, teksStok, rp, nf } from "./format.ts"
 import * as kontak from "./kontak.ts"
 import { q } from "./db.ts"
-import { jawabBebas, llmAktif } from "./llm.ts"
+import { jawabBebas, llmAktif, pilahNiat } from "./llm.ts"
 import * as pagar from "./pagar.ts"
 import { pantau } from "./pantau.ts"
-import { buangSalam, jawabBasaBasi, jawabIstilah } from "./istilah.ts"
+import { buangSalam, CONTOH, jawabBasaBasi, jawabIstilah } from "./istilah.ts"
 import { cariDiKalimat, cocokkan, labelWilayah, normal, semuaWilayah, type Wilayah } from "./wilayah.ts"
 
 type Perintah = "harga" | "stok" | "sphp" | "peringatan" | "langganan" | "berhenti" | "lapor" | "bantuan"
@@ -204,7 +204,26 @@ async function pesanBebas(k: kontak.Kontak, teks: string, pilihan: Wilayah | nul
   const lanjut = kt && kt.sampai > Date.now() ? kt : null
   // pertanyaan lanjutan ("kalo 2 bulan lagi?") lolos cek topik karena masih dalam percakapan beras
   const tolak = pagar.cekMasukan(teks, sebut || Boolean(lanjut))
-  if (tolak) return { teks: tolak.teks, intent: `tolak_${tolak.alasan}`, wilayahId: null }
+  let lolosPilah = false
+  if (tolak?.alasan === "di_luar_topik") {
+    // aturan tidak mengenali pesannya: tanya model termurah dulu sebelum menolak
+    const sapa = { teks: `Halo! 👋 Aku bot *TERAWANG*, bantu info beras di Jawa Timur.\n\n${CONTOH}`, intent: "tidak_jelas", wilayahId: null }
+    if (!config.openai.modelPilah || pagar.cekBatas(k.id, await kontak.jumlahLlmHariIni(k.id))) {
+      return normal(teks).split(" ").length <= 3 ? sapa : { teks: tolak.teks, intent: `tolak_${tolak.alasan}`, wilayahId: null }
+    }
+    try {
+      const p = await pilahNiat(teks)
+      pagar.catatToken(p.token)
+      console.log(`[llm] pilah kontak=${k.id} niat=${p.niat} token=${p.token}`)
+      if (p.niat === "salam") return { ...sapa, intent: "salam_pilah" }
+      if (p.niat === "lain") return { teks: tolak.teks, intent: `tolak_${tolak.alasan}`, wilayahId: null }
+      lolosPilah = true
+    } catch (e) {
+      console.error("[llm] pilah gagal:", e)
+      return normal(teks).split(" ").length <= 3 ? sapa : { teks: tolak.teks, intent: `tolak_${tolak.alasan}`, wilayahId: null }
+    }
+  }
+  if (tolak && !lolosPilah) return { teks: tolak.teks, intent: `tolak_${tolak.alasan}`, wilayahId: null }
 
   // cache: pertanyaan yang sama dalam 30 menit dijawab tanpa memanggil OpenAI lagi
   const kunci = pagar.kunciCache(lanjut && !sebut ? `${teks}|${lanjut.topik}` : teks, lanjut && !sebut ? lanjut.wilayahId : k.wilayah_id)
