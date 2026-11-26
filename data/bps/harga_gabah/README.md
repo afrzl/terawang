@@ -18,3 +18,7 @@ Validasi: 12 angka bulanan 2024 di BRS bulanan (Feb 2024–Jan 2025) sama dengan
 ## Sumber yang dicoba dan tidak berisi angka bulanan
 
 Tabel statistik BPS Jatim (hanya "Harga Dasar Gabah"), BRS NTP Jatim 2020–2023 (tanpa harga GKP), *Jawa Timur Dalam Angka* 2023 dan 2026, tabel dan publikasi bps.go.id (nasional atau tahunan per provinsi).
+
+## 2022 turunan (bukan angka asli)
+
+`bps_jatim_harga_gkp_petani_turunan_2022.csv`: harga GKP **penggilingan** bulanan 2022 (Tabel 4 publikasi *Statistik Harga Produsen Gabah Jatim 2022*, kolom GKP) × rasio petani/penggilingan **0,98435** (rata-rata geometrik 24 bulan 2021 dan 2023; sd 0,23%, rentang bulanan 0,980–0,988). Status: **TURUNAN**. Cek: rentang hasil 4.286–5.519 vs rentang petani di teks publikasi 4.278,23–5.542,08. Dipakai hanya oleh `scripts/k3/sarimax_gkp_cari.py`.

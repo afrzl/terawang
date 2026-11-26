@@ -47,3 +47,22 @@ Koefisien (seluruh sampel, model HPP + luas): elastisitas HPP 0,29 (p = 0,03); l
 - ONI (lag 5) tidak nyata (p = 0,79) dan tidak memperbaiki HPP + luas pada uji Jan 2023–Sep 2026; berbeda dengan uji 2021–2026 di sisi cloud (ERA5, ONI memperbaiki 5–10%). Perbedaan sampel uji (2021–2022 memuat El Niño 2023 sebagai target sesudahnya) dan lag ONI kemungkinan penyebabnya.
 - Luas panen lag 12 kalah dari naif: keunggulan HPP + luas sepenuhnya bergantung pada prakiraan luas panen bulan target (angka potensi BPS / K1).
 - Iklim diuji dengan satu spesifikasi lag (hujan t-6..t-4, ONI t-5); spesifikasi lain belum dicoba.
+
+## Pencarian spesifikasi (`scripts/k3/sarimax_gkp_cari.py`, hasil `data/satelit/k3_sarimax_gkp_cari.csv`)
+
+Harga 2022 diisi turunan (penggilingan × 0,9843). Origin Des 2020–Sep 2026. 96 spesifikasi: target log harga (HPP eksogen) atau log(harga/HPP); eksogen − / luas / luas+ONI / luas+hujan; orde (p,1,q)×musiman; plus gabungan dengan naif (bobot w dipilih). **Pilih** di origin 2020-12..2023-12, **uji** di 2024-01..2026-09.
+
+| Spesifikasi (log, SARIMA(0,1,0)(1,0,0)12) | MAPE pilih | MAPE uji | uji h1/h2/h3 | 2021–22 | 2023–24 | 2025–26 |
+|---|---|---|---|---|---|---|
+| Naif | 6,58 | 4,86 | 3,69 / 5,12 / 5,83 | 6,93 | 7,14 | **2,71** |
+| HPP saja (terbaik di set pilih) | **4,43** | 5,56 | 4,21 / 5,74 / 6,82 | **4,64** | 6,72 | 3,25 |
+| **HPP + luas** | 4,76 | **4,54** | 3,30 / 4,65 / 5,74 | 4,84 | **5,92** | 2,91 |
+| HPP + luas + ONI | 5,21 | 4,62 | 3,32 / 4,70 / 5,92 | 5,39 | 6,05 | 3,03 |
+| HPP + luas + hujan, 0,75 model + 0,25 naif | 4,93 | 4,34 | 3,21 / 4,42 / 5,47 | 5,11 | 6,00 | 2,50 |
+
+- Orde (0,1,0)(1,0,0)12 terbaik untuk hampir semua eksogen; target harga/HPP tidak lebih baik dari log harga + HPP.
+- Aturan pilih ketat (terbaik di 2021–2023) memilih HPP saja, dan itu **kalah dari naif** di 2024–2026: urutan model tidak stabil antarperiode, sampel pilih terlalu pendek.
+- HPP + luas adalah satu-satunya spesifikasi yang konsisten mengalahkan naif di 2021–22 dan 2023–24 serta terbaik (w = 1) di set uji. Rekomendasi: **HPP + luas, SARIMA(0,1,0)(1,0,0)12**.
+- ONI memperburuk di semua periode, juga 2021–22, bila harga 2022 tingkat petani (turunan). Manfaat ONI di uji cloud 2021–22 kemungkinan dari harga 2022 tingkat penggilingan.
+- Gabungan dengan naif + hujan terbaik di set uji (4,34) tetapi hanya peringkat 5 di set pilih; memilihnya = mengintip.
+- 2025–26: naif tetap sulit dikalahkan (2,71); hanya gabungan model–naif yang lebih baik (2,50).
