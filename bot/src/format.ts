@@ -118,3 +118,27 @@ export function teksPilihWilayah(pilihan: { nama: string; jenis: "KABUPATEN" | "
 }
 
 export const tingkatUrut: Record<Tingkat | "WASPADA" | "SIAGA", number> = { AMAN: 0, WASPADA: 1, SIAGA: 2 }
+
+const BULAN_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
+
+/** Daftar peringkat kab/kota Jatim (termurah, termahal, stok paling tipis, ...). */
+export function teksPeringkat(
+  items: { wilayah: string; nilai: number; tanggal: string; status: string | null }[],
+  ukuran: "harga_medium" | "harga_premium" | "stok_cakupan",
+  urutan: "terendah" | "tertinggi",
+): string {
+  if (!items.length) return "Maaf, datanya belum tersedia untuk dibandingkan."
+  const stok = ukuran === "stok_cakupan"
+  const judul = stok
+    ? urutan === "terendah" ? "Stok beras paling tipis" : "Stok beras paling longgar"
+    : `Harga beras ${ukuran === "harga_premium" ? "premium" : "medium"} ${urutan === "terendah" ? "termurah" : "termahal"}`
+  const t = items[0].tanggal
+  const kapan = stok ? `${BULAN_ID[Number(t.slice(5, 7)) - 1]} ${t.slice(0, 4)}` : t.split("-").reverse().map((x, i) => (i === 1 ? BULAN_ID[Number(x) - 1] : x)).join(" ")
+  return [
+    `*${judul} di Jawa Timur* (${kapan})`,
+    ...items.map((x, i) => `${i + 1}. ${x.wilayah}: ${stok ? `cukup ${nf(x.nilai)} bulan${x.status ? ` (${x.status.toLowerCase()})` : ""}` : `${rp(x.nilai)}/kg`}`),
+    "",
+    stok ? "Stok adalah perkiraan model, bukan angka resmi." : "",
+    `Ketik *${stok ? "STOK" : "HARGA"} <wilayah>* untuk rinciannya.`,
+  ].filter((s, i, a) => s !== "" || a[i - 1] !== "").join("\n").replace(/\n\n+/g, "\n\n")
+}

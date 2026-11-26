@@ -1,7 +1,7 @@
 /** Otak bot: perintah baku dijawab langsung dari database (tanpa LLM); pesan bebas diteruskan ke llm.ts. */
 import { config } from "./config.ts"
-import { daftarPeringatan, infoBerasMurah, infoHarga, infoStok } from "./data.ts"
-import { BANTUAN, teksBerasMurah, teksHarga, teksPeringatan, teksPilihWilayah, teksStok, rp, nf } from "./format.ts"
+import { daftarPeringatan, infoBerasMurah, infoHarga, infoStok, peringkatWilayah, type UkuranPeringkat } from "./data.ts"
+import { BANTUAN, teksBerasMurah, teksHarga, teksPeringatan, teksPeringkat, teksPilihWilayah, teksStok, rp, nf } from "./format.ts"
 import * as kontak from "./kontak.ts"
 import { q } from "./db.ts"
 import { jawabBebas, llmAktif, pilahNiat } from "./llm.ts"
@@ -48,6 +48,28 @@ export function uraiPerintah(teks: string): { perintah: Perintah; arg: string; m
   let arg = sisa.join(" ")
   arg = arg.replace(/^(harga|stok|beras|di|untuk|wilayah)\s+/g, "").replace(/^(beras|di)\s+/, "").trim()
   return { perintah: p, arg, mentah }
+}
+
+// ---- peringkat se-Jatim ("paling murah di mana?", "cek seluruh kab jatim") tanpa OpenAI
+
+const POLA_SELURUH = /\b(semua|seluruh|se ?jatim|se ?jawa timur|jatim|jawa timur|tiap|setiap|masing masing|all)\b/
+
+export function deteksiPeringkat(teks: string): { ukuran: UkuranPeringkat; urutan: "terendah" | "tertinggi" } | null {
+  const n = normal(teks)
+  const stok = /\b(stok|stock|persediaan|cadangan|defisit|surplus)\b/.test(n)
+  if (stok) {
+    if (/\b(paling|ter)\s?(tipis|sedikit|kurang|rendah|parah|kritis)|terendah|\bdefisit\b.*\b(mana|dimana|apa saja)\b|\b(mana|dimana)\b.*\bdefisit\b|paling defisit/.test(n)) return { ukuran: "stok_cakupan", urutan: "terendah" }
+    if (/\b(paling|ter)\s?(banyak|aman|longgar|tinggi|besar)|tertinggi|surplus\b.*\b(mana|dimana)\b/.test(n)) return { ukuran: "stok_cakupan", urutan: "tertinggi" }
+    return null
+  }
+  const ukuran: UkuranPeringkat = /\bpremium\b/.test(n) ? "harga_premium" : "harga_medium"
+  if (/\b(paling|ter)\s?murah|murah (banget |sendiri )?(di ?mana|mana)|\bharga terendah|paling rendah/.test(n)) return { ukuran, urutan: "terendah" }
+  if (/\b(paling|ter)\s?mahal|mahal (banget |sendiri )?(di ?mana|mana)|\bharga tertinggi|paling tinggi/.test(n)) return { ukuran, urutan: "tertinggi" }
+  return null
+}
+
+async function jawabPeringkat(ukuran: UkuranPeringkat, urutan: "terendah" | "tertinggi"): Promise<Balasan> {
+  return { teks: teksPeringkat(await peringkatWilayah(ukuran, urutan, 5), ukuran, urutan), intent: "peringkat", wilayahId: null, topik: ukuran.startsWith("harga") ? "harga" : "stok" }
 }
 
 async function jalankan(p: Perintah, w: Wilayah | null, k: kontak.Kontak, arg: string): Promise<Balasan> {
@@ -100,6 +122,14 @@ async function denganWilayah(nomor: string, k: kontak.Kontak, p: Perintah, arg: 
     const ingat = daftar.find((w) => w.id === k.wilayah_id)
     if (ingat) return jalankan(p, ingat, k, arg)
     return { teks: `Sebutkan wilayahnya, misalnya *${p.toUpperCase()} MALANG* atau *${p.toUpperCase()} KOTA SURABAYA*.`, intent: p, wilayahId: null }
+  }
+  // "HARGA seluruh", "cek seluruh kab jatim", "stok semua kabupaten": peringkat se-Jatim
+  if ((p === "harga" || p === "stok") && POLA_SELURUH.test(normal(arg)) && cariDiKalimat(arg.replace(/jawa timur|jatim/gi, ""), daftar).jenis === "tidak_ada") {
+    const pr = deteksiPeringkat(`${p} ${arg}`)
+    if (pr) return jawabPeringkat(pr.ukuran, pr.urutan)
+    if (p === "stok") return jawabPeringkat("stok_cakupan", "terendah")
+    const [murah, mahal] = await Promise.all([jawabPeringkat("harga_medium", "terendah"), jawabPeringkat("harga_medium", "tertinggi")])
+    return { ...murah, teks: `${murah.teks.split("\n\nKetik")[0]}\n\n${mahal.teks}` }
   }
   const c = cocokkan(arg, daftar)
   if (c.jenis === "pas") {
@@ -276,6 +306,12 @@ export async function tanggapi(nomor: string, nama: string | undefined, teks: st
 async function proses(nomor: string, k: kontak.Kontak, teks: string): Promise<Balasan> {
   // "halo, harga beras di jember berapa?" -> salamnya dibuang, sisanya diproses biasa
   teks = buangSalam(teks)
+  // "sekarang harga beras paling murah dimana?" -> peringkat se-Jatim langsung dari data
+  const pr = deteksiPeringkat(teks)
+  if (pr && !tunda.get(nomor)) {
+    const di = cariDiKalimat(teks.replace(/jawa timur|jatim/gi, ""), await semuaWilayah())
+    if (di.jenis === "tidak_ada") return jawabPeringkat(pr.ukuran, pr.urutan)
+  }
   const t = tunda.get(nomor)
   if (t && t.sampai < Date.now()) tunda.delete(nomor)
   const cmd = uraiPerintah(teks)
