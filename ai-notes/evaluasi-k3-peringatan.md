@@ -106,3 +106,40 @@ Fitur baru: harga beras medium penggilingan kab terhadap HET (`pg_het`, cadangan
 - F1 maksimum hampir tidak berubah (kecuali 14 hari +0,03); keuntungan terutama pada presisi di tingkat recall menengah.
 - Fitur terkuat: **harga beras di penggilingan terhadap HET** (koefisien terstandar +0,8 s.d. +0,9, kedua setelah jarak harga eceran ke HET). Sesuai dugaan: saat margin penggilingan ke HET menipis, eceran menyusul lewat HET.
 - Rekomendasi: masukkan `pg_het` ke model gabungan. Harga pedagang besar (PIHPS BI) belum diuji.
+
+## Tambahan 26 Nov 2026 sore: variabel dari kajian harga beras Indonesia
+
+Ringkasan kajian (DOI dicek di halaman penerbit). Belum ada kajian harian tingkat kabupaten untuk Indonesia; hampir semuanya bulanan dan tingkat nasional atau provinsi.
+
+| Variabel | Arah dan temuan | Kajian | Ada di model kita? |
+|---|---|---|---|
+| Harga sendiri (lag) | Paling kuat; AR(2) sulit dikalahkan untuk 1 bulan | Persada dkk. 2026, 10.3389/fsufs.2026.1844670 | Ya (EW60, `d`, `m28`) |
+| Harga hulu (gabah, penggilingan) | Memimpin eceran 1-3 bulan; elastisitas jangka pendek 0,26 | Kharisma & Indrawan 2023, 10.1080/23311932.2023.2266198; Shaffitri 2024, 10.1051/bioconf/202411902007 | Ya (`pg_het`, terkuat; `gkg_m28`, `gkp_m28`) |
+| Transmisi asimetris / ambang | Kenaikan diteruskan lebih cepat dari penurunan; penyesuaian 46-57 hari | Zahra 2026, 10.14710/agrisocionomics.v10i2.28636; Difah 2019, 10.25181/jofsa.v3i2.1561; Arida 2023, 10.51599/are.2023.09.01.04 | Diuji hari ini, tidak menambah |
+| HET | Mendorong pergeseran ke beras premium | Rachman 2019, 10.21082/akp.v17n1.2019.59-77 | Ya (target); premium penggilingan sudah ditarik, belum dipakai |
+| Operasi pasar SPHP / penyaluran Bulog | Endogen; pengaruh lemah atau tidak signifikan | Persada 2026; Maharani (skripsi IPB) | Sebagian (`sphp_ada`, hanya penanda harga tercatat) |
+| Harga BBM | Positif, dengan lag | Ismaya & Anugrah 2018, 10.21098/bemp.v21i1.926; Persada 2026 (lag 3) | **Belum** |
+| ENSO / IOD | El Niño dan La Niña menaikkan harga; indeks iklim lebih baik dari curah hujan mentah | Fajri 2019, 10.22004/ag.econ.296761; Putra 2021, 10.3390/su13084465 | **Belum** |
+| Produksi / panen | Negatif (lag 1 bulan); stok cadangan negatif di daerah surplus | Persada 2026 | Tidak langsung (dari K1/K2 bisa disambung) |
+| Ramadan / Idulfitri | Kenaikan musiman | Saleh 2019 | Diuji hari ini, tidak menambah |
+| Impor | Bereaksi terhadap harga t-2 (endogen) | Yafi 2025, 10.22146/ae.100774 | Belum (lebih cocok sebagai penanda rezim) |
+| Harga daerah lain | Jatim pemimpin harga; integrasi pasar spasial | Ariga 2022 (tesis IPB); Varela 2012 (WB WP 6098) | Sebagian (`prov_atas`, `pasar_*`) |
+
+### Uji fitur dari kajian (`scripts/k3/uji_k3_fitur_literatur.py`)
+
+Ditambahkan ke model gabungan + Bapanas: deviasi marjin eceran-penggilingan dari rerata 180 hari, perubahan penggilingan 28 hari dipisah naik/turun, dummy Idulfitri H-30 s.d. H+7, momentum eceran positif. Kejadian KAPAN, walk-forward sama.
+
+| Horizon | + Bapanas | + Bapanas + kajian |
+|---|---|---|
+| 7 | PR-AUC 0,164 / F1 0,251 | 0,157 / 0,249 |
+| 14 | 0,250 / 0,330 | 0,229 / 0,323 |
+| 28 | 0,282 / 0,337 | 0,266 / 0,328 |
+
+Semuanya sedikit lebih buruk. Penjelasan yang paling mungkin: informasinya sudah tertangkap oleh `pg_het` dan `m28`, dan data latih hanya ±17 bulan (satu Idulfitri dalam periode latih), jadi fitur tambahan menambah varians. Fitur ini tidak dipakai.
+
+### Kesimpulan untuk model
+
+- Data yang sudah ada relevan: harga eceran (lag) dan harga penggilingan memang variabel terkuat di kajian Indonesia, dan juga terkuat di uji kita.
+- Struktur model tidak perlu dirombak. Kajian menunjukkan model sederhana berbasis lag sulit dikalahkan; yang menaikkan hasil adalah definisi kejadian (KAPAN), gabungan EW60 + logit, dan `pg_het`.
+- Data yang kurang, urut perkiraan manfaat: (1) harga pedagang besar PIHPS BI (mata rantai antara penggilingan dan eceran, publik, harian); (2) tanggal perubahan harga BBM (penanda kejadian, mudah dibuat manual); (3) indeks ONI/IOD (NOAA/BoM, bulanan, gratis) untuk horizon lebih panjang; (4) stok dan penyaluran SPHP Bulog per kab (tidak publik, perlu permintaan data). Curah hujan CHIRPS lebih cocok untuk K1 daripada K3 jangka 1-4 minggu.
+- Batas utama tetap jumlah kejadian (31 episode lewat HET dalam 15 bulan). Menambah variabel tidak akan menaikkan F1 jauh di atas ±0,35 selama riwayat sependek ini.
