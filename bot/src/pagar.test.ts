@@ -41,3 +41,10 @@ test("rapikan dan deteksi angka karangan", () => {
 test("nama fungsi internal dibuang dari jawaban", () => {
   assert.equal(rapikanJawaban("Ketik *BANTUAN* atau *tentang_terawang*."), "Ketik *BANTUAN*.")
 })
+
+test("salam dan terima kasih dibalas tanpa OpenAI", async () => {
+  const { jawabBasaBasi } = await import("./istilah.ts")
+  for (const s of ["helo", "Halo kak", "assalamualaikum", "selamat pagi min", "P", "hai bot"]) assert.match(jawabBasaBasi(s) ?? "", /TERAWANG/)
+  for (const s of ["makasih ya", "terima kasih banyak", "oke sip"]) assert.match(jawabBasaBasi(s) ?? "", /Sama-sama/)
+  for (const s of ["halo harga beras malang", "siapa presiden indonesia", "helo stok jember"]) assert.equal(jawabBasaBasi(s), null)
+})

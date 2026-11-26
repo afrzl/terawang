@@ -7,7 +7,7 @@ import { q } from "./db.ts"
 import { jawabBebas, llmAktif } from "./llm.ts"
 import * as pagar from "./pagar.ts"
 import { pantau } from "./pantau.ts"
-import { jawabIstilah } from "./istilah.ts"
+import { jawabBasaBasi, jawabIstilah } from "./istilah.ts"
 import { cariDiKalimat, cocokkan, labelWilayah, normal, semuaWilayah, type Wilayah } from "./wilayah.ts"
 
 type Perintah = "harga" | "stok" | "sphp" | "peringatan" | "langganan" | "berhenti" | "lapor" | "bantuan"
@@ -177,6 +177,8 @@ async function riwayat(kontakId: number) {
 }
 
 async function pesanBebas(k: kontak.Kontak, teks: string, pilihan: Wilayah | null = null): Promise<Balasan> {
+  const basa = pilihan ? null : jawabBasaBasi(teks)
+  if (basa) return { teks: basa, intent: "salam", wilayahId: null }
   const daftar = await semuaWilayah()
   // pesan yang isinya hanya nama wilayah -> HARGA (tanpa LLM)
   const hanya = cocokkan(teks, daftar)

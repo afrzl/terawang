@@ -31,3 +31,30 @@ export function jawabIstilah(teks: string): string | null {
   if (n.split(" ").length > 12 || !TANYA.test(n)) return null
   return ISTILAH.find((i) => i.pola.test(n))?.teks ?? null
 }
+
+// ---- salam dan basa-basi: dibalas ramah tanpa OpenAI
+
+const KATA_SALAM = new Set([
+  "halo", "hallo", "helo", "hello", "hai", "hay", "hi", "hei", "hey", "pagi", "siang", "sore", "malam", "selamat",
+  "assalamualaikum", "assalamu", "alaikum", "assalamualaikum", "asalamualaikum", "assalammualaikum", "salam", "permisi",
+  "punten", "tes", "test", "ping", "p", "min", "admin", "kak", "bang", "mas", "mbak", "pak", "bu", "bot", "terawang", "wr", "wb", "semua",
+])
+const KATA_TERIMA_KASIH = new Set([
+  "terima", "kasih", "makasih", "makasi", "trims", "thanks", "thank", "you", "thx", "tq", "tengkyu", "nuwun", "matur",
+  "ok", "oke", "okay", "okey", "sip", "siap", "mantap", "mantab", "baik", "noted", "banyak", "ya", "yaa", "min", "kak", "bot",
+])
+
+const CONTOH = "Contoh yang bisa kamu tanyakan:\n• *HARGA Malang*\n• *STOK Jember*\n• _beras di Surabaya naik nggak bulan depan?_\n\nKetik *BANTUAN* untuk semua perintah."
+
+/** Balasan untuk pesan yang isinya hanya salam ("helo") atau ucapan terima kasih. */
+export function jawabBasaBasi(teks: string): string | null {
+  const kata = normal(teks).split(" ").filter(Boolean)
+  if (!kata.length || kata.length > 6) return null
+  if (kata.every((k) => KATA_SALAM.has(k))) {
+    return `Halo! 👋 Aku bot *TERAWANG*, siap bantu info beras di Jawa Timur: harga, stok, dan beras murah/SPHP.\n\n${CONTOH}`
+  }
+  if (kata.every((k) => KATA_TERIMA_KASIH.has(k))) {
+    return "Sama-sama! Kalau mau cek lagi, ketik saja nama wilayahnya, misalnya *HARGA Kediri*."
+  }
+  return null
+}
