@@ -21,7 +21,7 @@ job_harga = define_asset_job(
 # Citra baru: bronze_citra dan turunannya (K1 -> K2 -> SPHP, status, peringatan). K3 ikut agar status lengkap.
 job_citra = define_asset_job(
     "pipeline_citra",
-    selection=AssetSelection.assets("bronze_citra", "bronze_titik_satelit").downstream() | AssetSelection.assets("k3_prediksi_harga"),
+    selection=AssetSelection.assets("bronze_citra", "bronze_titik_satelit", "bronze_iklim").downstream() | AssetSelection.assets("k3_prediksi_harga"),
     description="Citra Sentinel terbaru dari GEE -> silver satelit dan deret titik sawah -> K1 (nowcast citra, produksi), K2, SPHP -> status dan peringatan.",
 )
 

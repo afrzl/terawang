@@ -1,6 +1,6 @@
 """K1 produksi: model gabungan milik Danang (scripts/k1/k1_prakiraan.py, nowcast_est2.py).
 
-Luas panen per kab per bulan = gabungan (citra Sentinel per kab + klimatologi + musiman, bobot NNLS leave-one-year-out),
+Luas panen per kab per bulan = gabungan (citra Sentinel per kab + klimatologi + tahun analog ONI/hujan, bobot NNLS leave-one-year-out),
 taksiran citra jarak 0/28/56 hari dari nowcast v2 (aturan banjir optik + fusi S1, genangan belum terverifikasi dibobot peluang).
 Beras = luas panen x produktivitas BPS per kab. Lihat ai-notes/progress.md (18-19 Nov 2026).
 """
@@ -12,7 +12,7 @@ import pandas as pd
 
 from .danang import di_repo, modul
 
-VERSI = "k1-gabungan-nowcast2-2026.11c"  # b: bobot kota/kab terpisah, pita galat empiris, cadangan tanpa citra; c: bobot per musim, musiman = rata-rata 3 tahun
+VERSI = "k1-gabungan-nowcast2-2026.11d"  # b: bobot kota/kab terpisah, pita galat empiris, cadangan tanpa citra; c: bobot per musim, musiman = rata-rata 3 tahun; d: musiman = tahun analog (ONI + hujan CHIRPS)
 JENIS_DATA = "MODEL"
 Z80 = 1.2816  # pita P10-P90
 LEAD_HARI = (0, 28, 56)

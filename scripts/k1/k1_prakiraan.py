@@ -10,6 +10,13 @@ Perbaikan 24 Nov 2026 (lihat ai-notes/evaluasi-k1-perbaikan.md):
   - tahun latih bawaan = semua tahun BPS bulanan yang lengkap (tidak di-hardcode);
   - galat_empiris(): sebaran galat prakiraan dari uji bergulir, per jarak dan jenis wilayah, untuk pita ketidakpastian K2.
 
+Perbaikan 26 Nov 2026 (versi 2026.11d, "tahun analog", lihat ai-notes/metodologi-k1-tahun-analog.md):
+  - komponen "musiman" bukan lagi rata-rata 3 tahun terakhir, melainkan rata-rata berbobot SEMUA tahun sebelumnya;
+    bobot tahun j = exp(-1/2 [(dONI/0,5)^2 + (dHujan/0,4)^2]) x 0,85^(umur), dONI = selisih ONI berpusat 5 bulan sebelum
+    bulan target, dHujan = selisih log jumlah hujan CHIRPS kab 4-6 bulan sebelum bulan target (masa tanam).
+    Data iklim dibaca dari TERAWANG_IKLIM_DIR (bawaan data/iklim). Bila ONI/hujan tahun target belum tersedia, suku itu
+    dilewati (tinggal bobot umur dan suku yang ada) dan muncul peringatan.
+
   from k1_prakiraan import prakiraan
   prakiraan(targets=[(2026, 11, 0), (2026, 12, 1), (2027, 1, 2)])          # tr bawaan = tahun_final()
   python scripts/k1/k1_prakiraan.py --galat                                  # tulis data/satelit/k1_galat_empiris.csv
@@ -68,6 +75,65 @@ def muat_citra(Yw):
     return ES
 
 
+ANALOG_S_ONI, ANALOG_S_HUJAN, ANALOG_PELURUHAN = 0.5, 0.4, 0.85
+ANALOG_JEDA_ONI, ANALOG_JEDA_HUJAN = 5, (4, 5, 6)
+HUJAN_CADANGAN = {"Batu": "Malang"}  # Kota Batu tidak punya poligon sendiri di GAUL 2015
+
+
+class Iklim:
+    """ONI bulanan (NOAA CPC) dan hujan bulanan CHIRPS per kab/kota untuk pembobotan tahun analog."""
+
+    def __init__(self, folder=None):
+        folder = folder or os.environ.get("TERAWANG_IKLIM_DIR", "data/iklim")
+
+        def berkas(nama):  # folder operasional belum diisi -> salinan di repo
+            f = os.path.join(folder, nama)
+            return f if os.path.exists(f) else os.path.join("data/iklim", nama)
+
+        o = pd.read_csv(berkas("noaa_oni_bulanan.csv")).dropna(subset=["oni"])
+        self.oni = dict(zip(o.tahun * 12 + o.bulan - 1, o.oni))
+        c = pd.read_csv(berkas("chirps_jatim_bulanan.csv")).query("tingkat == 'kabkota'").dropna(subset=["hujan_mm"])
+        self.hujan = {(w, t * 12 + b - 1): h for w, t, b, h in zip(c.wilayah, c.tahun, c.bulan, c.hujan_mm)}
+        self.kurang = set()
+
+    def fitur(self, kab, bln, th, jeda_ada=None):
+        """ONI(m-5) dan log jumlah hujan (m-6..m-4) per baris. jeda_ada: jeda hujan yang dipakai (ikut tahun target)."""
+        t = th * 12 + np.asarray(bln) - 1
+        oni = np.array([self.oni.get(x - ANALOG_JEDA_ONI, np.nan) for x in t])
+        kab2 = [HUJAN_CADANGAN.get(k, k) for k in kab]
+        H = np.array([[self.hujan.get((k, x - d), np.nan) for d in ANALOG_JEDA_HUJAN] for k, x in zip(kab2, t)])
+        if jeda_ada is None:
+            jeda_ada = np.isfinite(H)
+        H = np.where(jeda_ada, H, 0.0)
+        huj = np.where(jeda_ada.any(axis=1) & np.isfinite(H).all(axis=1), np.log1p(H.sum(axis=1)), np.nan)
+        return oni, huj, jeda_ada
+
+    def rata_analog(self, Yw, th, tahun):
+        """Rata-rata luas panen tahun-tahun `tahun` per (kab, bulan), dibobot kemiripan iklim dengan tahun th."""
+        kab, bln = Yw.index.get_level_values(0), Yw.index.get_level_values(1)
+        o0, h0, ada = self.fitur(kab, bln, th)
+        self.kurang |= {(th, int(b)) for b in np.unique(bln[np.isnan(o0) | np.isnan(h0)])}
+        num, den = np.zeros(len(Yw)), np.zeros(len(Yw))
+        for j in tahun:
+            yj = Yw[j].to_numpy()
+            oj, hj, _ = self.fitur(kab, bln, j, ada)
+            z = np.nan_to_num((o0 - oj) / ANALOG_S_ONI) ** 2 + np.nan_to_num((h0 - hj) / ANALOG_S_HUJAN) ** 2
+            w = np.exp(-0.5 * z) * ANALOG_PELURUHAN ** (th - j) * np.isfinite(yj)
+            num += w * np.nan_to_num(yj)
+            den += w
+        return pd.Series(np.where(den > 1e-12, num / np.maximum(den, 1e-12), np.nan), index=Yw.index)
+
+
+_IKLIM = None
+
+
+def iklim():
+    global _IKLIM
+    if _IKLIM is None:
+        _IKLIM = Iklim()
+    return _IKLIM
+
+
 def musim(bulan):
     """Kelompok musim untuk bobot gabungan: 0 = Jan-Apr (puncak MT I), 1 = Mei-Agu (MT II), 2 = Sep-Des."""
     return 0 if bulan <= 4 else (1 if bulan <= 8 else 2)
@@ -96,10 +162,10 @@ class Gabungan:
         bg, bk, clim = par if par is not None else self.par
         Yw = self.Yw
         es = self.E[th] if th in self.E.columns else pd.Series(np.nan, index=Yw.index)
-        # Komponen "musiman" = rata-rata 3 tahun final terakhir (bukan satu tahun saja), supaya satu tahun menyimpang
-        # (mis. 2024) tidak menarik prakiraan. Uji bergulir 2022-2025: lihat ai-notes/evaluasi-k1-perbaikan.md (25 Nov 2026).
-        th3 = [t for t in (prev_y - 2, prev_y - 1, prev_y) if t in Yw.columns]
-        prev = Yw[th3].mean(axis=1).fillna(clim) if th3 else clim
+        # Komponen "musiman" = rata-rata TAHUN ANALOG: semua tahun final s.d. prev_y, dibobot kemiripan ONI dan hujan masa tanam
+        # dengan tahun th serta umur tahun (26 Nov 2026, versi 2026.11d; sebelumnya rata-rata 3 tahun terakhir).
+        lalu = [t for t in Yw.columns if t <= prev_y]
+        prev = iklim().rata_analog(Yw, th, lalu).fillna(clim) if lalu else clim
         return pd.DataFrame({"sat_kab": es.to_numpy() * bk.reindex(es.index.get_level_values(0)).to_numpy(),
                              "klim": clim.to_numpy(), "musiman": prev.to_numpy()}, index=es.index)
 
@@ -150,10 +216,15 @@ def prakiraan(tr=None, targets=()):
         if not p.citra_ada.all():
             kosong.append(f"{ty}-{tm:02d} (lead {h}): {int((~p.citra_ada).sum())} wilayah")
         out[(ty, tm)] = pd.Series(p.gabungan.to_numpy(), index=p.index.get_level_values(0))
+    iklim_kurang = sorted(f"{ty}-{tm:02d}" for ty, tm, _ in targets if (ty, tm) in iklim().kurang)
+    if iklim_kurang:
+        warnings.warn("K1: ONI/hujan CHIRPS belum tersedia untuk tahun analog " + ", ".join(iklim_kurang)
+                      + " (suku itu dilewati); perbarui data iklim (TERAWANG_IKLIM_DIR)", stacklevel=2)
     if kosong:
         warnings.warn("K1: taksiran citra tidak tersedia, memakai bobot cadangan tanpa citra untuk " + "; ".join(kosong), stacklevel=2)
     df = pd.DataFrame(out)
     df.attrs["citra_kosong"] = kosong
+    df.attrs["iklim_kurang"] = iklim_kurang
     return df
 
 
