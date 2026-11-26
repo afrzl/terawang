@@ -9,6 +9,8 @@ cari_sarimax_gkp.py; catatan ai-notes/metodologi-k3-sarimax-gkp.md):
   rata-rata bulan yang sama 1-3 tahun sebelumnya. HPP bulan depan = HPP yang berlaku sekarang.
   Uji mundur sejak 2023: MAPE 1/2/3 bulan 3,2/4,8/5,9% (naif 3,6/5,5/6,4%); menang dari naif di semua periode.
   ONI dan hujan CHIRPS tidak dipakai (memperburuk di uji).
+Per kab/kota (Bapanas sejak 2024, terlalu pendek untuk SARIMAX per kab): rata-rata log antara naif kab dan prakiraan provinsi
+  x rasio kab/provinsi 3 bulan terakhir; kab tanpa data bulan acuan hanya bagian rasio, kab tanpa data >2 bulan dilewati.
 Pita P10-P90: kuantil galat log prakiraan gabungan pada uji mundur bergulir 36 origin terakhir (dihitung ulang tiap run).
 
 Harga: BPS 2016-2024 (data/bps/harga_gabah), bulan sesudahnya rata-rata panel harian Bapanas GKP petani
@@ -29,13 +31,15 @@ import pandas as pd
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 
 warnings.filterwarnings("ignore")
-VERSI = "k3-gkp-sarimax-gab-0.1"
+VERSI = "k3-gkp-sarimax-gab-0.2"
 R = pathlib.Path(__file__).resolve().parents[2]
 D = R / "data"
 H = 3
 AWAL_LATIH = pd.Period("2019-01", "M")
 ORDE, MUSIM = (0, 1, 0), (1, 0, 0, 12)
 N_UJI = 36
+MIN_HARI_KAB = 5   # bulan kab dihitung bila ada >=5 hari data Bapanas
+KAB_MAKS_JEDA = 2  # kab dilewati bila data terakhirnya lebih dari 2 bulan sebelum bulan acuan
 
 
 def _bulan(df):
@@ -57,7 +61,7 @@ def harga(hari_ini: dt.date, dir_bapanas: pathlib.Path):
     rasio = float(np.exp(np.log(b[lap] / bap[lap]).mean())) if len(lap) else 1.0
     s = pd.concat([b, bap[bap.index > b.index.max()] * rasio]).sort_index()
     s = s.reindex(pd.period_range(s.index.min(), s.index.max(), freq="M"))
-    return s, {"bps_akhir": str(b.index.max()), "rasio_bps_bapanas": round(rasio, 4), "bulan_tumpang": len(lap), "hari_bapanas_bulan_terakhir": int(bl["size"].iloc[-1])}
+    return s, p, {"bps_akhir": str(b.index.max()), "rasio_bps_bapanas": round(rasio, 4), "bulan_tumpang": len(lap), "hari_bapanas_bulan_terakhir": int(bl["size"].iloc[-1])}
 
 
 def hpp(idx):
@@ -117,11 +121,74 @@ def _prakira(ly, X, T, fut, xf):
     return (mu + ly[T]) / 2  # gabungan 50:50 dengan naif (log)
 
 
+def _kab_bulanan(panel, hari_ini):
+    """Rata-rata bulanan GKP petani per kab/kota (bulan dengan >=5 hari data) dan rata-rata provinsi Bapanas."""
+    p = panel.copy()
+    p["m"] = p.tanggal.dt.to_period("M")
+    p = p[p.m < pd.Period(hari_ini, "M")]
+    prov = p.groupby("tanggal").harga_rp_kg.mean()
+    prov = prov.groupby(prov.index.to_period("M")).mean()
+    nama = p.groupby("city_id").kabkota_sumber.last().str.replace(r"^Kab\.\s*", "", regex=True)
+    m = p.groupby(["city_id", "m"]).harga_rp_kg.agg(["mean", "size"])
+    K = m[m["size"] >= MIN_HARI_KAB]["mean"].unstack(0)
+    K = K.reindex(pd.period_range(K.index.min(), prov.index.max(), freq="M"))
+    return K, prov.reindex(K.index), nama
+
+
+def _kab_prakira(K, prov, T, mu_prov, rasio):
+    """Prakiraan log harga kab untuk T+1..T+H: rata-rata log naif kab dan (prakiraan provinsi x rasio kab/provinsi 3 bulan terakhir).
+    Bila bulan T kosong untuk kab itu, hanya bagian rasio."""
+    lr = np.log(K[:T]).sub(np.log(prov[:T]), axis=0)
+    hasil = {}
+    for c in K.columns:
+        r = lr[c].dropna()
+        if not len(r) or r.index[-1] < T - KAB_MAKS_JEDA:
+            continue
+        pr = np.asarray(mu_prov) - np.log(rasio) + r.iloc[-3:].mean()
+        naif = K.at[T, c] if T in K.index else np.nan
+        hasil[c] = ((pr + np.log(naif)) / 2, "gabungan") if not np.isnan(naif) else (pr, "rasio_provinsi")
+    return hasil
+
+
+def kabupaten(panel, hari_ini, T, mu, mu_uji, rasio):
+    """Prakiraan GKP petani per kab/kota (Bapanas sejak 2024, belum cukup panjang untuk SARIMAX per kab).
+    Uji mundur pada origin yang sama dengan provinsi (2025-26): MAPE 2,4/3,3/4,3% vs naif kab 2,4/3,5/4,5%."""
+    K, prov, nama = _kab_bulanan(panel, hari_ini)
+    gal = {h: [] for h in range(1, H + 1)}
+    gal_naif = {h: [] for h in range(1, H + 1)}  # pembanding: harga kab bulan acuan, pada kasus yang sama (kab berdata di bulan acuan)
+    gal_sama = {h: [] for h in range(1, H + 1)}
+    for T0, m0 in mu_uji.items():
+        if T0 not in K.index:
+            continue
+        for c, (pr, metode) in _kab_prakira(K, prov, T0, m0, rasio).items():
+            for h in range(1, H + 1):
+                t = T0 + h
+                if t <= T and t in K.index and not np.isnan(K.at[t, c]):
+                    gal[h].append(np.log(K.at[t, c]) - pr[h - 1])
+                    if metode == "gabungan":
+                        gal_sama[h].append(gal[h][-1])
+                        gal_naif[h].append(np.log(K.at[t, c] / K.at[T0, c]))
+    q = {h: (np.quantile(gal[h], [0.1, 0.9]) if len(gal[h]) >= 30 else (-0.05 * h, 0.05 * h)) for h in gal}
+    keluar = []
+    for c, (pr, metode) in sorted(_kab_prakira(K, prov, T, mu, rasio).items(), key=lambda kv: nama[kv[0]]):
+        s = K[c].dropna()
+        keluar.append({
+            "nama": nama[c], "city_id": int(c), "bulan_data_terakhir": str(s.index[-1]), "metode": metode,
+            "riwayat": [{"bulan": str(b), "harga": round(float(v), 1)} for b, v in K[c][T - 23:T].items() if not np.isnan(v)],
+            "prakiraan": [{"bulan_target": str(T + h), "horizon_bulan": h, "harga_prediksi": round(float(np.exp(pr[h - 1])), 1),
+                           "p10": round(float(np.exp(pr[h - 1] + q[h][0])), 1), "p90": round(float(np.exp(pr[h - 1] + q[h][1])), 1)}
+                          for h in range(1, H + 1)]})
+    mp = lambda e: round(float(np.mean(np.abs(np.expm1(-np.array(e)))) * 100), 2) if e else None
+    uji = {f"h{h}": {"n": len(gal[h]), "mape": mp(gal[h]), "n_berdata": len(gal_sama[h]), "mape_berdata": mp(gal_sama[h]), "mape_naif": mp(gal_naif[h])}
+           for h in gal}
+    return keluar, uji
+
+
 def hitung(hari_ini: dt.date | None = None, dir_bapanas: str | os.PathLike | None = None):
     """Keluaran: (DataFrame bulan_target, horizon_bulan, harga_prediksi, p10, p90, luas_panen_ha, sumber_luas, hpp), parameter dict."""
     hari_ini = hari_ini or dt.date.today()
     dir_bapanas = pathlib.Path(dir_bapanas or os.environ.get("TERAWANG_BAPANAS_DIR") or D / "bapanas/panel_harga")
-    y, info = harga(hari_ini, dir_bapanas)
+    y, panel, info = harga(hari_ini, dir_bapanas)
     bps_akhir = pd.Period(info["bps_akhir"], "M")
     L, kini = luas()
     T = y.dropna().index.max()
@@ -141,6 +208,7 @@ def hitung(hari_ini: dt.date | None = None, dir_bapanas: str | os.PathLike | Non
 
     # uji mundur singkat untuk pita P10-P90 dan metrik
     gal = {h: [] for h in range(1, H + 1)}
+    mu_uji = {}
     for T0 in pd.period_range(T - N_UJI - H + 1, T - 1, freq="M"):
         if T0 not in ly.index or np.isnan(ly[T0]) or T0 > akhir_luas:
             continue
@@ -149,6 +217,7 @@ def hitung(hari_ini: dt.date | None = None, dir_bapanas: str | os.PathLike | Non
         X0 = X.copy()
         X0.loc[AWAL_LATIH:T0, "luas"] = lL[AWAL_LATIH:T0]
         mu = _prakira(ly, X0, T0, f0, np.column_stack([hp[f0].to_numpy(), lf]))
+        mu_uji[T0] = mu
         for h, t in enumerate(f0, 1):
             if t <= T and not np.isnan(ly.get(t, np.nan)):
                 gal[h].append(ly[t] - mu[h - 1])
@@ -164,13 +233,15 @@ def hitung(hari_ini: dt.date | None = None, dir_bapanas: str | os.PathLike | Non
                           p10=round(float(np.exp(mu[h - 1] + q10)), 1), p90=round(float(np.exp(mu[h - 1] + q90)), 1),
                           luas_panen_ha=round(float(np.exp(lf[h - 1]))), sumber_luas=src[h - 1], hpp=round(float(np.exp(hp[t])))))
     out = pd.DataFrame(baris)
+    kab, uji_kab = kabupaten(panel, hari_ini, T, mu, mu_uji, info["rasio_bps_bapanas"])
     par = {"versi": VERSI, "bulan_acuan": str(T), "harga_bulan_acuan": round(float(y[T]), 1), "orde": f"{ORDE}{MUSIM}",
            "latih_sejak": str(AWAL_LATIH), "luas_aktual_terakhir": str(akhir_luas), **info,
            "riwayat": [{"bulan": str(b), "harga": round(float(v), 1), "sumber": "BPS" if b <= bps_akhir else "Bapanas"}
                        for b, v in y.dropna()[T - 35:T].items()],
            "hpp_sekarang": round(float(np.exp(hp[T]))),
            "uji_mundur": {f"h{h}": {"n": len(gal[h]), "mape": round(float(np.mean(np.abs(np.expm1(-np.array(gal[h])))) * 100), 2) if gal[h] else None}
-                          for h in gal}}
+                          for h in gal},
+           "kabupaten": kab, "uji_mundur_kab": uji_kab}
     return out, par
 
 
