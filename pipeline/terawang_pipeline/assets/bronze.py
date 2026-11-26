@@ -106,6 +106,28 @@ def bronze_titik_satelit(context: AssetExecutionContext, repo: Repo, sumber_citr
     return hasil
 
 
+@asset(group_name=GRUP, kinds={"csv"},
+       description="Iklim untuk tahun analog K1: ONI bulanan (NOAA CPC, unduh) dan hujan bulanan CHIRPS per kab/kota (GEE, mode gee). "
+                   "Disimpan di TERAWANG_IKLIM_DIR (bawaan ~/.local/share/terawang/iklim), diisi awal dari data/iklim.")
+def bronze_iklim(context: AssetExecutionContext, repo: Repo, sumber_citra: SumberCitra) -> MaterializeResult:
+    import os
+    import sys
+
+    import pandas as pd
+
+    folder = Path(os.environ.get("TERAWANG_IKLIM_DIR", Path.home() / ".local/share/terawang/iklim"))
+    perintah = [sys.executable, "scripts/iklim/perbarui_iklim.py", "--keluar", str(folder)]
+    if sumber_citra.mode == "gee" and sumber_citra.gee_project:
+        perintah += ["--gee-project", sumber_citra.gee_project]
+    repo.jalankan(perintah, log=context.log)
+    oni = pd.read_csv(folder / "noaa_oni_bulanan.csv").dropna().iloc[-1]
+    huj = pd.read_csv(folder / "chirps_jatim_bulanan.csv")[["tahun", "bulan"]].drop_duplicates().iloc[-1]
+    paths = [folder / "noaa_oni_bulanan.csv", folder / "chirps_jatim_bulanan.csv"]
+    return MaterializeResult(data_version=DataVersion(checksum_gabungan(paths)[:16]),
+                             metadata={"folder": str(folder), "oni_terakhir": f"{int(oni.tahun)}-{int(oni.bulan):02d} ({oni.oni:+.2f})",
+                                       "hujan_terakhir": f"{int(huj.tahun)}-{int(huj.bulan):02d}"})
+
+
 def _statis(context: AssetExecutionContext, repo: Repo, sumber: SumberStatis, laporan: str) -> MaterializeResult:
     status = sumber.perbarui(repo, log=context.log)
     efektif = status["berkas"]

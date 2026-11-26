@@ -31,9 +31,14 @@ def folder_k1() -> Path:
     return Path(os.environ.get("TERAWANG_K1_DIR", Path.home() / ".local/share/terawang/k1"))
 
 
+def folder_iklim() -> Path:
+    """ONI dan hujan CHIRPS untuk tahun analog K1 (aset bronze_iklim), di luar repo; kosong -> data/iklim di repo."""
+    return Path(os.environ.get("TERAWANG_IKLIM_DIR", Path.home() / ".local/share/terawang/iklim"))
+
+
 def _env_danang(repo: Repo, db: Database, sumber_citra: SumberCitra) -> dict[str, str]:
     return {"DATABASE_URL": db.url, "TERAWANG_K1_DIR": str(folder_k1()), "TERAWANG_TITIK_DIR": str(sumber_citra.folder_titik(repo)),
-            "TERAWANG_DATA_DIR": str(folder_lapisan())}
+            "TERAWANG_DATA_DIR": str(folder_lapisan()), "TERAWANG_IKLIM_DIR": str(folder_iklim())}
 
 
 @asset(group_name=GRUP, kinds={"python"}, deps=[AssetKey("bronze_titik_satelit")],
@@ -65,13 +70,13 @@ def _wilayah(db: Database) -> pd.DataFrame:
     return db.baca("select id as wilayah_id, nama_repo as kab from ref.wilayah where level = 'KABKOTA'")
 
 
-@asset(group_name=GRUP, kinds={"python", "postgres"}, deps=[AssetKey("k1_nowcast_citra"), AssetKey("silver_produksi")],
-       description="K1 (Danang): produksi beras per kab/kota per bulan, model gabungan citra + klimatologi + musiman -> app.prediksi_produksi.")
+@asset(group_name=GRUP, kinds={"python", "postgres"}, deps=[AssetKey("k1_nowcast_citra"), AssetKey("silver_produksi"), AssetKey("bronze_iklim")],
+       description="K1 (Danang): produksi beras per kab/kota per bulan, model gabungan citra + klimatologi + tahun analog (ONI + hujan) -> app.prediksi_produksi.")
 def k1_prediksi_produksi(context: AssetExecutionContext, repo: Repo, db: Database, sumber_citra: SumberCitra) -> pd.DataFrame:
     _benih_k1(repo)
     hari_ini = sekarang().date()
     with model_run(db, "K1_PRODUKSI", k1_produksi.VERSI, {"hari_ini": hari_ini, "model": "scripts/k1/k1_prakiraan.py + nowcast_est2.py",
-                                                         "pita": "P10-P90 dari galat relatif 0,15 (bulan berjalan) / 0,30 (prakiraan)"}) as (rid, metrik):
+                                                         "pita": "P10-P90 dari galat empiris uji bergulir (data/satelit/k1_galat_empiris.csv)", "iklim": str(folder_iklim())}) as (rid, metrik):
         pred = k1_produksi.prediksi_produksi(repo.path, hari_ini, _env_danang(repo, db, sumber_citra)).merge(_wilayah(db), on="kab")
         jatim = pred.groupby(["tahun", "bulan"]).produksi_beras_ton.sum()
         metrik.update({"wilayah": int(pred.wilayah_id.nunique()), "bulan": int(len(jatim)),
