@@ -250,6 +250,22 @@ export async function peringkatWilayah(ukuran: UkuranPeringkat, urutan: "terenda
   return rows.map(({ nama, wjenis, ...r }) => ({ ...r, status: null, wilayah: labelWilayah({ nama, jenis: wjenis }) }))
 }
 
+/** Riwayat harga panel per pekan (rata-rata mingguan) untuk melihat tren. */
+export async function riwayatHarga(w: Wilayah, hari = 56) {
+  const h = Math.min(Math.max(Math.round(hari) || 56, 7), 365)
+  const rows = await q<{ pekan_mulai: string; medium_rp_kg: number | null; premium_rp_kg: number | null }>(
+    `select date_trunc('week', h.tanggal)::date::text as pekan_mulai,
+            round(avg(h.harga_rata2_rp_kg) filter (where k.kode = 'beras_medium'))::int as medium_rp_kg,
+            round(avg(h.harga_rata2_rp_kg) filter (where k.kode = 'beras_premium'))::int as premium_rp_kg
+       from silver.harga_kabkota_harian h join ref.komoditas k on k.id = h.komoditas_id
+      where h.wilayah_id = $1 and k.kode in ('beras_medium', 'beras_premium') and h.harga_rata2_rp_kg is not null
+        and h.tanggal >= (select max(tanggal) from silver.harga_kabkota_harian where wilayah_id = $1) - $2::int
+      group by 1 order by 1`,
+    [w.id, h],
+  )
+  return { wilayah: labelWilayah(w), rentang_hari: h, per_pekan: rows }
+}
+
 /** Ringkasan Jatim: jumlah kab/kota per status gabungan pada tanggal status terakhir. */
 export async function ringkasanJatim() {
   return q<{ status: Tingkat; jumlah: number }>(
