@@ -189,7 +189,9 @@ def luncurkan(job: str, pengguna: str) -> str:
         raise GalatDagster("Job tidak dikenal.")
     dagster = pengaturan.VENV_PIPELINE / "bin/dagster"
     env = {**os.environ, "DAGSTER_HOME": pengaturan.DAGSTER_HOME}
-    hasil = subprocess.run([str(dagster), "job", "launch", "-m", "terawang_pipeline.definitions", "-j", job,
+    # lewat code server permanen (deploy-pipeline.sh) supaya lokasi kode run sama dengan yang dimuat daemon
+    grpc = ["--grpc-host", "127.0.0.1", "--grpc-port", os.environ.get("DAGSTER_GRPC_PORT", "4266")]
+    hasil = subprocess.run([str(dagster), "job", "launch", *grpc, "-j", job,
                             "--tags", json.dumps({"diluncurkan_oleh": pengguna})],
                            cwd=pengaturan.REPO / "pipeline", env=env, capture_output=True, text=True, timeout=180)
     if hasil.returncode != 0:
