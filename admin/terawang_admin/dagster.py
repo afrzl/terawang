@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
+import time
 import subprocess
 import urllib.error
 import urllib.request
@@ -51,13 +53,27 @@ query($id: ID!, $after: String) {
 }"""
 
 
+log = logging.getLogger("terawang_admin.dagster")
+if not log.handlers:
+    _h = logging.StreamHandler()
+    _h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    log.addHandler(_h)
+    log.setLevel(logging.INFO)
+    log.propagate = False
+
+
 class GalatDagster(RuntimeError):
     pass
+
+
+def _nama(query: str) -> str:
+    return " ".join(query.split())[:60]
 
 
 def graphql(query: str, variabel: dict | None = None, batas_waktu: float = 20) -> dict:
     data = json.dumps({"query": query, "variables": variabel or {}}).encode()
     req = urllib.request.Request(pengaturan.DAGSTER_GRAPHQL, data=data, headers={"Content-Type": "application/json"})
+    mulai = time.monotonic()
     try:
         with urllib.request.urlopen(req, timeout=batas_waktu) as r:
             hasil = json.loads(r.read())
@@ -66,9 +82,14 @@ def graphql(query: str, variabel: dict | None = None, batas_waktu: float = 20) -
             hasil = json.loads(e.read())
         except ValueError:
             raise GalatDagster(f"Dagster menjawab HTTP {e.code}.") from None
+    except TimeoutError:
+        log.warning("GraphQL timeout setelah %.1f dtk (batas %s dtk): %s", time.monotonic() - mulai, batas_waktu, _nama(query))
+        raise GalatDagster(f"Dagster lambat menjawab (lebih dari {batas_waktu:g} detik); server mungkin sedang sibuk. Coba segarkan sebentar lagi.") from None
     except OSError as e:
+        log.warning("GraphQL gagal setelah %.1f dtk: %s: %s (%s)", time.monotonic() - mulai, e.__class__.__name__, e, _nama(query))
         raise GalatDagster(f"Dagster tidak bisa dihubungi ({e.__class__.__name__}). Webserver mungkin mati; cek deploy/dagster-webserver.log.") from None
     if hasil.get("errors"):
+        log.warning("GraphQL error (%s): %s", _nama(query), str(hasil["errors"])[:300])
         raise GalatDagster("; ".join(e.get("message", "") for e in hasil["errors"])[:500])
     return hasil["data"]
 
@@ -86,14 +107,14 @@ def _cek(aset: dict) -> list[dict]:
 
 
 def ringkasan() -> dict:
-    d = graphql(Q_RINGKASAN)
+    d = graphql(Q_RINGKASAN, batas_waktu=45)
     runs_or = d["runsOrError"]
     if runs_or["__typename"] != "Runs":
         raise GalatDagster(runs_or.get("message", "gagal membaca run"))
     runs = runs_or["results"]
     aset = d["assetNodes"]
     kunci = [{"path": a["assetKey"]["path"]} for a in aset]
-    mat = {"/".join(i["assetKey"]["path"]): i for i in graphql(Q_MATERIALISASI, {"keys": kunci})["assetsLatestInfo"]} if kunci else {}
+    mat = {"/".join(i["assetKey"]["path"]): i for i in graphql(Q_MATERIALISASI, {"keys": kunci}, batas_waktu=45)["assetsLatestInfo"]} if kunci else {}
 
     # Status per aset = status langkah (step) aset itu di run terbaru yang menjalankannya.
     langkah_terakhir: dict[str, dict] = {}
