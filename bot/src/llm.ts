@@ -3,7 +3,7 @@
  * Semua angka diambil lewat function calling ke data.ts. Nomor WA tidak pernah dikirim ke OpenAI.
  */
 import { config } from "./config.ts"
-import { daftarPeringatan, infoBerasMurah, infoHarga, infoStok, ringkasanJatim, peringkatWilayah, riwayatHarga, type UkuranPeringkat } from "./data.ts"
+import { daftarPeringatan, infoBerasMurah, infoHarga, infoStok, ringkasanJatim, peringkatWilayah, riwayatHarga, infoProduksi, type UkuranPeringkat } from "./data.ts"
 import { angkaTakCocok } from "./angka.ts"
 import { cocokkan, labelWilayah, semuaWilayah, type Wilayah } from "./wilayah.ts"
 
@@ -63,6 +63,11 @@ const ALAT = [
       required: ["wilayah"],
       additionalProperties: false,
     },
+  },
+  {
+    name: "produksi_wilayah",
+    description: "Produksi padi/beras satu kab/kota: angka BPS (luas panen, gabah GKG, beras) beberapa tahun terakhir dan estimasi model per bulan dari citra satelit.",
+    parameters: paramWilayah,
   },
   { name: "ringkasan_jatim", description: "Jumlah kab/kota Jawa Timur per status gabungan (aman/waspada/siaga).", parameters: { type: "object", properties: {}, additionalProperties: false } },
 ].map((f) => ({ type: "function" as const, function: f }))
@@ -146,6 +151,7 @@ async function jalankanAlat(nama: string, argumen: string): Promise<{ hasil: unk
   if (nama === "harga_wilayah") return { hasil: await infoHarga(w), wilayahId: w.id }
   if (nama === "stok_wilayah") return { hasil: await infoStok(w), wilayahId: w.id }
   if (nama === "beras_murah") return { hasil: await infoBerasMurah(w), wilayahId: w.id }
+  if (nama === "produksi_wilayah") return { hasil: await infoProduksi(w), wilayahId: w.id }
   if (nama === "riwayat_harga") return { hasil: await riwayatHarga(w, Number(a.hari) || 56), wilayahId: w.id }
   return { hasil: { galat: `fungsi ${nama} tidak dikenal` } }
 }
