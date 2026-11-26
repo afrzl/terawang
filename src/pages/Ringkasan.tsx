@@ -216,7 +216,7 @@ function KabCard({ onBack }: { onBack: () => void }) {
   const peran = fl.length ? "Penerima" : tinjau ? "Tinjau" : out.length ? "Pemasok" : k.hs !== "aman" ? "Pantau" : "Terkendali"
   const kondisi: string[] = []
   if (k.hs !== "aman") kondisi.push(`harga medium diprakirakan ${rp(k.p4)}/kg pada +4 pekan (HET ${rp(HET)})`)
-  if (k.ss === "defisit" || k.ss === "tipis") kondisi.push(`cakupan stok ${nf(k.covP[3], 2)} bulan konsumsi (${k.ss})`)
+  if (k.ss === "defisit" || k.ss === "tipis") kondisi.push(`cakupan stok ${nf(k.cov, 2)} bulan konsumsi akhir ${bulanLabel(BULAN_KINI)} (${k.ss})`)
   const totalTon = sum(rute, (f) => f.ton)
   const urut = rute.slice().sort((x, y) => y.ton - x.ton)
 

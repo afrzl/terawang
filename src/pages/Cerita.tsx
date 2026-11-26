@@ -241,6 +241,7 @@ export default function Cerita() {
                   flows={!!st.flowList?.length}
                   flowList={st.flowList}
                   labels={!st.arcs && !st.flowList?.length}
+                  infoKini={false}
                 />
               </div>
               {st.arcs ? (

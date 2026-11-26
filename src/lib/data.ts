@@ -401,10 +401,19 @@ export const LAYERS: Record<LayerKey, Layer> = {
 
 export const LAYER_KEYS: LayerKey[] = ["fase", "produksi", "stok", "harga"]
 
+/** Kelas warna untuk nilai `v`. Nilai di bawah batas kelas pertama (mis. cakupan stok negatif) masuk kelas pertama,
+ *  nilai di atas batas kelas terakhir masuk kelas terakhir. Dulu nilai di bawah batas jatuh ke kelas terakhir, sehingga
+ *  stok negatif (paling defisit) tergambar sebagai surplus. */
+export function binIndex(bins: readonly (readonly [number, number, ...unknown[]])[], v: number) {
+  if (!Number.isFinite(v)) return v === -Infinity ? 0 : bins.length - 1
+  if (v < bins[0][0]) return 0
+  const i = bins.findIndex((b) => v >= b[0] && v < b[1])
+  return i < 0 ? bins.length - 1 : i
+}
+
 export function binColor(L: LayerKey, v: number) {
   const d = LAYERS[L]
-  const b = d.bins.find((b) => v >= b[0] && v < b[1]) ?? d.bins[d.bins.length - 1]
-  return `var(${b[2]})`
+  return `var(${d.bins[binIndex(d.bins, v)][2]})`
 }
 
 export function colorOf(L: LayerKey, k: Wilayah) {
