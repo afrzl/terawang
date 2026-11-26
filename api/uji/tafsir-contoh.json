@@ -1992,12 +1992,7 @@
    "keterangan": "alokasi pasokan beras antarkabupaten dari optimasi jarak (model), bukan arus dagang tercatat; ton per bulan"
   },
   "data": {
-   "kawasan_asal_ke_tujuan_ton": [
-    {
-     "dari": "Arek",
-     "ke": "Arek",
-     "ton": 32050
-    },
+   "antarkawasan_ton": [
     {
      "dari": "Arek",
      "ke": "Madura",
@@ -2007,11 +2002,6 @@
      "dari": "Mataraman",
      "ke": "Arek",
      "ton": 2030
-    },
-    {
-     "dari": "Mataraman",
-     "ke": "Mataraman",
-     "ton": 3140
     },
     {
      "dari": "Mataraman",
@@ -2027,10 +2017,23 @@
      "dari": "Tapal Kuda",
      "ke": "Madura",
      "ton": 290
+    }
+   ],
+   "dalam_kawasan_sendiri_ton": [
+    {
+     "kawasan": "Arek",
+     "ton": 32050
     },
     {
-     "dari": "Madura",
-     "ke": "Madura",
+     "kawasan": "Mataraman",
+     "ton": 3140
+    },
+    {
+     "kawasan": "Tapal Kuda",
+     "ton": 0
+    },
+    {
+     "kawasan": "Madura",
      "ton": 3870
     }
    ]
@@ -2097,176 +2100,176 @@
     {
      "tanggal": "2026-05-10",
      "harga medium": 12790,
-     "harga premium": 14387.03
+     "harga premium": 14387
     },
     {
      "tanggal": "2026-05-17",
-     "harga medium": 12804.7,
-     "harga premium": 14401.73
+     "harga medium": 12805,
+     "harga premium": 14402
     },
     {
      "tanggal": "2026-05-24",
-     "harga medium": 12814.29,
-     "harga premium": 14411.31
+     "harga medium": 12814,
+     "harga premium": 14411
     },
     {
      "tanggal": "2026-05-31",
-     "harga medium": 12813.08,
-     "harga premium": 14410.11
+     "harga medium": 12813,
+     "harga premium": 14410
     },
     {
      "tanggal": "2026-06-07",
-     "harga medium": 12805.8,
-     "harga premium": 14402.83
+     "harga medium": 12806,
+     "harga premium": 14403
     },
     {
      "tanggal": "2026-06-14",
-     "harga medium": 12806.83,
-     "harga premium": 14403.86
+     "harga medium": 12807,
+     "harga premium": 14404
     },
     {
      "tanggal": "2026-06-21",
-     "harga medium": 12791.7,
-     "harga premium": 14388.73
+     "harga medium": 12792,
+     "harga premium": 14389
     },
     {
      "tanggal": "2026-06-28",
-     "harga medium": 12780.88,
-     "harga premium": 14377.91
+     "harga medium": 12781,
+     "harga premium": 14378
     },
     {
      "tanggal": "2026-07-05",
-     "harga medium": 12773.3,
-     "harga premium": 14370.33
+     "harga medium": 12773,
+     "harga premium": 14370
     },
     {
      "tanggal": "2026-07-12",
-     "harga medium": 12763.04,
-     "harga premium": 14360.07
+     "harga medium": 12763,
+     "harga premium": 14360
     },
     {
      "tanggal": "2026-07-19",
-     "harga medium": 12766.5,
-     "harga premium": 14363.52
+     "harga medium": 12766,
+     "harga premium": 14364
     },
     {
      "tanggal": "2026-07-26",
-     "harga medium": 12770.32,
-     "harga premium": 14367.35
+     "harga medium": 12770,
+     "harga premium": 14367
     },
     {
      "tanggal": "2026-08-02",
-     "harga medium": 12784.1,
-     "harga premium": 14381.13
+     "harga medium": 12784,
+     "harga premium": 14381
     },
     {
      "tanggal": "2026-08-09",
-     "harga medium": 12796.31,
-     "harga premium": 14393.34
+     "harga medium": 12796,
+     "harga premium": 14393
     },
     {
      "tanggal": "2026-08-16",
-     "harga medium": 12789.89,
-     "harga premium": 14386.91
+     "harga medium": 12790,
+     "harga premium": 14387
     },
     {
      "tanggal": "2026-08-23",
-     "harga medium": 12821.52,
-     "harga premium": 14418.54
+     "harga medium": 12822,
+     "harga premium": 14419
     },
     {
      "tanggal": "2026-08-30",
-     "harga medium": 12857.56,
-     "harga premium": 14454.59
+     "harga medium": 12858,
+     "harga premium": 14455
     },
     {
      "tanggal": "2026-09-06",
-     "harga medium": 12890.52,
-     "harga premium": 14487.55
+     "harga medium": 12891,
+     "harga premium": 14488
     },
     {
      "tanggal": "2026-09-13",
-     "harga medium": 12922.33,
-     "harga premium": 14519.36
+     "harga medium": 12922,
+     "harga premium": 14519
     },
     {
      "tanggal": "2026-09-20",
-     "harga medium": 12954.43,
-     "harga premium": 14551.46
+     "harga medium": 12954,
+     "harga premium": 14551
     },
     {
      "tanggal": "2026-09-27",
-     "harga medium": 12992.63,
-     "harga premium": 14589.66
+     "harga medium": 12993,
+     "harga premium": 14590
     },
     {
      "tanggal": "2026-10-04",
-     "harga medium": 13026.61,
-     "harga premium": 14623.64
+     "harga medium": 13027,
+     "harga premium": 14624
     },
     {
      "tanggal": "2026-10-11",
-     "harga medium": 13061.59,
-     "harga premium": 14658.62
+     "harga medium": 13062,
+     "harga premium": 14659
     },
     {
      "tanggal": "2026-10-18",
-     "harga medium": 13092.18,
-     "harga premium": 14689.21
+     "harga medium": 13092,
+     "harga premium": 14689
     },
     {
      "tanggal": "2026-10-25",
-     "harga medium": 13124.93,
-     "harga premium": 14721.96
+     "harga medium": 13125,
+     "harga premium": 14722
     },
     {
      "tanggal": "2026-11-01",
-     "harga medium": 13163.53,
-     "harga premium": 14760.56,
-     "medium P10–P90 bawah": 13163.53,
-     "medium P10–P90 atas": 13163.53,
-     "premium P10–P90 bawah": 14760.56,
-     "premium P10–P90 atas": 14760.56,
+     "harga medium": 13164,
+     "harga premium": 14761,
+     "medium P10–P90 bawah": 13164,
+     "medium P10–P90 atas": 13164,
+     "premium P10–P90 bawah": 14761,
+     "premium P10–P90 atas": 14761,
      "prakiraan": "ya"
     },
     {
      "tanggal": "2026-11-08",
-     "harga medium": 13200.41,
-     "harga premium": 14797.44,
-     "medium P10–P90 bawah": 13082.41,
-     "medium P10–P90 atas": 13318.41,
-     "premium P10–P90 bawah": 14679.44,
-     "premium P10–P90 atas": 14915.44,
+     "harga medium": 13200,
+     "harga premium": 14797,
+     "medium P10–P90 bawah": 13082,
+     "medium P10–P90 atas": 13318,
+     "premium P10–P90 bawah": 14679,
+     "premium P10–P90 atas": 14915,
      "prakiraan": "ya"
     },
     {
      "tanggal": "2026-11-15",
-     "harga medium": 13237.29,
-     "harga premium": 14834.32,
-     "medium P10–P90 bawah": 13071.29,
-     "medium P10–P90 atas": 13403.29,
-     "premium P10–P90 bawah": 14668.32,
-     "premium P10–P90 atas": 15000.32,
+     "harga medium": 13237,
+     "harga premium": 14834,
+     "medium P10–P90 bawah": 13071,
+     "medium P10–P90 atas": 13403,
+     "premium P10–P90 bawah": 14668,
+     "premium P10–P90 atas": 15000,
      "prakiraan": "ya"
     },
     {
      "tanggal": "2026-11-22",
-     "harga medium": 13274.18,
-     "harga premium": 14871.21,
-     "medium P10–P90 bawah": 13060.18,
-     "medium P10–P90 atas": 13488.18,
-     "premium P10–P90 bawah": 14657.21,
-     "premium P10–P90 atas": 15085.21,
+     "harga medium": 13274,
+     "harga premium": 14871,
+     "medium P10–P90 bawah": 13060,
+     "medium P10–P90 atas": 13488,
+     "premium P10–P90 bawah": 14657,
+     "premium P10–P90 atas": 15085,
      "prakiraan": "ya"
     },
     {
      "tanggal": "2026-11-29",
-     "harga medium": 13311.06,
-     "harga premium": 14908.09,
-     "medium P10–P90 bawah": 13049.06,
-     "medium P10–P90 atas": 13573.06,
-     "premium P10–P90 bawah": 14646.09,
-     "premium P10–P90 atas": 15170.09,
+     "harga medium": 13311,
+     "harga premium": 14908,
+     "medium P10–P90 bawah": 13049,
+     "medium P10–P90 atas": 13573,
+     "premium P10–P90 bawah": 14646,
+     "premium P10–P90 atas": 15170,
      "prakiraan": "ya"
     }
    ],
@@ -2994,217 +2997,217 @@
    "titik": [
     {
      "tanggal": "2026-05-10",
-     "Banyuwangi": 12713.92,
-     "Blitar": 12665.46,
-     "Jember": 12633.08
+     "Banyuwangi": 12714,
+     "Blitar": 12665,
+     "Jember": 12633
     },
     {
      "tanggal": "2026-05-17",
-     "Banyuwangi": 12708.07,
-     "Blitar": 12697.25,
-     "Jember": 12630.23
+     "Banyuwangi": 12708,
+     "Blitar": 12697,
+     "Jember": 12630
     },
     {
      "tanggal": "2026-05-24",
-     "Banyuwangi": 12732.07,
-     "Blitar": 12703.83,
-     "Jember": 12675.18
+     "Banyuwangi": 12732,
+     "Blitar": 12704,
+     "Jember": 12675
     },
     {
      "tanggal": "2026-05-31",
-     "Banyuwangi": 12725.8,
-     "Blitar": 12711.6,
-     "Jember": 12638.05
+     "Banyuwangi": 12726,
+     "Blitar": 12712,
+     "Jember": 12638
     },
     {
      "tanggal": "2026-06-07",
-     "Banyuwangi": 12735.36,
-     "Blitar": 12685.68,
-     "Jember": 12647.88
+     "Banyuwangi": 12735,
+     "Blitar": 12686,
+     "Jember": 12648
     },
     {
      "tanggal": "2026-06-14",
-     "Banyuwangi": 12698.82,
-     "Blitar": 12696.67,
-     "Jember": 12625.28
+     "Banyuwangi": 12699,
+     "Blitar": 12697,
+     "Jember": 12625
     },
     {
      "tanggal": "2026-06-21",
-     "Banyuwangi": 12711.42,
-     "Blitar": 12654.43,
-     "Jember": 12648.81
+     "Banyuwangi": 12711,
+     "Blitar": 12654,
+     "Jember": 12649
     },
     {
      "tanggal": "2026-06-28",
-     "Banyuwangi": 12694.1,
-     "Blitar": 12679.82,
-     "Jember": 12639.24
+     "Banyuwangi": 12694,
+     "Blitar": 12680,
+     "Jember": 12639
     },
     {
      "tanggal": "2026-07-05",
-     "Banyuwangi": 12680.57,
-     "Blitar": 12671.19,
-     "Jember": 12626.05
+     "Banyuwangi": 12681,
+     "Blitar": 12671,
+     "Jember": 12626
     },
     {
      "tanggal": "2026-07-12",
-     "Banyuwangi": 12659.1,
-     "Blitar": 12637.5,
-     "Jember": 12589.59
+     "Banyuwangi": 12659,
+     "Blitar": 12637,
+     "Jember": 12590
     },
     {
      "tanggal": "2026-07-19",
-     "Banyuwangi": 12686.46,
-     "Blitar": 12659.86,
-     "Jember": 12621.8
+     "Banyuwangi": 12686,
+     "Blitar": 12660,
+     "Jember": 12622
     },
     {
      "tanggal": "2026-07-26",
-     "Banyuwangi": 12679.27,
-     "Blitar": 12661.7,
-     "Jember": 12592.9
+     "Banyuwangi": 12679,
+     "Blitar": 12662,
+     "Jember": 12593
     },
     {
      "tanggal": "2026-08-02",
-     "Banyuwangi": 12707.58,
-     "Blitar": 12688.42,
-     "Jember": 12610.38
+     "Banyuwangi": 12708,
+     "Blitar": 12688,
+     "Jember": 12610
     },
     {
      "tanggal": "2026-08-09",
-     "Banyuwangi": 12713.37,
-     "Blitar": 12688.35,
-     "Jember": 12660.37
+     "Banyuwangi": 12713,
+     "Blitar": 12688,
+     "Jember": 12660
     },
     {
      "tanggal": "2026-08-16",
-     "Banyuwangi": 12712.54,
-     "Blitar": 12674.57,
-     "Jember": 12627.21
+     "Banyuwangi": 12713,
+     "Blitar": 12675,
+     "Jember": 12627
     },
     {
      "tanggal": "2026-08-23",
-     "Banyuwangi": 12695.48,
-     "Blitar": 12683.31,
-     "Jember": 12663.03
+     "Banyuwangi": 12695,
+     "Blitar": 12683,
+     "Jember": 12663
     },
     {
      "tanggal": "2026-08-30",
-     "Banyuwangi": 12734.13,
-     "Blitar": 12745.56,
-     "Jember": 12684.2
+     "Banyuwangi": 12734,
+     "Blitar": 12746,
+     "Jember": 12684
     },
     {
      "tanggal": "2026-09-06",
-     "Banyuwangi": 12757.88,
-     "Blitar": 12769.61,
+     "Banyuwangi": 12758,
+     "Blitar": 12770,
      "Jember": 12708
     },
     {
      "tanggal": "2026-09-13",
-     "Banyuwangi": 12778.6,
-     "Blitar": 12778.94,
-     "Jember": 12723.23
+     "Banyuwangi": 12779,
+     "Blitar": 12779,
+     "Jember": 12723
     },
     {
      "tanggal": "2026-09-20",
-     "Banyuwangi": 12813.37,
-     "Blitar": 12834.52,
-     "Jember": 12708.19
+     "Banyuwangi": 12813,
+     "Blitar": 12835,
+     "Jember": 12708
     },
     {
      "tanggal": "2026-09-27",
-     "Banyuwangi": 12837.89,
-     "Blitar": 12830.25,
-     "Jember": 12755.2
+     "Banyuwangi": 12838,
+     "Blitar": 12830,
+     "Jember": 12755
     },
     {
      "tanggal": "2026-10-04",
-     "Banyuwangi": 12860.69,
-     "Blitar": 12857.34,
-     "Jember": 12764.63
+     "Banyuwangi": 12861,
+     "Blitar": 12857,
+     "Jember": 12765
     },
     {
      "tanggal": "2026-10-11",
-     "Banyuwangi": 12862.93,
-     "Blitar": 12904.33,
-     "Jember": 12770.76
+     "Banyuwangi": 12863,
+     "Blitar": 12904,
+     "Jember": 12771
     },
     {
      "tanggal": "2026-10-18",
-     "Banyuwangi": 12886.05,
-     "Blitar": 12917.51,
-     "Jember": 12793.43
+     "Banyuwangi": 12886,
+     "Blitar": 12918,
+     "Jember": 12793
     },
     {
      "tanggal": "2026-10-25",
-     "Banyuwangi": 12904.36,
-     "Blitar": 12941.72,
-     "Jember": 12827.92
+     "Banyuwangi": 12904,
+     "Blitar": 12942,
+     "Jember": 12828
     },
     {
      "tanggal": "2026-11-01",
-     "Banyuwangi": 12947.48,
-     "Blitar": 12983.62,
-     "Jember": 12856.93,
-     "Banyuwangi P10–P90 bawah": 12947.48,
-     "Banyuwangi P10–P90 atas": 12947.48,
-     "Blitar P10–P90 bawah": 12983.62,
-     "Blitar P10–P90 atas": 12983.62,
-     "Jember P10–P90 bawah": 12856.93,
-     "Jember P10–P90 atas": 12856.93,
+     "Banyuwangi": 12947,
+     "Blitar": 12984,
+     "Jember": 12857,
+     "Banyuwangi P10–P90 bawah": 12947,
+     "Banyuwangi P10–P90 atas": 12947,
+     "Blitar P10–P90 bawah": 12984,
+     "Blitar P10–P90 atas": 12984,
+     "Jember P10–P90 bawah": 12857,
+     "Jember P10–P90 atas": 12857,
      "prakiraan": "ya"
     },
     {
      "tanggal": "2026-11-08",
-     "Banyuwangi": 12972.83,
-     "Blitar": 13014.03,
-     "Jember": 12879.27,
-     "Banyuwangi P10–P90 bawah": 12854.83,
-     "Banyuwangi P10–P90 atas": 13090.83,
-     "Blitar P10–P90 bawah": 12896.03,
-     "Blitar P10–P90 atas": 13132.03,
-     "Jember P10–P90 bawah": 12761.27,
-     "Jember P10–P90 atas": 12997.27,
+     "Banyuwangi": 12973,
+     "Blitar": 13014,
+     "Jember": 12879,
+     "Banyuwangi P10–P90 bawah": 12855,
+     "Banyuwangi P10–P90 atas": 13091,
+     "Blitar P10–P90 bawah": 12896,
+     "Blitar P10–P90 atas": 13132,
+     "Jember P10–P90 bawah": 12761,
+     "Jember P10–P90 atas": 12997,
      "prakiraan": "ya"
     },
     {
      "tanggal": "2026-11-15",
-     "Banyuwangi": 12998.18,
-     "Blitar": 13044.44,
-     "Jember": 12901.61,
-     "Banyuwangi P10–P90 bawah": 12832.18,
-     "Banyuwangi P10–P90 atas": 13164.18,
-     "Blitar P10–P90 bawah": 12878.44,
-     "Blitar P10–P90 atas": 13210.44,
-     "Jember P10–P90 bawah": 12735.61,
-     "Jember P10–P90 atas": 13067.61,
+     "Banyuwangi": 12998,
+     "Blitar": 13044,
+     "Jember": 12902,
+     "Banyuwangi P10–P90 bawah": 12832,
+     "Banyuwangi P10–P90 atas": 13164,
+     "Blitar P10–P90 bawah": 12878,
+     "Blitar P10–P90 atas": 13210,
+     "Jember P10–P90 bawah": 12736,
+     "Jember P10–P90 atas": 13068,
      "prakiraan": "ya"
     },
     {
      "tanggal": "2026-11-22",
-     "Banyuwangi": 13023.53,
-     "Blitar": 13074.85,
-     "Jember": 12923.95,
-     "Banyuwangi P10–P90 bawah": 12809.53,
-     "Banyuwangi P10–P90 atas": 13237.53,
-     "Blitar P10–P90 bawah": 12860.85,
-     "Blitar P10–P90 atas": 13288.85,
-     "Jember P10–P90 bawah": 12709.95,
-     "Jember P10–P90 atas": 13137.95,
+     "Banyuwangi": 13024,
+     "Blitar": 13075,
+     "Jember": 12924,
+     "Banyuwangi P10–P90 bawah": 12810,
+     "Banyuwangi P10–P90 atas": 13238,
+     "Blitar P10–P90 bawah": 12861,
+     "Blitar P10–P90 atas": 13289,
+     "Jember P10–P90 bawah": 12710,
+     "Jember P10–P90 atas": 13138,
      "prakiraan": "ya"
     },
     {
      "tanggal": "2026-11-29",
-     "Banyuwangi": 13048.88,
-     "Blitar": 13105.26,
-     "Jember": 12946.29,
-     "Banyuwangi P10–P90 bawah": 12786.88,
-     "Banyuwangi P10–P90 atas": 13310.88,
-     "Blitar P10–P90 bawah": 12843.26,
-     "Blitar P10–P90 atas": 13367.26,
-     "Jember P10–P90 bawah": 12684.29,
-     "Jember P10–P90 atas": 13208.29,
+     "Banyuwangi": 13049,
+     "Blitar": 13105,
+     "Jember": 12946,
+     "Banyuwangi P10–P90 bawah": 12787,
+     "Banyuwangi P10–P90 atas": 13311,
+     "Blitar P10–P90 bawah": 12843,
+     "Blitar P10–P90 atas": 13367,
+     "Jember P10–P90 bawah": 12684,
+     "Jember P10–P90 atas": 13208,
      "prakiraan": "ya"
     }
    ],

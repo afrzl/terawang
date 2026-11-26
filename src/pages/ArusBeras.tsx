@@ -119,7 +119,8 @@ function Perdagangan() {
           title="Alokasi pasokan antarkawasan"
           tafsir={KET_ARUS}
           dataTafsir={{
-            kawasan_asal_ke_tujuan_ton: REGIONS.flatMap((a, i) => REGIONS.map((b, j) => ({ dari: a.name, ke: b.name, ton: Math.round(matrixOf(semua)[i][j]) }))).filter((x) => x.ton > 0),
+            antarkawasan_ton: REGIONS.flatMap((a, i) => REGIONS.map((b, j) => ({ dari: a.name, ke: b.name, ton: i === j ? 0 : Math.round(matrixOf(semua)[i][j]) }))).filter((x) => x.ton > 0),
+            dalam_kawasan_sendiri_ton: REGIONS.map((a, i) => ({ kawasan: a.name, ton: Math.round(matrixOf(semua)[i][i]) })),
           }}
         >
           <div className="pb chart" style={{ maxWidth: 680, margin: "0 auto" }}>

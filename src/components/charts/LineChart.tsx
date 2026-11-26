@@ -186,6 +186,9 @@ export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], p
   )
 }
 
+/** Pembulatan menurut besaran: harga ribuan rupiah tanpa desimal, indeks kecil 2 desimal. */
+const bulPas = (v: number) => bul(v, Math.abs(v) >= 1000 ? 0 : Math.abs(v) >= 100 ? 1 : 2)
+
 /** Data yang digambar, satu baris per titik sumbu x: nilai tiap garis (nama = label garis), batas pita, dan penanda prakiraan. */
 function dataGaris(xDates: Date[], series: Series[], bands: Band[], refs: RefLine[], splitAt: number | undefined, splitLabel: string, xFmt: (d: Date) => string) {
   const nama = series.map((s, i) => s.nama || s.label || `garis ${i + 1}`)
@@ -196,15 +199,15 @@ function dataGaris(xDates: Date[], series: Series[], bands: Band[], refs: RefLin
     if (lab && !lab.includes(String(d.getDate()))) r.label = lab
     series.forEach((s, si) => {
       const v = s.vals[i - (s.off ?? 0)]
-      if (v != null) r[nama[si]] = bul(v)
+      if (v != null) r[nama[si]] = bulPas(v)
     })
     bands.forEach((b, bi) => {
       const lo = b.lo[i - b.off]
       const hi = b.hi[i - b.off]
       if (lo != null && hi != null) {
         const p = b.nama ?? `pita${bands.length > 1 ? ` ${bi + 1}` : ""}`
-        r[`${p} bawah`] = bul(lo)
-        r[`${p} atas`] = bul(hi)
+        r[`${p} bawah`] = bulPas(lo)
+        r[`${p} atas`] = bulPas(hi)
       }
     })
     if (splitAt != null && i >= splitAt) r[splitLabel] = "ya"
