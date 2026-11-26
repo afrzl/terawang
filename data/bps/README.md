@@ -9,7 +9,7 @@ Data resmi Badan Pusat Statistik, dikelompokkan **per topik**. Satu topik satu f
 | [produksi_padi/](produksi_padi/README.md) | Luas panen dan produksi padi (GKP, GKG, beras) Jawa Timur, kab/kota dan provinsi, 2024–2026 | Validasi K1, neraca stok K2 | Ada |
 | [konsumsi_beras/](konsumsi_beras/README.md) | Konsumsi beras per kapita: **38 kab/kota Jatim** (kg/minggu, Susenas Maret 2025) dan Indonesia + 38 provinsi (kg/bulan, Susenas Sep 2025) | Neraca stok K2 | Ada |
 | [penduduk/](penduduk/README.md) | Penduduk per kab/kota Jatim, 2020 (SP2020) dan proyeksi 2025–2026 | Neraca stok K2 | Ada |
-| `harga_gabah/` | Harga gabah dan beras tingkat produsen | K3 | Belum ada |
+| [harga_gabah/](harga_gabah/README.md) | Harga gabah GKP/GKG tingkat produsen, rata-rata Provinsi Jawa Timur per bulan, 2016–2025 (83 bulan; 2018, 2021, 2022 belum ada) | Uji transmisi harga K3 | Ada (belum dipakai operasional) |
 
 ## Aturan penamaan
 
