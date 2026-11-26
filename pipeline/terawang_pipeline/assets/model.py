@@ -175,7 +175,7 @@ def berkas_gkp() -> Path:
 @asset(group_name=GRUP, kinds={"python", "json"},
        description="K3 GKP: prakiraan harga GKP petani Jatim bulanan 1-3 bulan, gabungan 50:50 naif + SARIMAX (log HPP + log luas panen; "
                    "luas bulan target = potensi BPS bila terbit, selain itu rata-rata musiman 3 tahun), P10-P90 dari uji mundur 36 bulan "
-                   "(scripts/k3/k3_gkp_operasional.py). Harga Bapanas GKP petani diperbarui dulu (scripts/bapanas/ambil_panel_harga.py). "
+                   "(scripts/k3/k3_gkp_operasional.py). Per kab/kota: rata-rata naif kab dan prakiraan provinsi x rasio kab/provinsi 3 bulan. Harga Bapanas GKP petani diperbarui dulu (scripts/bapanas/ambil_panel_harga.py). "
                    "-> gkp_prakiraan.json (dibaca API /api/gkp).")
 def k3_prakiraan_gkp(context: AssetExecutionContext, repo: Repo, db: Database, sumber_citra: SumberCitra) -> MaterializeResult:
     hari_ini = sekarang().date()
@@ -198,7 +198,8 @@ def k3_prakiraan_gkp(context: AssetExecutionContext, repo: Repo, db: Database, s
     keluar.write_text(json.dumps(isi, ensure_ascii=False, indent=1, default=str))
     return MaterializeResult(metadata={"versi": k3_harga.VERSI_K3_GKP, "bulan_acuan": par["bulan_acuan"],
                                        "harga_bulan_acuan": par["harga_bulan_acuan"], "berkas": str(keluar),
-                                       "uji_mundur_mape": json.dumps(par["uji_mundur"]), "prakiraan": _md(R)})
+                                       "uji_mundur_mape": json.dumps(par["uji_mundur"]), "prakiraan": _md(R),
+                                       "jumlah_kab": len(par["kabupaten"]), "uji_mundur_kab": json.dumps(par["uji_mundur_kab"])})
 
 
 def berkas_deret() -> Path:
