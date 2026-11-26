@@ -65,3 +65,16 @@ Per tahun uji bergulir (WAPE), termasuk tahun El Niño kuat 2023 dan panen sesud
 ## Saran
 
 Jangan pasang ONI ke K1 operasional. Ulangi uji ini setelah angka BPS Okt-Des 2026 terbit (±Feb/Mar 2027): periode itu berada di El Niño kuat (ONI ASO 2026 = +2,46), jadi menjadi uji murni yang paling relevan, terutama varian B lag 4-5.
+
+## Tambahan: pada versi asli danang-dev (satu set bobot)
+
+Branch `danang-dev` di GitHub (terakhir 50179b7, 21 Nov 2026) belum memuat kode ONI apa pun; `model-afrizal` = danang-dev + perbaikan PR #7 (bobot kota/kab). Diuji juga dengan bobot tunggal seperti danang-dev (jarak 28 hari):
+
+| Model | Bergulir WAPE | 2026 WAPE | 2026 MAPE | 2026 MAPE kota |
+|---|---|---|---|---|
+| danang-dev tanpa ONI | 29,3% | 9,3% | 16,3% | 35,2% |
+| + ONI varian B lag 4 | 29,6% | 8,5% | **14,0%** | 27,8% |
+| + ONI varian A3 lag 4 | 32,3% | 7,4% | 15,7% | 38,1% |
+| model-afrizal (bobot kota/kab) tanpa ONI | 29,3% | 9,3% | 14,3% | 26,8% |
+
+Di versi asli, ONI varian B memang menurunkan MAPE 2026 (16,3 → 14,0%). Tetapi varian B melatih koefisiennya terpisah untuk kota dan kabupaten, jadi sebagian besar perbaikan itu berasal dari pemisahan kota/kab (yang sudah ada di PR #7: 14,3%), bukan dari ONI. Setelah pemisahan itu, tambahan ONI hanya 14,3 → 14,0% dan uji bergulir tetap sedikit memburuk.
