@@ -3,7 +3,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { tanggapi } from "./bot.ts"
 import { config } from "./config.ts"
 import { pool } from "./db.ts"
-import { kirim, sehat, tandaTanganSah, uraiWebhook } from "./gowa.ts"
+import { kirim, sambilMengetik, sehat, tandaTanganSah, uraiWebhook } from "./gowa.ts"
 import { pemakaianHariIni, muatTokenHariIni } from "./pagar.ts"
 import { catatWebhook, pantau } from "./pantau.ts"
 import { q } from "./db.ts"
@@ -35,20 +35,27 @@ function json(res: ServerResponse, kode: number, isi: unknown) {
 }
 
 function proses(jid: string, nomor: string, nama: string | undefined, teks: string) {
+  const kirimDicatat = async (isi: string) => {
+    try {
+      await kirim(jid, isi)
+      pantau.balasan.terakhirOk = Date.now()
+      pantau.balasan.jumlahOk++
+    } catch (e) {
+      pantau.balasan.terakhirGagal = Date.now()
+      pantau.balasan.jumlahGagal++
+      pantau.balasan.galat = String((e as Error).message).slice(0, 300)
+      throw e
+    }
+  }
   const sebelum = antrean.get(nomor) ?? Promise.resolve()
   const kini = sebelum
     .then(async () => {
-      const b = await tanggapi(nomor, nama, teks)
-      try {
-        await kirim(jid, b.teks)
-        pantau.balasan.terakhirOk = Date.now()
-        pantau.balasan.jumlahOk++
-      } catch (e) {
-        pantau.balasan.terakhirGagal = Date.now()
-        pantau.balasan.jumlahGagal++
-        pantau.balasan.galat = String((e as Error).message).slice(0, 300)
-        throw e
-      }
+      // "mengetik..." tampil selama bot menyiapkan jawaban (mis. menunggu OpenAI) sampai balasan terkirim
+      const b = await sambilMengetik(jid, async () => {
+        const b = await tanggapi(nomor, nama, teks)
+        await kirimDicatat(b.teks)
+        return b
+      })
       console.log(`[pesan] ${nomor.slice(0, 4)}…${nomor.slice(-3)} intent=${b.intent}`)
     })
     .catch((e) => console.error("[pesan] gagal:", e))

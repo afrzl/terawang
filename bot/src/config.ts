@@ -18,6 +18,8 @@ export const config = {
   openai: {
     apiKey: env.OPENAI_API_KEY ?? "",
     model: env.OPENAI_MODEL ?? "gpt-5-mini",
+    /** Model termurah untuk memilah niat pesan yang tidak dikenali aturan (salam / beras / lain). Kosong = mati. */
+    modelPilah: env.OPENAI_MODEL_PILAH ?? "gpt-5-nano",
     reasoningEffort: env.OPENAI_REASONING_EFFORT ?? "minimal", // kosongkan untuk model non-penalaran
     batasHarianPerNomor: angka("LLM_BATAS_HARIAN", 20),
     /** Maksimal pesan bebas per nomor dalam 10 menit (anti-spam). */
