@@ -17,6 +17,10 @@ Semua model memakai sampel mulai yang sama (bulan pertama luas panen tersedia) a
   python scripts/k3/sarimax_gkp.py            # tulis data/satelit/k3_sarimax_gkp_*.csv
 """
 import itertools
+import os
+
+for _v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+    os.environ.setdefault(_v, "1")  # 1 thread BLAS per proses; tanpa ini Pool paralel 50x lebih lambat
 import multiprocessing as mp
 import pathlib
 import warnings
@@ -100,7 +104,15 @@ VARIAN = {
     "hpp_luas": ["hpp", "luas"],
     "hpp_luas_iklim": ["hpp", "luas", "hujan", "oni"],
     "hpp_iklim": ["hpp", "hujan", "oni"],
+    "hpp_luas_oni": ["hpp", "luas", "oni"],
+    "hpp_oni": ["hpp", "oni"],
+    "oni": ["oni"],
+    # operasional tanpa angka aktual: luas panen bulan yang sama tahun lalu (sampel mulai 2020-01)
+    "hpp_luas12": ["hpp", "luas12"],
+    "hpp_luas12_oni": ["hpp", "luas12", "oni"],
 }
+# TERAWANG_VARIAN=a,b hanya menjalankan varian itu; hasil varian lain di berkas uji lama dipertahankan
+PILIH = [v for v in os.environ.get("TERAWANG_VARIAN", "").split(",") if v] or list(VARIAN)
 
 
 def pilih_orde(y, X):
@@ -128,8 +140,9 @@ def main():
     idx = pd.period_range(y.index.min(), max(y.index.max(), L.index.max()) + H, freq="M")
     hujan, oni = iklim(idx)
     X = pd.DataFrame({"hpp": np.log(hpp(idx)), "luas": np.log(L.reindex(idx)), "hujan": hujan, "oni": oni}, index=idx)
+    X["luas12"] = X.luas.shift(12)
     ly = np.log(y.reindex(idx))
-    awal = max(L.index.min(), y.index.min(), X.dropna().index.min())
+    awal = max(L.index.min(), y.index.min(), X.drop(columns="luas12").dropna().index.min())
     akhir_y = y.dropna().index.max()
     print("harga:", info)
     print("sampel bersama:", awal, "s.d.", akhir_y, "| luas panen:", L.index.min(), "-", L.index.max())
@@ -143,11 +156,12 @@ def main():
 
     def uji_varian(nama):
         kol, hasil = VARIAN[nama], []
+        a0 = max(awal, X[kol].dropna().index.min()) if kol else awal
         for T in origins:
-            Xt = X.loc[awal:T, kol].to_numpy() if kol else None
+            Xt = X.loc[a0:T, kol].to_numpy() if kol else None
             Xf = X.loc[T + 1:T + H, kol].to_numpy() if kol else None
             try:
-                m = SARIMAX(ly[awal:T].to_numpy(), exog=Xt, order=orde, seasonal_order=musim).fit(disp=False)
+                m = SARIMAX(ly[a0:T].to_numpy(), exog=Xt, order=orde, seasonal_order=musim).fit(disp=False)
                 f = m.get_forecast(H, exog=Xf)
                 mu, ci = f.predicted_mean, f.conf_int(alpha=0.2)
             except Exception as e:
@@ -163,8 +177,8 @@ def main():
 
     global _uji
     _uji = uji_varian
-    with mp.get_context("fork").Pool(min(len(VARIAN), mp.cpu_count())) as pool:
-        baris = [r for rr in pool.map(_jalan, list(VARIAN)) for r in rr]
+    with mp.get_context("fork").Pool(min(len(PILIH), mp.cpu_count())) as pool:
+        baris = [r for rr in pool.map(_jalan, PILIH) for r in rr]
     for T in origins:
         for h in range(1, H + 1):
             t = T + h
@@ -174,6 +188,11 @@ def main():
             baris.append(dict(origin=str(T), target=str(t), h=h, model="naif_musiman", aktual=y[t],
                               prakiraan=y[T] * y[t - 12] / y[T - 12]))
     U = pd.DataFrame(baris)
+    lama = D / "satelit/k3_sarimax_gkp_uji.csv"
+    if set(PILIH) != set(VARIAN) and lama.exists():
+        L0 = pd.read_csv(lama)
+        L0 = L0[~L0.model.isin(PILIH + ["naif", "naif_musiman"])][U.columns.intersection(L0.columns)]
+        U = pd.concat([U, L0], ignore_index=True)
     U["ape"] = (U.prakiraan / U.aktual - 1).abs() * 100
     U["galat"] = U.prakiraan - U.aktual
     U["cakup"] = ((U.aktual >= U.p10) & (U.aktual <= U.p90)).astype(float).where(U.p10.notna())
@@ -184,17 +203,22 @@ def main():
     ring["rmse_rel_naif"] = ring.rmse / ring.h.map(nf)
     ring = ring.round(3)
     print(ring.to_string(index=False))
+    U["periode"] = np.where(U.target < "2025-01", "2023-2024", "2025-2026")
+    per = U.pivot_table(index=["model", "h"], columns="periode", values="ape", aggfunc="mean").round(2)
+    print(per.to_string())
+    per.reset_index().to_csv(D / "satelit/k3_sarimax_gkp_mape_periode.csv", index=False)
 
     # model akhir pada seluruh sampel: koefisien
     koef = []
     for nama, kol in VARIAN.items():
-        m = SARIMAX(ly[awal:akhir_y].to_numpy(), exog=X.loc[awal:akhir_y, kol].to_numpy() if kol else None,
+        a0 = max(awal, X[kol].dropna().index.min()) if kol else awal
+        m = SARIMAX(ly[a0:akhir_y].to_numpy(), exog=X.loc[a0:akhir_y, kol].to_numpy() if kol else None,
                     order=orde, seasonal_order=musim).fit(disp=False)
         nm = kol + [f"p{i}" for i in range(len(m.params) - len(kol))]
         for n, b, se, pv in zip(nm, m.params, m.bse, m.pvalues):
             koef.append(dict(model=nama, parameter=n, koef=b, se=se, p=pv, aic=m.aic, n=m.nobs))
     K = pd.DataFrame(koef).round(4)
-    print(K[K.parameter.isin(["hpp", "luas", "hujan", "oni"])].to_string(index=False))
+    print(K[K.parameter.isin(["hpp", "luas", "luas12", "hujan", "oni"])].to_string(index=False))
 
     out = D / "satelit"
     U.round(1).to_csv(out / "k3_sarimax_gkp_uji.csv", index=False)

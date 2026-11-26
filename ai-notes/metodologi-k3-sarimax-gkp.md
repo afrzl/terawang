@@ -27,6 +27,14 @@ Origin bergulir Jan 2023–Sep 2026 (jendela mengembang), horizon 1–3 bulan, 4
 | **+ HPP + luas panen** | **3,29** | **5,04** | **5,98** | **0,83** | **0,79** | **0,81** |
 | + HPP + luas + iklim | 3,44 | 5,29 | 6,31 | 0,86 | 0,84 | 0,88 |
 | + HPP + iklim | 3,79 | 5,56 | 6,39 | 1,01 | 0,98 | 1,00 |
+| + HPP + luas + ONI | 3,36 | 5,18 | 6,23 | 0,85 | 0,83 | 0,87 |
+| + HPP + ONI | 3,76 | 5,45 | 6,39 | 1,01 | 0,97 | 0,98 |
+| ONI saja | 3,69 | 5,51 | 6,36 | 1,02 | 0,99 | 0,97 |
+| + HPP + luas lag 12 (operasional, tanpa angka aktual) | 3,98 | 6,26 | 7,01 | 1,09 | 1,06 | 0,99 |
+| + HPP + luas lag 12 + ONI | 4,05 | 6,22 | 6,99 | 1,12 | 1,11 | 1,04 |
+
+ONI memakai lag 5 (sudah terbit saat prakiraan dibuat). Luas lag 12 = luas panen bulan yang sama tahun lalu, sampel mulai 2020-01.
+MAPE per periode (`k3_sarimax_gkp_mape_periode.csv`): 2023–2024 HPP + luas terbaik (4,5 / 7,1 / 8,2 vs naif 5,4 / 8,3 / 9,6); 2025–2026 naif terbaik (1,7 / 2,6 / 3,4).
 
 Koefisien (seluruh sampel, model HPP + luas): elastisitas HPP 0,29 (p = 0,03); luas panen −0,067 (p < 0,001; luas panen naik 10% → harga turun ±0,7%). Hujan (p = 0,58) dan ONI (p = 0,92) tidak nyata dan memperburuk uji.
 
@@ -36,4 +44,6 @@ Koefisien (seluruh sampel, model HPP + luas): elastisitas HPP 0,29 (p = 0,03); l
 - Keunggulan luas panen memakai **angka aktual BPS** (oracle). Operasional perlu prakiraan luas panen (K1 satelit / angka potensi BPS); galatnya akan mengurangi keunggulan ini.
 - Pita P10–P90 mencakup 77–82% (nominal 80%), cukup terkalibrasi.
 - 2025–2026 memakai Bapanas, bukan BPS; perlu diganti saat publikasi BPS 2025 terbit. 2022 belum terisi.
+- ONI (lag 5) tidak nyata (p = 0,79) dan tidak memperbaiki HPP + luas pada uji Jan 2023–Sep 2026; berbeda dengan uji 2021–2026 di sisi cloud (ERA5, ONI memperbaiki 5–10%). Perbedaan sampel uji (2021–2022 memuat El Niño 2023 sebagai target sesudahnya) dan lag ONI kemungkinan penyebabnya.
+- Luas panen lag 12 kalah dari naif: keunggulan HPP + luas sepenuhnya bergantung pada prakiraan luas panen bulan target (angka potensi BPS / K1).
 - Iklim diuji dengan satu spesifikasi lag (hujan t-6..t-4, ONI t-5); spesifikasi lain belum dicoba.
