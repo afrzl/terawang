@@ -10,6 +10,8 @@
  *   GET /api/gkp       harga GKP petani Jatim bulanan + prakiraan 1-3 bulan (gkp_prakiraan.json keluaran aset k3_prakiraan_gkp)
  *   GET /api/bulog     stok Bulog Jatim bulanan dan pengadaan per kantor cabang (silver.stok_bulog_bulanan, silver.pengadaan_bulog)
  *   POST /api/tafsir   interpretasi singkat satu grafik dari data yang dikirim dasbor (OpenAI, lihat tafsir.ts)
+ *   GET /api/cerita    edisi pekanan halaman Cerita (?pekan=2026-W48; bawaan terbaru), langkah SPHP lengkap hanya untuk akun berhak (lihat cerita.ts)
+ *   GET /api/cerita/arsip  daftar edisi per pekan
  *   GET /api/status    ringkas: model_run terakhir per jenis (untuk cek kesehatan)
  *
  * Deret bulanan memakai indeks 0 = Jan 2026 sampai bulan kini + 2 (horizon K2), sama dengan dasbor (src/lib/api.ts).
@@ -24,6 +26,7 @@ import path from "node:path"
 import express, { type Request, type Response } from "express"
 import pg from "pg"
 import { Galat, pemakaianTafsir, tafsirkan } from "./tafsir.js"
+import { POLA_PEKAN, ambilEdisi, daftarEdisi, mulaiJadwal, pakaiPool, tokenCocok } from "./cerita.js"
 
 const AWAL_TAHUN = 2026
 const AWAL_BULAN = 1
@@ -45,6 +48,7 @@ function urlPg(url: string | undefined) {
 }
 
 const pool = new pg.Pool({ connectionString: urlPg(process.env.DATABASE_URL), max: 4, idleTimeoutMillis: 30_000 })
+pakaiPool(pool)
 const q = async <T = Record<string, unknown>>(sql: string, args: unknown[] = []) => (await pool.query(sql, args)).rows as T[]
 
 const idxBulan = (tahun: number, bulan: number) => (tahun - AWAL_TAHUN) * 12 + (bulan - AWAL_BULAN)
@@ -220,6 +224,8 @@ const ADMIN_URL = (process.env.ADMIN_URL ?? "http://127.0.0.1:3071").replace(/\/
 
 /** Tanya layanan admin apakah cookie sesi peminta punya hak `hak`. Admin mati = tidak berhak. */
 async function berhak(req: Request, hak: string) {
+  // proses penyusun edisi Cerita (cerita-fakta.ts) memakai token internal, bukan cookie
+  if (tokenCocok(req.headers["x-terawang-internal"])) return true
   const cookie = req.headers.cookie
   if (!cookie) return false
   try {
@@ -312,6 +318,27 @@ app.get("/api/gkp", async (_req, res) => {
   }
 })
 app.get("/api/bulog", kirim("bulog", bulog))
+app.get("/api/cerita/arsip", async (_req, res) => {
+  try {
+    res.set("Cache-Control", "no-store").json(await daftarEdisi())
+  } catch (e) {
+    console.error("[api] cerita/arsip:", e)
+    res.status(500).json({ galat: "gagal membaca arsip" })
+  }
+})
+app.get("/api/cerita", async (req, res) => {
+  const pekan = typeof req.query.pekan === "string" && POLA_PEKAN.test(req.query.pekan) ? req.query.pekan : undefined
+  try {
+    const e = await ambilEdisi(pekan)
+    if (!e) return res.status(404).json({ galat: "belum ada edisi" })
+    const { aksi_sphp, ...publik } = e
+    const boleh = aksi_sphp && (await berhak(req, "dasbor_sphp"))
+    res.set({ "Cache-Control": "no-store", Vary: "Cookie" }).json(boleh ? { ...publik, aksi_sphp } : publik)
+  } catch (err) {
+    console.error("[api] cerita:", err)
+    res.status(500).json({ galat: "gagal membaca edisi" })
+  }
+})
 app.get("/api/status", kirim("status", async () => ({
   runs: await q(`select distinct on (jenis) jenis::text, id, nama_versi, status::text, dibuat_pada, selesai_pada from app.model_run order by jenis, id desc`),
   harga_terakhir: (await q<{ t: Date }>(`select max(tanggal) t from silver.harga_kabkota_harian`))[0]?.t ?? null,
@@ -332,4 +359,7 @@ app.use("/api", (_req, res) => res.status(404).json({ galat: "tidak ada" }))
 
 const HOST = process.env.API_HOST ?? "127.0.0.1"
 const PORT = Number(process.env.API_PORT ?? 3072)
-app.listen(PORT, HOST, () => console.log(`[api] TERAWANG baca-saja di http://${HOST}:${PORT}`))
+app.listen(PORT, HOST, () => {
+  console.log(`[api] TERAWANG baca-saja di http://${HOST}:${PORT}`)
+  mulaiJadwal(`http://${HOST === "0.0.0.0" ? "127.0.0.1" : HOST}:${PORT}`)
+})

@@ -10,7 +10,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
-    "api": "tsx src/server.ts"
+    "api": "tsx src/server.ts",
+    "cerita": "tsx src/cerita-cli.ts"
   },
   "keywords": [],
   "author": "",
