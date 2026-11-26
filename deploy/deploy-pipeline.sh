@@ -30,7 +30,7 @@ trap 'rm -f "$KUNCI"' EXIT
 pkill -f "[d]agster-daemon run" 2>/dev/null || true
 
 # 0b. Tunggu run yang sedang berjalan selesai (daemon sudah mati, jadi tidak ada run baru). Tanpa ini npm ci menghapus
-#     node_modules di tengah run dan langkah ingest gagal ("tsx: not found"). Batas tunggu DEPLOY_TUNGGU_MENIT (default 45).
+#     node_modules di tengah run dan langkah ingest gagal ("tsx: not found"). Batas tunggu DEPLOY_TUNGGU_MENIT (default 20).
 #     Run yang tercatat berjalan sejak lebih dari DEPLOY_RUN_BASI_JAM (default 6) jam dianggap basi (proses sudah mati) dan diabaikan.
 if [ -x "$VENV/bin/dotenv" ] && [ -x "$VENV/bin/python" ]; then
   cek_run() {
@@ -43,14 +43,14 @@ with DagsterInstance.get() as i:
     print(" ".join(f"{x.dagster_run.job_name}:{x.dagster_run.run_id[:8]}" for x in r
                    if (x.start_time or x.create_timestamp.timestamp()) > batas))' 2>/dev/null ) || echo "?"
   }
-  for i in $(seq 1 $(( ${DEPLOY_TUNGGU_MENIT:-45} * 2 ))); do
+  for i in $(seq 1 $(( ${DEPLOY_TUNGGU_MENIT:-20} * 2 ))); do
     AKTIF="$(cek_run)"
     [ -z "$AKTIF" ] && break
     [ "$AKTIF" = "?" ] && { echo "Status run Dagster tidak terbaca; lanjut deploy."; break; }
     [ "$i" = 1 ] && echo "Menunggu run aktif selesai sebelum memasang ulang: $AKTIF"
     sleep 30
   done
-  if [ -n "$AKTIF" ] && [ "$AKTIF" != "?" ]; then echo "PERINGATAN: run masih berjalan setelah ${DEPLOY_TUNGGU_MENIT:-45} menit ($AKTIF); deploy dilanjutkan."; fi
+  if [ -n "$AKTIF" ] && [ "$AKTIF" != "?" ]; then echo "PERINGATAN: run masih berjalan setelah ${DEPLOY_TUNGGU_MENIT:-20} menit ($AKTIF); deploy dilanjutkan."; fi
 fi
 
 # 1. Lingkungan Python dan dependensi (models milik Danang + pipeline)
@@ -80,9 +80,18 @@ else
   : > "$DAGSTER_HOME/dagster.yaml"
 fi
 # Satu antrean run: job bertag terawang/antrean=pipeline (definitions.py) jalan satu per satu.
+# run_monitoring: daemon menandai gagal run yang prosesnya mati atau macet saat mulai/dibatalkan, dan menghentikan run yang
+# berjalan lebih dari 6 jam (run hantu seperti ce397cd7 tidak lagi menahan antrean dan deploy).
 cat >> "$DAGSTER_HOME/dagster.yaml" <<YAML
 telemetry:
   enabled: false
+run_monitoring:
+  enabled: true
+  start_timeout_seconds: 300
+  cancel_timeout_seconds: 300
+  max_resume_run_attempts: 0
+  max_runtime_seconds: 21600
+  poll_interval_seconds: 120
 run_queue:
   tag_concurrency_limits:
     - key: "terawang/antrean"
