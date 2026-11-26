@@ -37,6 +37,8 @@ import urllib.request
 URL = "https://siskaperbapo.jatimprov.go.id/harga-komoditas"
 UA = "Mozilla/5.0 (compatible; terawang-research/1.0)"
 BATAS_MIN = 5000  # harga pasar di bawah ini (Rp/kg) dianggap salah ketik di sumber
+BATAS_MAKS = 30000  # di atas ini juga salah ketik (contoh 2016: Rp88.000-97.000, nol berlebih); harga wajar tertinggi sekitar Rp19.000
+sah = lambda x: x is not None and BATAS_MIN <= x <= BATAS_MAKS
 
 
 def sesi():
@@ -174,8 +176,8 @@ def susun(args, cache):
         per[(t, kab)].append(v)
     kab_h = {}
     for (t, kab), vs in per.items():
-        ok = [x for x in vs if x is not None and x >= BATAS_MIN]
-        kab_h[(t, kab)] = (st.mean(ok) if ok else None, len(ok), len(vs), sum(1 for x in vs if x is not None and x < BATAS_MIN))
+        ok = [x for x in vs if sah(x)]
+        kab_h[(t, kab)] = (st.mean(ok) if ok else None, len(ok), len(vs), sum(1 for x in vs if x is not None and not sah(x)))
     kabs = sorted({k for (_, k) in kab_h})
     jenis = lambda n: "kota" if n.startswith("Kota ") else "kabupaten"
     with open(out / f"kabkota_harian_{args.nama}.csv", "w", newline="", encoding="utf-8") as f:
@@ -205,7 +207,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--komoditas", required=True, help="kode komoditas SISKAPERBAPO (4 = Beras Medium, 2 = Beras Premium)")
     ap.add_argument("--nama", required=True, help="nama untuk berkas keluaran, contoh beras_medium")
-    ap.add_argument("--mulai", default="2021-12-29", help="awal riwayat (tetap, agar riwayat bertambah, bukan bergeser)")
+    ap.add_argument("--mulai", default="2016-01-01", help="awal riwayat (tetap, agar riwayat bertambah, bukan bergeser)")
     ap.add_argument("--akhir", default=dt.date.today().isoformat())
     ap.add_argument("--keluar", default="data/siskaperbapo/harga_beras")
     ap.add_argument("--cache", default=str(pathlib.Path.home() / ".cache" / "terawang-siskaperbapo"))
