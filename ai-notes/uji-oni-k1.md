@@ -78,3 +78,16 @@ Branch `danang-dev` di GitHub (terakhir 50179b7, 21 Nov 2026) belum memuat kode 
 | model-afrizal (bobot kota/kab) tanpa ONI | 29,3% | 9,3% | 14,3% | 26,8% |
 
 Di versi asli, ONI varian B memang menurunkan MAPE 2026 (16,3 → 14,0%). Tetapi varian B melatih koefisiennya terpisah untuk kota dan kabupaten, jadi sebagian besar perbaikan itu berasal dari pemisahan kota/kab (yang sudah ada di PR #7: 14,3%), bukan dari ONI. Setelah pemisahan itu, tambahan ONI hanya 14,3 → 14,0% dan uji bergulir tetap sedikit memburuk.
+
+## Tambahan: "tahun analog" (ide Danang) — MEMPERBAIKI
+
+Skrip `scripts/k1/uji_tahun_analog.py`, hasil `data/satelit/k1_uji_tahun_analog.csv`. Komponen rata-rata musiman diganti rata-rata berbobot semua tahun latih; bobot tahun j = exp(-0,5[(dONI/0,5)^2 + (dlog hujan CHIRPS kab 4-6 bln sebelum target/0,3)^2]), ONI pusat 5 bulan sebelum target. Semua masukan sudah terbit saat tanggal potong. Batu tidak punya CHIRPS (pakai ONI saja).
+
+| Jarak | Bergulir kab WAPE sekarang → analog | Kab triwulan | Jatim bulanan MAPE | 2026 WAPE | 2026 MAPE | 2026 MAPE kab | 2026 MAPE kota |
+|---|---|---|---|---|---|---|---|
+| 0 | 28,6 → 24,9% | 16,0 → 13,1% | 15,9 → 13,3% | 7,6 → 6,7% | 13,2 → 11,8% | 8,8 → 8,0% | 27,4 → 24,1% |
+| 28 | 29,1 → 25,3% | 16,8 → 13,9% | 16,8 → 13,2% | 9,3 → 7,6% | 14,3 → 12,5% | 10,4 → 8,9% | 26,8 → 24,3% |
+| 56 | 30,8 → 27,4% | 17,7 → 15,3% | 17,2 → 14,1% | 8,4 → 7,3% | 15,1 → 13,3% | 9,7 → 8,7% | 32,3 → 28,3% |
+
+Membaik di setiap tahun uji 2022-2025 dan di uji 2026. Tidak peka terhadap lebar bobot (5 setelan diuji, semua membaik 2,5-3,9 poin; ONI saja atau hujan saja juga membaik). Bedanya dengan uji ONI di atas: ONI tidak dipakai sebagai pengali/regresor, tetapi untuk memilih tahun yang mirip, jadi tidak perlu mempelajari koefisien dari 7 tahun.
+Belum dipasang ke operasional.
