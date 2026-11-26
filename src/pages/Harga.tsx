@@ -1,4 +1,4 @@
-import { K3A } from "@/lib/api"
+import { GKP, K3A } from "@/lib/api"
 import { TrendingUp } from "lucide-react"
 import { useState } from "react"
 import { LineChart } from "@/components/charts/LineChart"
@@ -100,6 +100,7 @@ export default function Harga() {
           {ganda && <LegendaJenis />}
         </Panel>
       </div>
+      {GKP && <PanelGkp />}
       <div className="grid-2">
         <Panel title="Peta rekomendasi SPHP">
           <Terkunci judul="Rekomendasi penyaluran SPHP">
@@ -290,5 +291,89 @@ function PricePanel({ jenis }: { jenis: Komoditas[] }) {
       </div>
       {ganda && <LegendaJenis />}
     </Panel>
+  )
+}
+
+const BLN_GKP = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
+const tglBulan = (b: string) => new Date(Number(b.slice(0, 4)), Number(b.slice(5, 7)) - 1, 1)
+const labelBulan = (d: Date) => `${BLN_GKP[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`
+const SUMBER_LUAS: Record<string, string> = {
+  bps_potensi_terbaru: "potensi BPS",
+  bps_potensi: "potensi BPS",
+  taksiran_musiman: "rata-rata musiman 3 tahun",
+}
+
+/** Harga GKP petani Jatim bulanan + prakiraan 1-3 bulan (gabungan naif + SARIMAX HPP + luas panen), dari /api/gkp. */
+function PanelGkp() {
+  const g = GKP!
+  const rw = g.riwayat
+  const fc = g.prakiraan
+  const n = rw.length
+  const dates = rw.map((r) => tglBulan(r.bulan)).concat(fc.map((f) => tglBulan(f.bulan_target)))
+  const pNow = rw[n - 1].harga
+  const lo = Math.min(...rw.map((r) => r.harga), ...fc.map((f) => f.p10), g.hpp_sekarang) - 150
+  const hi = Math.max(...rw.map((r) => r.harga), ...fc.map((f) => f.p90)) + 150
+  const ujung = fc[fc.length - 1]
+  const mape = (h: number) => g.uji_mundur[`h${h}`]?.mape
+  const kolom: Column<(typeof fc)[number]>[] = [
+    { head: "Bulan", cell: (f) => <b>{labelBulan(tglBulan(f.bulan_target))}</b> },
+    { head: "Prakiraan", right: true, num: true, cell: (f) => rp(f.harga_prediksi) },
+    { head: "P10–P90", right: true, num: true, cell: (f) => `${rp(f.p10)}–${rp(f.p90)}` },
+    { head: "Luas panen", right: true, num: true, cell: (f) => `${nf(f.luas_panen_ha / 1000)} rb ha` },
+    { head: "Sumber luas", cell: (f) => SUMBER_LUAS[f.sumber_luas] ?? f.sumber_luas },
+  ]
+  return (
+    <div className="grid-2">
+      <Panel title="Harga GKP petani Jawa Timur, bulanan">
+        <div className="pb chart">
+          <LineChart
+            xDates={dates}
+            xFmt={labelBulan}
+            yDom={[Math.floor(lo / 100) * 100, Math.ceil(hi / 100) * 100]}
+            yFmt={(v) => nf(v)}
+            W={760}
+            H={420}
+            splitAt={n - 1}
+            bands={[{ lo: [pNow, ...fc.map((f) => f.p10)], hi: [pNow, ...fc.map((f) => f.p90)], off: n - 1, color: "var(--accent)", op: 0.16 }]}
+            refs={[{ v: g.hpp_sekarang, label: `HPP ${nf(g.hpp_sekarang)}`, color: "var(--ink-2)", dy: 4 }]}
+            series={[
+              { vals: rw.map((r) => r.harga), color: "var(--ink)", w: 2.2 },
+              { vals: [pNow, ...fc.map((f) => f.harga_prediksi)], off: n - 1, color: "var(--accent)", dash: "5 4", w: 2.2, label: rp(ujung.harga_prediksi) },
+            ]}
+            tip={(i) => {
+              if (i < n) {
+                const r = rw[i]
+                return (
+                  <>
+                    <b>{labelBulan(dates[i])}</b>
+                    <br />
+                    <span className="m">{rp(r.harga)}</span> per kg, sumber {r.sumber}
+                  </>
+                )
+              }
+              const f = fc[i - n]
+              return (
+                <>
+                  <b>{labelBulan(dates[i])}, prakiraan</b>
+                  <br />
+                  <span className="m">{rp(f.harga_prediksi)}</span>, P10 sampai P90{" "}
+                  <span className="m">
+                    {rp(f.p10)}–{rp(f.p90)}
+                  </span>
+                </>
+              )
+            }}
+          />
+        </div>
+      </Panel>
+      <Panel title="Prakiraan harga GKP 1–3 bulan">
+        <DataTable rows={fc} columns={kolom} rowKey={(f) => f.bulan_target} rowName={(f) => f.bulan_target} pageSize={3} />
+        <p style={{ padding: "12px 16px", margin: 0, fontSize: 12, color: "var(--ink-3)", lineHeight: 1.5 }}>
+          Gabungan rata-rata model naif (harga bulan terakhir) dan SARIMAX dengan HPP gabah dan luas panen padi Jatim. Harga sampai{" "}
+          {labelBulan(tglBulan(g.bulan_acuan))}: BPS sampai Des 2024, sesudahnya panel harga Bapanas. Galat uji mundur 36 bulan (MAPE):{" "}
+          {[1, 2, 3].map((h) => `${h} bln ${mape(h) != null ? nf(mape(h)!, 1) : "–"}%`).join(", ")}.
+        </p>
+      </Panel>
+    </div>
   )
 }
