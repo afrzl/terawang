@@ -16,7 +16,8 @@ from dagster import AssetExecutionContext, AssetKey, MaterializeResult, Metadata
 
 from terawang_models import k1_produksi, k2_stok, k3_harga, sphp
 
-from ..resources import Database, Repo, SumberCitra, folder_lapisan
+from ..resources import Database, Repo, SumberCitra, SumberHarga, folder_lapisan
+from .bronze import folder_bapanas
 from ._app import model_run, sekarang, sisipkan
 
 GRUP = "model"
@@ -117,13 +118,15 @@ def k2_estimasi_stok(context: AssetExecutionContext, repo: Repo, db: Database, s
     return stok.merge(kons, on="kab").merge(hari, on="kab", how="left").merge(sd, on=["kab", "tahun", "bulan"], how="left").assign(model_run_id=rid)
 
 
-@asset(group_name=GRUP, kinds={"python", "postgres"}, deps=[AssetKey("silver_harga")],
-       description="K3a (Danang): prakiraan harga harian 7/14/21/28 hari, P10-P90 dari galat empiris 365 hari, status terhadap HET "
-                   "(scripts/k3/k3_harga_operasional.py) -> app.prediksi_harga.")
-def k3_prediksi_harga(context: AssetExecutionContext, repo: Repo, db: Database, sumber_citra: SumberCitra) -> pd.DataFrame:
+@asset(group_name=GRUP, kinds={"python", "postgres"}, deps=[AssetKey("silver_harga"), AssetKey("bronze_bapanas")],
+       description="K3a: prakiraan harga harian 7/14/21/28 hari, P10-P90 dari galat empiris 365 hari berbobot paruh 60 hari, status terhadap HET; "
+                   "WASPADA beras medium dari peringatan gabungan EW60 + logit + harga penggilingan Bapanas "
+                   "(scripts/k3/k3_harga_operasional.py, k3_peringatan_gabungan.py) -> app.prediksi_harga.")
+def k3_prediksi_harga(context: AssetExecutionContext, repo: Repo, db: Database, sumber_citra: SumberCitra, sumber_harga: SumberHarga) -> pd.DataFrame:
     wil = _wilayah(db)
     with model_run(db, "K3_HARGA", k3_harga.VERSI_K3A, {"model": "scripts/k3/k3_harga_operasional.py"}) as (rid, metrik):
-        R, par = k3_harga.prediksi_harga_k3a(repo.path, _env_danang(repo, db, sumber_citra))
+        env = {**_env_danang(repo, db, sumber_citra), "TERAWANG_HARGA_DIR": str(sumber_harga.folder(repo)), "TERAWANG_BAPANAS_DIR": str(folder_bapanas())}
+        R, par = k3_harga.prediksi_harga_k3a(repo.path, env)
         with db.engine().begin() as c:  # parameter (HET, kalibrasi ambang) dibaca dasbor
             c.execute(sa.text("update app.model_run set parameter = cast(:p as jsonb) where id = :i"), {"i": rid, "p": json.dumps(par, default=str)})
         pred = (R.merge(wil, on="kab")
@@ -132,7 +135,10 @@ def k3_prediksi_harga(context: AssetExecutionContext, repo: Repo, db: Database, 
         sisipkan(db, "app.prediksi_harga", pred[kolom].assign(model_run_id=rid, jenis_data=k3_harga.JENIS_DATA))
         metrik.update({"tanggal_acuan": str(pred.tanggal_acuan.max()),
                        **{f"h{h}_{s.lower()}": int(((pred.horizon_hari == h) & (pred.komoditas_id == 1) & (pred.status == s)).sum())
-                          for h in (7, 28) for s in ("WASPADA", "SIAGA")}})
+                          for h in (7, 28) for s in ("WASPADA", "SIAGA")},
+                       "peringatan_medium": par.get("peringatan_medium"),
+                       "kalibrasi_medium": {str(h): {k: v.get(k) for k in ("f1", "presisi", "recall", "pr_auc")}
+                                            for h, v in (par.get("kalibrasi_ambang", {}).get("medium") or {}).items()}})
     context.add_output_metadata({"model_run_id": rid, "versi": k3_harga.VERSI_K3A, "baris": len(pred), **metrik, "contoh": _md(pred[["kab", *kolom[1:]]])})
     return pred.assign(model_run_id=rid)
 
