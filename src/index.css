@@ -1186,3 +1186,32 @@ main.full{flex:1;min-height:0;position:relative}
 @media (max-width:640px){.peta-sphp{height:340px}.peta-sphp .sphp-lbl{font-size:10px;padding:1px 4px}}
 .sphp-pop .maplibregl-popup-content{font:500 12.5px var(--f-body);color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:7px 10px;box-shadow:0 4px 14px rgba(0,0,0,.2)}
 .sphp-pop .maplibregl-popup-tip{display:none}
+
+/* ===== /linktree: halaman tautan publik ===== */
+.ltree{position:relative;min-height:100vh;min-height:100dvh;display:flex;justify-content:center;padding:56px 16px 32px;color:#F2F6F1;background:
+  radial-gradient(120% 90% at 100% 0%,rgba(127,180,99,.35) 0%,transparent 55%),
+  linear-gradient(160deg,#0E2547 0%,#163E66 45%,#1C5B4E 100%)}
+:root[data-theme="dark"] .ltree{background:radial-gradient(120% 90% at 100% 0%,rgba(125,184,98,.22) 0%,transparent 55%),linear-gradient(160deg,#091729 0%,#0F2A45 45%,#123B33 100%)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .ltree{background:radial-gradient(120% 90% at 100% 0%,rgba(125,184,98,.22) 0%,transparent 55%),linear-gradient(160deg,#091729 0%,#0F2A45 45%,#123B33 100%)}}
+.ltree-tema{position:absolute;top:16px;right:16px}
+.ltree-tema .icon-btn{border-radius:999px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.22);color:#fff}
+.ltree-isi{width:100%;max-width:520px;display:flex;flex-direction:column;gap:28px}
+.ltree-kop{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px}
+.ltree-logo{width:76px;height:76px;border-radius:22px;display:grid;place-items:center;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(4px)}
+.ltree-logo svg{width:52px;height:52px}
+.ltree-kop h1{margin:4px 0 0;font-size:40px;font-weight:800;font-stretch:70%;letter-spacing:.06em;line-height:.95;color:#fff}
+.ltree-kop h1 span{color:#B9E39A}
+.ltree-kop p{margin:0;font-size:14.5px;line-height:1.55;color:rgba(242,246,241,.82);max-width:42ch;text-wrap:pretty}
+.ltree-daftar{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.ltree-tautan{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:16px;text-decoration:none;color:var(--ink);background:var(--panel);border:1px solid rgba(255,255,255,.4);box-shadow:0 6px 20px rgba(5,15,30,.18);transition:transform .15s,box-shadow .15s,border-color .15s}
+.ltree-tautan:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(5,15,30,.26);border-color:#B9E39A}
+.ltree-tautan:focus-visible{outline:2px solid #B9E39A;outline-offset:3px}
+.ltree-ikon{flex:none;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
+.ltree-teks{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ltree-teks b{font-size:15.5px;font-weight:650}
+.ltree-teks span{font-size:12.5px;line-height:1.4;color:var(--ink-2)}
+.ltree-panah{flex:none;color:var(--ink-3);transition:color .15s,transform .15s}
+.ltree-tautan:hover .ltree-panah{color:var(--accent);transform:translate(2px,-2px)}
+.ltree-kaki{margin-top:auto;font-size:12px;text-align:center;color:rgba(242,246,241,.65)}
+@media (max-width:480px){.ltree{padding-top:48px}.ltree-kop h1{font-size:34px}.ltree-logo{width:64px;height:64px;border-radius:18px}.ltree-logo svg{width:44px;height:44px}}
+@media (prefers-reduced-motion:reduce){.ltree-tautan,.ltree-panah{transition:none}.ltree-tautan:hover{transform:none}}
