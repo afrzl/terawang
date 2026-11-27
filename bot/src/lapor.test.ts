@@ -52,3 +52,20 @@ test("niat lapor", () => {
   assert.ok(!niatLapor("harga jember"))
   assert.ok(!niatLapor("laporan stok jatim"))
 })
+
+test("kecamatan -> kab/kota", async () => {
+  const { kecamatanDisebut } = await import("./lapor.ts")
+  const { namaDasar } = await import("./wilayah.ts")
+  const w = (id: number, kode: string, nama: string, jenis: "KOTA" | "KABUPATEN") => ({ id, kode, nama, jenis, dasar: namaDasar(nama) })
+  const W = [w(1, "3573", "Kota Malang", "KOTA"), w(2, "3507", "Malang", "KABUPATEN"), w(3, "3578", "Kota Surabaya", "KOTA"), w(4, "3502", "Ponorogo", "KABUPATEN"), w(5, "3516", "Mojokerto", "KABUPATEN"), w(6, "35.71", "Kota Kediri", "KOTA")]
+  assert.deepEqual(kecamatanDisebut("aku beli beras di kecamatan blimbing 15750", W)?.wilayah.map((x) => x.id), [1])
+  assert.equal(kecamatanDisebut("pasar di kec. lowokwaru", W)?.kecamatan, "Lowokwaru")
+  assert.deepEqual(kecamatanDisebut("kecamatan jetis", W)?.wilayah.map((x) => x.id).sort(), [4, 5])
+  assert.equal(kecamatanDisebut("pasar kota", W), null)
+  assert.equal(kecamatanDisebut("kecamatan kota kediri", W)?.wilayah[0].id, 6)
+})
+
+test("kecamatan sebagai lokasi laporan", () => {
+  assert.equal(pasarDisebut("aku beli beras di kecamatan blimbing, itu harganya 15750 per kg"), "Kecamatan Blimbing")
+  assert.equal(pasarDisebut("di kec. sukun 14rb"), "Kecamatan Sukun")
+})
