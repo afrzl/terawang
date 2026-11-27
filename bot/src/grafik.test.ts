@@ -74,3 +74,18 @@ test("pilih Kab/Kota dengan kata", async () => {
   assert.equal(pilihJenis("kabupatennya", p)?.id, 1)
   assert.equal(pilihJenis("jember", p), undefined)
 })
+
+test("topik grafik dan kata pengisi perintah", async () => {
+  const { topikDisebut } = await import("./grafik.ts")
+  const { uraiPerintah, lanjutanGrafik } = await import("./bot.ts")
+  assert.equal(topikDisebut("kalo grafik stoknya?"), "stok")
+  assert.equal(topikDisebut("grafik produksi padi jember"), "produksi")
+  assert.equal(topikDisebut("grafik harganya"), "harga")
+  assert.equal(topikDisebut("grafik malang setahun"), null)
+  assert.equal(uraiPerintah("stok beras")?.arg, "")
+  assert.equal(uraiPerintah("harga beras di kota malang")?.arg, "kota malang")
+  assert.equal(uraiPerintah("cek harga beras jember")?.arg, "jember")
+  assert.ok(lanjutanGrafik("kalo stoknya?", false))
+  assert.ok(lanjutanGrafik("produksinya gimana", false))
+  assert.ok(!lanjutanGrafik("stoknya aman nggak?", false))
+})

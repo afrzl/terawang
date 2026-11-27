@@ -8,7 +8,8 @@ import { jawabBebas, llmAktif, pilahNiat } from "./llm.ts"
 import * as pagar from "./pagar.ts"
 import { pantau } from "./pantau.ts"
 import { buangSalam, CONTOH, jawabBasaBasi, jawabIstilah, POLA_TERIMA_KASIH, TERIMA_KASIH } from "./istilah.ts"
-import { dataGrafik, jenisDisebut, pngGrafik, POLA_GRAFIK, rentangDisebut, svgGrafik, teksGrafik, type Jenis } from "./grafik.ts"
+import { dataGrafik, jenisDisebut, pngGrafik, POLA_GRAFIK, POLA_GRAFIK_BELUM, rentangDisebut, svgGrafik, teksGrafik, topikDisebut, type Jenis, type TopikGrafik } from "./grafik.ts"
+import { bulanDariHari, dataProduksi, dataStok, svgBulanan, teksBulanan } from "./grafik-bulanan.ts"
 import { cariDiKalimat, cocokkan, labelWilayah, normal, semuaWilayah, type Wilayah } from "./wilayah.ts"
 
 type Perintah = "harga" | "stok" | "sphp" | "peringatan" | "langganan" | "berhenti" | "lapor" | "bantuan" | "grafik"
@@ -40,6 +41,8 @@ type Konteks = { wilayahId: number; topik: string; sampai: number }
 const konteks = new Map<number, Konteks>()
 const TOPIK_ALAT: Record<string, string> = { harga_wilayah: "harga", stok_wilayah: "stok", beras_murah: "beras murah/SPHP" }
 
+const PENGISI = new Set(["harga", "harganya", "stok", "stoknya", "beras", "berasnya", "di", "untuk", "buat", "wilayah", "daerah", "sekarang", "skrg", "hari", "ini", "dong", "donk", "ya", "nya", "gimana", "gmn", "berapa", "brp"])
+
 export function uraiPerintah(teks: string): { perintah: Perintah; arg: string; mentah: string } | null {
   const n = normal(teks)
   const mentah = teks.trim().replace(/^\S+\s*/, "")
@@ -49,7 +52,10 @@ export function uraiPerintah(teks: string): { perintah: Perintah; arg: string; m
   if (!p) return null
   // "cek harga malang", "harga beras malang"
   let arg = sisa.join(" ")
-  arg = arg.replace(/^(harga|stok|beras|di|untuk|wilayah)\s+/g, "").replace(/^(beras|di)\s+/, "").trim()
+  // buang kata pengisi di depan: "stok beras" -> "", "harga beras di malang" -> "malang"
+  const isi = arg.split(" ")
+  while (isi.length && PENGISI.has(isi[0])) isi.shift()
+  arg = isi.join(" ")
   return { perintah: p, arg, mentah }
 }
 
@@ -117,10 +123,10 @@ async function jalankan(p: Perintah, w: Wilayah | null, k: kontak.Kontak, arg: s
   }
 }
 
-// ---- grafik harga (gambar PNG dari data, tanpa OpenAI)
+// ---- grafik harga, stok, produksi (gambar PNG dari data, tanpa OpenAI)
 
 // grafik terakhir per kontak (30 menit): pesan lanjutan "kalau setahun?" atau "premium aja" memakai wilayah/rentang/jenis ini
-type KonteksGrafik = { wilayahId: number | null; hari: number; jenis: Jenis; sampai: number }
+type KonteksGrafik = { wilayahId: number | null; topik: TopikGrafik; hari: number | null; jenis: Jenis; sampai: number }
 const konteksGrafik = new Map<number, KonteksGrafik>()
 function grafikAktif(kontakId: number): KonteksGrafik | null {
   const g = konteksGrafik.get(kontakId)
@@ -129,18 +135,32 @@ function grafikAktif(kontakId: number): KonteksGrafik | null {
 
 async function buatGrafik(w: Wilayah | null, teks: string, k: kontak.Kontak): Promise<Balasan> {
   const n = normal(teks)
-  if (/\b(stok|stock|persediaan|produksi|panen)\b/.test(n) && !/\bharga\b/.test(n)) {
-    return { teks: "Grafik baru tersedia untuk harga beras. Coba ketik *GRAFIK Jember* atau _grafik harga beras sebulan ini_.", intent: "grafik_belum", wilayahId: w?.id ?? null }
-  }
   const lalu = grafikAktif(k.id)
-  const hari = rentangDisebut(teks) ?? lalu?.hari ?? 30
-  const jenis = jenisDisebut(teks) ?? lalu?.jenis ?? "keduanya"
-  const d = await dataGrafik(w, hari, jenis)
-  if (d.titik.length < 2) {
-    return { teks: `Belum ada cukup data harga beras ${d.judul} untuk dibuat grafik.`, intent: "grafik_kosong", wilayahId: d.wilayahId }
+  const disebut = topikDisebut(teks)
+  if (!disebut && POLA_GRAFIK_BELUM.test(n)) {
+    return {
+      teks: "Grafik untuk itu belum ada, maaf ya 🙏 Sejauh ini aku bisa bikin grafik *harga*, *stok*, dan *produksi* beras per kab/kota. Kalau mau angkanya dalam teks, tanya biasa aja.",
+      intent: "grafik_belum", wilayahId: w?.id ?? null,
+    }
   }
-  konteksGrafik.set(k.id, { wilayahId: d.wilayahId, hari: d.hari, jenis, sampai: Date.now() + 30 * MENIT })
-  return { teks: teksGrafik(d), intent: "grafik", wilayahId: d.wilayahId, topik: "harga", gambar: pngGrafik(svgGrafik(d)) }
+  const topik = disebut ?? lalu?.topik ?? "harga"
+  // rentang yang tidak disebut ikut grafik sebelumnya; jenis beras hanya untuk grafik harga
+  const hariDisebut = rentangDisebut(teks)
+  const hari = hariDisebut ?? (lalu && lalu.topik === topik ? lalu.hari : null)
+  const ingat = (jenis: Jenis) => konteksGrafik.set(k.id, { wilayahId: w?.id ?? null, topik, hari, jenis, sampai: Date.now() + 30 * MENIT })
+  if (topik === "harga") {
+    const jenis = jenisDisebut(teks) ?? lalu?.jenis ?? "keduanya"
+    const d = await dataGrafik(w, hari ?? 30, jenis)
+    if (d.titik.length < 2) return { teks: `Data harga beras ${d.judul} belum cukup buat digambar grafiknya.`, intent: "grafik_kosong", wilayahId: d.wilayahId }
+    ingat(jenis)
+    return { teks: teksGrafik(d), intent: "grafik", wilayahId: d.wilayahId, topik: "harga", gambar: pngGrafik(svgGrafik(d)) }
+  }
+  const d = topik === "stok" ? await dataStok(w, bulanDariHari(hari)) : await dataProduksi(w, bulanDariHari(hari))
+  if (d.titik.length < 2) {
+    return { teks: `Data ${topik} beras ${d.judul} belum cukup buat digambar grafiknya. Coba tanya angkanya langsung, misalnya _${topik} ${w ? labelWilayah(w).toLowerCase() : "jember"}_.`, intent: "grafik_kosong", wilayahId: d.wilayahId }
+  }
+  ingat(lalu?.jenis ?? "keduanya")
+  return { teks: teksBulanan(d), intent: `grafik_${topik}`, wilayahId: d.wilayahId, topik, gambar: pngGrafik(svgBulanan(d)) }
 }
 
 /** "grafik harga beras sebulan ini", "GRAFIK Malang 3 bulan", "bikinin chart harga di jember dong". */
@@ -179,8 +199,8 @@ export function pilihJenis(teks: string, pilihan: Wilayah[]): Wilayah | undefine
 export function lanjutanGrafik(teks: string, adaWilayah: boolean): boolean {
   const n = normal(teks)
   if (n.split(" ").length > 7) return false
-  if (/\b(berapa|brp|stok|stock|sphp|lapor|prakiraan|prediksi|naik|turun|kenapa|mengapa|lagi|depan|kedepan|besok)\b/.test(n)) return false
-  if (rentangDisebut(teks) != null || jenisDisebut(teks) != null) return true
+  if (/\b(berapa|brp|sphp|lapor|prakiraan|prediksi|naik|turun|kenapa|mengapa|lagi|depan|kedepan|besok|aman|cukup)\b/.test(n)) return false
+  if (rentangDisebut(teks) != null || jenisDisebut(teks) != null || topikDisebut(teks) != null) return true
   return adaWilayah && /\b(kalau|kalo|klo|kl|gimana|gmn|bagaimana|kalau di|terus|trs)\b/.test(n)
 }
 
@@ -193,7 +213,7 @@ async function denganWilayah(nomor: string, k: kontak.Kontak, p: Perintah, arg: 
     if (p === "berhenti" || p === "peringatan" || p === "bantuan" || p === "lapor") return jalankan(p, null, k, arg)
     const ingat = daftar.find((w) => w.id === k.wilayah_id)
     if (ingat) return jalankan(p, ingat, k, arg)
-    return { teks: `Sebutkan wilayahnya, misalnya *${p.toUpperCase()} MALANG* atau *${p.toUpperCase()} KOTA SURABAYA*.`, intent: p, wilayahId: null }
+    return { teks: `Wilayahnya mana nih? Misalnya _${p} jember_ atau _${p} kota surabaya_.`, intent: p, wilayahId: null }
   }
   // "HARGA seluruh", "cek seluruh kab jatim", "stok semua kabupaten": peringkat se-Jatim
   if ((p === "harga" || p === "stok") && POLA_SELURUH.test(normal(arg)) && cariDiKalimat(arg.replace(/jawa timur|jatim/gi, ""), daftar).jenis === "tidak_ada") {
@@ -226,7 +246,7 @@ async function denganWilayah(nomor: string, k: kontak.Kontak, p: Perintah, arg: 
     return { teks: teksPilihWilayah(di.pilihan, labelWilayah), intent: p, wilayahId: null }
   }
   if (teksAsli && normal(arg).split(" ").length > 2 && llmAktif()) return pesanBebas(k, teksAsli)
-  return { teks: `Wilayah "${arg}" tidak ditemukan. TERAWANG mencakup 38 kab/kota di Jawa Timur, misalnya Malang, Jember, Kota Surabaya.`, intent: p, wilayahId: null }
+  return { teks: `Hmm, aku nggak nemu wilayah "${arg}". Aku bisa bantu 38 kab/kota di Jawa Timur, misalnya Jember, Kota Malang, atau Kota Surabaya.`, intent: p, wilayahId: null }
 }
 
 const POLA_LAPOR = /^(.+?)[,;\n]\s*(medium|premium)\s*[,;\n]\s*(?:rp\.?\s*)?([\d.,]+)/i
