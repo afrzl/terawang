@@ -8,9 +8,10 @@ import { jawabBebas, llmAktif, pilahNiat } from "./llm.ts"
 import * as pagar from "./pagar.ts"
 import { pantau } from "./pantau.ts"
 import { buangSalam, CONTOH, jawabBasaBasi, jawabIstilah, POLA_TERIMA_KASIH, TERIMA_KASIH } from "./istilah.ts"
+import { dataGrafik, pngGrafik, POLA_GRAFIK, svgGrafik, teksGrafik, uraiJenis, uraiRentang } from "./grafik.ts"
 import { cariDiKalimat, cocokkan, labelWilayah, normal, semuaWilayah, type Wilayah } from "./wilayah.ts"
 
-type Perintah = "harga" | "stok" | "sphp" | "peringatan" | "langganan" | "berhenti" | "lapor" | "bantuan"
+type Perintah = "harga" | "stok" | "sphp" | "peringatan" | "langganan" | "berhenti" | "lapor" | "bantuan" | "grafik"
 
 const ALIAS: Record<string, Perintah> = {
   harga: "harga", cek: "harga", hrg: "harga",
@@ -20,6 +21,7 @@ const ALIAS: Record<string, Perintah> = {
   langganan: "langganan", daftar: "langganan", subscribe: "langganan",
   berhenti: "berhenti", stop: "berhenti", unsubscribe: "berhenti", unsub: "berhenti",
   lapor: "lapor", laporan: "lapor",
+  grafik: "grafik", chart: "grafik", diagram: "grafik", visualisasi: "grafik", kurva: "grafik",
   bantuan: "bantuan", menu: "bantuan", help: "bantuan",  start: "bantuan", mulai: "bantuan", info: "bantuan",
 }
 
@@ -29,7 +31,8 @@ type Tunda =
 const tunda = new Map<string, Tunda>()
 const MENIT = 60_000
 
-export type Balasan = { teks: string; intent: string; wilayahId: number | null; topik?: string }
+/** `gambar`: PNG yang dikirim sebagai gambar WhatsApp dengan `teks` sebagai keterangannya. */
+export type Balasan = { teks: string; intent: string; wilayahId: number | null; topik?: string; gambar?: Buffer }
 
 // konteks ringan per kontak: topik + wilayah terakhir, 30 menit. Cukup untuk pertanyaan lanjutan
 // ("kalau 2 minggu lagi?") tanpa memperpanjang riwayat yang dikirim ke OpenAI.
@@ -107,9 +110,45 @@ async function jalankan(p: Perintah, w: Wilayah | null, k: kontak.Kontak, arg: s
     }
     case "lapor":
       return laporHarga(k, arg)
+    case "grafik":
+      return buatGrafik(w, arg)
     case "bantuan":
       return { teks: BANTUAN, intent: "bantuan", wilayahId: null }
   }
+}
+
+// ---- grafik harga (gambar PNG dari data, tanpa OpenAI)
+
+async function buatGrafik(w: Wilayah | null, teks: string): Promise<Balasan> {
+  const n = normal(teks)
+  if (/\b(stok|stock|persediaan|produksi|panen)\b/.test(n) && !/\bharga\b/.test(n)) {
+    return { teks: "Grafik baru tersedia untuk harga beras. Coba ketik *GRAFIK Jember* atau _grafik harga beras sebulan ini_.", intent: "grafik_belum", wilayahId: w?.id ?? null }
+  }
+  const d = await dataGrafik(w, uraiRentang(teks), uraiJenis(teks))
+  if (d.titik.length < 2) {
+    return { teks: `Belum ada cukup data harga beras ${d.judul} untuk dibuat grafik.`, intent: "grafik_kosong", wilayahId: d.wilayahId }
+  }
+  return { teks: teksGrafik(d), intent: "grafik", wilayahId: d.wilayahId, topik: "harga", gambar: pngGrafik(svgGrafik(d)) }
+}
+
+/** "grafik harga beras sebulan ini", "GRAFIK Malang 3 bulan", "bikinin chart harga di jember dong". */
+async function grafikDariKalimat(nomor: string, k: kontak.Kontak, teks: string): Promise<Balasan> {
+  const daftar = await semuaWilayah()
+  const n = normal(teks)
+  const seJatim = /\b(jatim|jawa timur|se ?jatim|seluruh|semua)\b/.test(n)
+  const di = cariDiKalimat(teks.replace(/jawa timur|jatim/gi, ""), daftar)
+  if (di.jenis === "pas") {
+    await kontak.ingatWilayah(k.id, di.wilayah.id)
+    return buatGrafik(di.wilayah, teks)
+  }
+  if (di.jenis === "ambigu") {
+    tunda.set(nomor, { jenis: "pilih", perintah: "grafik", pilihan: di.pilihan, sampai: Date.now() + 10 * MENIT, sisa: teks })
+    return { teks: teksPilihWilayah(di.pilihan, labelWilayah), intent: "pilih_wilayah", wilayahId: null }
+  }
+  // tanpa nama wilayah: lanjutkan wilayah percakapan (30 menit terakhir), selain itu rata-rata Jawa Timur
+  const kt = konteks.get(k.id)
+  const lanjut = !seJatim && kt && kt.sampai > Date.now() ? daftar.find((w) => w.id === kt.wilayahId) ?? null : null
+  return buatGrafik(lanjut, teks)
 }
 
 const BUTUH_WILAYAH: Perintah[] = ["harga", "stok", "sphp", "langganan"]
@@ -329,12 +368,17 @@ async function proses(nomor: string, k: kontak.Kontak, teks: string): Promise<Ba
       if (w) {
         tunda.delete(nomor)
         if (BUTUH_WILAYAH.includes(t.perintah)) await kontak.ingatWilayah(k.id, w.id)
+        if (t.perintah === "grafik") return buatGrafik(w, t.sisa ?? "")
         // pertanyaan bebas yang tadi ditunda: jawab ulang dengan wilayah yang dipilih
         if (t.sisa && llmAktif()) return pesanBebas(k, t.sisa, w)
         return jalankan(t.perintah, w, k, "")
       }
     }
     if (t.jenis === "lapor") return laporHarga(k, teks)
+  }
+  if (cmd?.perintah === "grafik" || (!cmd && POLA_GRAFIK.test(normal(teks)))) {
+    tunda.delete(nomor)
+    return grafikDariKalimat(nomor, k, teks)
   }
   if (cmd) {
     tunda.delete(nomor)

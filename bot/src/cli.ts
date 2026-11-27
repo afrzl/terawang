@@ -9,4 +9,10 @@ if (!teks) {
 }
 const r = await tanggapi(process.env.NOMOR_UJI ?? "uji-terminal", "Uji terminal", teks)
 console.log(`--- intent=${r.intent} wilayah=${r.wilayahId}\n${r.teks}`)
+if (r.gambar) {
+  const { writeFileSync } = await import("node:fs")
+  const berkas = process.env.GAMBAR_UJI ?? "grafik-uji.png"
+  writeFileSync(berkas, r.gambar)
+  console.log(`--- gambar ${r.gambar.length} byte -> ${berkas}`)
+}
 await pool.end()
