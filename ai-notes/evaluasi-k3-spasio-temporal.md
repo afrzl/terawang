@@ -88,3 +88,24 @@ Skrip `scripts/k3/uji_skor_naik.py`. Kategori untuk tiap tanggal ditentukan tanp
 - **Sejak 2026 Q3 urutannya rusak**: wilayah berlabel "tinggi" justru paling jarang naik. AUC 2025 0,69, sedangkan 2026 0,59.
 - Ridge (model linear sederhana) hampir setara (tinggi 21% / sedang 15% / rendah 9%), jadi keunggulan jaringan saraf kecil.
 - **Kesimpulan: belum layak ditampilkan.** Skor ini berguna saat harga sedang dalam tren naik (2025), tetapi tidak andal pada kondisi sekarang yang harganya lengket di bawah HET. Contoh tampilan untuk data terakhir sengaja tidak dibuat, karena justru periode inilah yang gagal.
+
+## Lanjutan 2: prediksi ARAH harga, bukan level (27 Nov 2026 malam)
+
+Alasan: MAPE memberi nilai bagus pada tebakan "harga tetap" karena harga beras lengket, padahal kebutuhan pengguna adalah arah harga. Skrip `scripts/k3/uji_arah_harga.py`. Kelas: naik (> +1%), tetap, turun (< −1%) dalam h hari. Walk-forward bulanan, asal 2025–Nov 2026. Pembanding **KLIM-EW60** adalah peluang historis gabungan, yang setara dengan model sekarang. Fitur: harga sendiri, provinsi, tetangga, jarak ke HET, dan harga penggilingan Bapanas.
+
+Prevalensi naik: 8/13/17/20% (7/14/21/28 hr), 2026 hanya 4/7/9/11%. Prevalensi turun: 6/9/11/12%.
+
+| h | Model | BSS semua | BSS 2025 | BSS 2026 | AUC naik (2026) | AUC turun (2026) | Akurasi seimbang |
+|---|---|---|---|---|---|---|---|
+| 7 | LOGIT | **+3,2%** | +3,5% | +2,3% | 0,68 (0,62) | **0,76 (0,78)** | 0,46 |
+| 14 | LOGIT | **+3,9%** | +4,9% | +1,4% | 0,67 (0,55) | **0,75 (0,76)** | 0,45 |
+| 21 | LOGIT | +3,8% | +5,5% | −0,1% | 0,65 (0,52) | 0,74 (0,74) | 0,45 |
+| 28 | LOGIT | +3,6% | +5,6% | −0,9% | 0,63 (0,51) | 0,74 (0,73) | 0,44 |
+| semua | GBM | −1 s.d. +1% | | | lebih rendah | setara | 0,43–0,46 |
+| semua | KLIM per kab | −0,4 s.d. −8% | | | | | 0,32–0,36 |
+
+- Logit multinomial **lebih baik daripada model sekarang** dalam memberi peluang arah (BSS +3–4%). Akurasi seimbangnya 0,44–0,46, sedangkan tebakan acak 0,33. GBM tidak lebih baik daripada logit.
+- **Arah TURUN terdeteksi stabil** (AUC 0,73–0,78), termasuk di 2026.
+- **Arah NAIK lemah di 2026** (AUC 0,51–0,62), dan hanya berguna untuk 1–2 pekan. Kenaikan di 2026 jarang dan sebagian tertahan HET.
+- Untuk horizon 3–4 pekan di 2026, model tidak lebih baik daripada peluang historis.
+- Usulan pemakaian (belum dipasang): tampilkan "peluang naik/tetap/turun 1–2 pekan" per kab dari logit. Peringatan kenaikan tetap memakai model WASPADA (lewat HET), yang AUC-nya 0,87–0,90.
