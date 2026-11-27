@@ -358,7 +358,7 @@ label input{font-weight:400}
 #tabel-laporan td.aksi .tombol+.tombol{margin-left:6px}
 
 /* ringkasan saran laporan warga */
-.ringkas-saran{background:var(--panel);border:1px solid var(--rule);border-left:3px solid var(--accent);padding:10px 14px;margin:0 0 14px;font-size:13px}
+.ringkas-saran{background:var(--panel-2);border:1px solid var(--rule-2);border-radius:6px;padding:12px 16px;margin:0 0 14px;font-size:13px}
 .ringkas-saran .judul{font-weight:600;margin-bottom:3px}
 .ringkas-saran .jml{display:flex;flex-wrap:wrap;gap:4px 18px}.ringkas-saran .jml>span{display:inline}.ringkas-saran .jml b{font-size:15px}
 .ringkas-saran .ket{color:var(--ink-3);font-size:12px;margin-top:4px}
