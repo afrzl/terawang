@@ -166,6 +166,15 @@ async function grafikDariKalimat(nomor: string, k: kontak.Kontak, teks: string):
   return buatGrafik(lanjut, teks, k)
 }
 
+/** Jawaban pilihan "kota", "kab", "kabupatennya", "yang kota" untuk Kab./Kota bernama sama. */
+export function pilihJenis(teks: string, pilihan: Wilayah[]): Wilayah | undefined {
+  const n = normal(teks).replace(/\b(yang|yg|itu|aja|saja|nya|dong|ya)\b/g, "").trim()
+  const jenis = /^(kota|kotanya|kot|kt)$/.test(n) ? "KOTA" : /^(kab|kabupaten|kabupatennya|kabnya|kb)$/.test(n) ? "KABUPATEN" : null
+  if (!jenis) return undefined
+  const cocok = pilihan.filter((w) => w.jenis === jenis)
+  return cocok.length === 1 ? cocok[0] : undefined
+}
+
 /** Pesan pendek setelah grafik yang hanya mengganti rentang/jenis/wilayah: "klo setahun?", "premium aja", "kalau jember?". */
 export function lanjutanGrafik(teks: string, adaWilayah: boolean): boolean {
   const n = normal(teks)
@@ -385,7 +394,7 @@ async function proses(nomor: string, k: kontak.Kontak, teks: string): Promise<Ba
   if (t && t.sampai >= Date.now() && !cmd) {
     if (t.jenis === "pilih") {
       const i = Number(teks.trim()) - 1
-      const w = t.pilihan[i] ?? (() => {
+      const w = t.pilihan[i] ?? pilihJenis(teks, t.pilihan) ?? (() => {
         const c = cocokkan(teks, t.pilihan)
         return c.jenis === "pas" ? c.wilayah : undefined
       })()

@@ -15,6 +15,10 @@ test("rentang grafik dari kalimat", () => {
   assert.equal(rentangDisebut("kalau setaun?"), 365)
   assert.equal(rentangDisebut("6 bln aja"), 180)
   assert.equal(rentangDisebut("buatkan grafik hariannya"), null)
+  assert.equal(rentangDisebut("grafik kota malang sethaun"), 365)
+  assert.equal(rentangDisebut("grafik sebuln"), 30)
+  assert.equal(rentangDisebut("grafik harian malang selama setahun"), 365)
+  assert.equal(rentangDisebut("grafik harga sekarang"), null)
 })
 
 test("jenis beras dan pola grafik", () => {
@@ -59,4 +63,14 @@ test("pesan lanjutan grafik", async () => {
   assert.ok(!lanjutanGrafik("makasih", false))
   assert.ok(!lanjutanGrafik("kalo 2 bulan lagi?", false))
   assert.ok(!lanjutanGrafik("bulan depan naik nggak 3 bulan lagi", false))
+})
+
+test("pilih Kab/Kota dengan kata", async () => {
+  const { pilihJenis } = await import("./bot.ts")
+  const p = [{ id: 1, kode: "3507", nama: "Kabupaten Malang", jenis: "KABUPATEN" as const, dasar: "malang" }, { id: 2, kode: "3573", nama: "Kota Malang", jenis: "KOTA" as const, dasar: "malang" }]
+  assert.equal(pilihJenis("kota", p)?.id, 2)
+  assert.equal(pilihJenis("yang kota", p)?.id, 2)
+  assert.equal(pilihJenis("Kab", p)?.id, 1)
+  assert.equal(pilihJenis("kabupatennya", p)?.id, 1)
+  assert.equal(pilihJenis("jember", p), undefined)
 })
