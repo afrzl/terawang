@@ -127,15 +127,22 @@ export function simpanCache(kunci: string, jawaban: string, wilayahId?: number) 
 // ---- pemeriksaan jawaban
 
 /** Rapikan jawaban LLM untuk WhatsApp dan potong bila kepanjangan. */
+const PERINTAH_RESMI = new Set(["HARGA", "STOK", "SPHP", "PERINGATAN", "LANGGANAN", "BERHENTI", "LAPOR", "BANTUAN"])
+
 export function rapikanJawaban(s: string): string {
   let t = s
     .replace(/\*\*(.+?)\*\*/g, "*$1*") // markdown tebal -> WhatsApp
     .replace(/^#{1,6}\s*/gm, "")
     .replace(/\[(.+?)\]\((https?:[^)]+)\)/g, "$1 ($2)")
     // nama fungsi internal tidak boleh bocor ke pengguna
-    .replace(/\s*(atau\s+)?\*?`?\b(harga_wilayah|stok_wilayah|beras_murah|daftar_peringatan|tentang_terawang|ringkasan_jatim|peringkat_wilayah|bandingkan_wilayah|riwayat_harga|produksi_wilayah|skema_data|kueri_data|jarak_wilayah|peringkat_produksi|bulog_jatim|\w+_gagal)\b`?\*?/g, "")
+    .replace(/\s*(atau\s+)?\*?`?\b(harga_wilayah|stok_wilayah|beras_murah|daftar_peringatan|tentang_terawang|ringkasan_jatim|peringkat_wilayah|bandingkan_wilayah|riwayat_harga|produksi_wilayah|skema_data|kueri_data|jarak_wilayah|peringkat_produksi|bulog_jatim|konsumsi_wilayah|\w+_gagal)\b`?\*?/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim()
+  // saran "Ketik *X ...*" hanya untuk perintah resmi; perintah karangan model dibuang
+  t = t.split("\n").filter((baris) => {
+    const m = baris.match(/\b(ketik|balas|kirim)\s+\*([A-Za-z]+)/i)
+    return !m || PERINTAH_RESMI.has(m[2].toUpperCase())
+  }).join("\n").trim()
   if (t.length > 1200) t = t.slice(0, 1150).replace(/\s+\S*$/, "") + "…"
   return t
 }

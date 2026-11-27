@@ -356,6 +356,21 @@ export async function infoBulog() {
   }
 }
 
+/** Konsumsi beras per kapita (Susenas BPS) beberapa tahun terakhir, dengan konversi per bulan. */
+export async function konsumsiBeras(w: Wilayah) {
+  const rows = await q<{ tahun: number; putaran: string; klasifikasi: string; satuan: string; kg_per_kapita: number }>(
+    `select tahun, putaran::text as putaran, klasifikasi::text as klasifikasi, satuan::text as satuan, round(kg_per_kapita::numeric, 3)::float8 as kg_per_kapita
+       from silver.konsumsi_beras where wilayah_id = $1 and klasifikasi = 'TOTAL'
+      order by tahun desc, putaran desc limit 6`,
+    [w.id],
+  )
+  return {
+    wilayah: labelWilayah(w),
+    data: rows.map((r) => ({ ...r, kg_per_kapita_per_bulan: /MINGGU/i.test(r.satuan) ? Math.round(r.kg_per_kapita * 30.4 / 7 * 10) / 10 : /TAHUN/i.test(r.satuan) ? Math.round(r.kg_per_kapita / 12 * 10) / 10 : r.kg_per_kapita })),
+    catatan: "Susenas BPS. Per bulan = per minggu x 30,4/7.",
+  }
+}
+
 /** Ringkasan Jatim: jumlah kab/kota per status gabungan pada tanggal status terakhir. */
 export async function ringkasanJatim() {
   return q<{ status: Tingkat; jumlah: number }>(
