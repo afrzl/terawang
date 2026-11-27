@@ -91,6 +91,8 @@ export interface K3aData {
     het: Record<string, number> | null
     /** Kalibrasi ambang WASPADA per jenis beras ("medium", "premium") dan horizon hari ("7".."28"): F1, AUC, kejadian. */
     kalibrasi?: Record<string, Record<string, { ambang: number; f1: number; auc?: number | null; terdeteksi: number; kejadian: number; alarm_palsu: number }>> | null
+    /** Peluang melewati HET per jenis beras -> horizon (hari) -> kab, dari pipeline K3a. */
+    peluang_het?: Record<string, Record<string, Record<string, number>>> | null
   }
   wilayah: Record<string, { medium: K3aSeri; premium: K3aSeri }>
 }

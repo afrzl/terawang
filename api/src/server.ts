@@ -247,7 +247,10 @@ async function harga(per?: string) {
   const hetNama = het ? Object.fromEntries(kom.filter((k) => het[k.id] != null && jenis(k.kode)).map((k) => [jenis(k.kode) as string, Number(het[k.id])])) : null
   // Kalibrasi ambang WASPADA per jenis beras dan horizon (F1, AUC peluang melewati HET pada backtest).
   const kalibrasi = (run.parameter?.kalibrasi_ambang as Record<string, Record<string, unknown>> | undefined) ?? null
-  return { meta: { ...metaRun(run, rows[0]?.jd ?? null), tanggal_acuan: acuan, het: hetNama, kalibrasi }, wilayah }
+  // Peluang melewati HET per kab dari pipeline {medium|premium: {horizon: {kab: p}}}; beras medium kab <= HET: regresi logistik
+  // terkalibrasi (sejak 27 Nov 2026), lainnya EW60. Run lama tidak punya: dasbor kembali ke pendekatan normal dari P10/P90.
+  const peluang_het = (run.parameter?.peluang_het as Record<string, Record<string, Record<string, number>>> | undefined) ?? null
+  return { meta: { ...metaRun(run, rows[0]?.jd ?? null), tanggal_acuan: acuan, het: hetNama, kalibrasi, peluang_het }, wilayah }
 }
 
 async function sphp(per?: string) {
