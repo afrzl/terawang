@@ -60,13 +60,23 @@ a{color:var(--accent);text-underline-offset:2px}
 .titik{flex:none;width:7px;height:7px;border-radius:1px;background:transparent}
 .titik.ok{background:var(--ok)}.titik.gagal{background:var(--crit)}.titik.waspada{background:var(--warn)}.titik.jalan{background:var(--accent)}
 .menu a[aria-current="page"] .titik{box-shadow:0 0 0 1.5px var(--onaccent)}
-.sisi-bawah{border-top:1px solid var(--rule);padding:12px 18px 16px;display:flex;flex-direction:column;gap:8px;flex:none}
-.pengguna{display:flex;flex-direction:column;line-height:1.3}
-.pengguna b{font-size:14px;overflow-wrap:anywhere;margin-top:2px}
-.pengguna span:last-child{font-size:12.5px;color:var(--ink-2)}
-.tautan-akun{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px}
-.tautan-akun a,.tautan-akun button{background:none;border:0;padding:0;color:var(--accent);cursor:pointer;text-decoration:none;font-weight:550}
-.tautan-akun a:hover,.tautan-akun button:hover{text-decoration:underline}
+.sisi-bawah{border-top:1px solid var(--rule);padding:10px 10px 12px;flex:none;position:sticky;bottom:0;background:var(--panel);margin-top:auto}
+.akun-btn{display:flex;align-items:center;gap:10px;width:100%;padding:8px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--ink);cursor:pointer;text-align:left}
+.akun-btn:hover,.akun-btn[aria-expanded="true"]{background:var(--panel-2);border-color:var(--rule-2)}
+.akun-av{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--onaccent);font-weight:700;font-size:14px;line-height:1;text-transform:uppercase}
+.akun-teks{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.akun-teks b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.akun-teks span{font-size:12.5px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.akun-car{flex:none;width:16px;height:16px;fill:none;stroke:var(--ink-3);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .15s}
+.akun-btn[aria-expanded="true"] .akun-car{transform:rotate(180deg)}
+.akun-pop{position:absolute;left:10px;right:10px;bottom:calc(100% - 4px);z-index:40;padding:6px;background:var(--panel);border:1px solid var(--rule);border-radius:10px;box-shadow:0 18px 40px -12px rgba(0,0,0,.35)}
+.akun-item{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--ink);font-size:13.5px;font-weight:500;text-decoration:none;cursor:pointer;text-align:left}
+.akun-item svg{flex:none;width:17px;height:17px;fill:none;stroke:var(--ink-3);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.akun-item:hover,.akun-item:focus-visible{background:var(--panel-2);outline:none}
+.akun-item:focus-visible{box-shadow:inset 0 0 0 2px var(--rule)}
+.akun-item.keluar{color:var(--crit)}.akun-item.keluar svg{stroke:var(--crit)}
+.ik-matahari,:root[data-theme="dark"] .ik-bulan{display:none}:root[data-theme="dark"] .ik-matahari{display:block}
+.akun-garis{height:1px;background:var(--rule-2);margin:5px 4px}
 
 .isi{min-width:0;display:flex;flex-direction:column}
 .bilah-atas{position:sticky;top:0;z-index:30;display:none;align-items:center;gap:10px;padding:10px 14px;padding-top:max(10px,env(safe-area-inset-top,0px));background:var(--kop);color:#fff;overflow:hidden}
