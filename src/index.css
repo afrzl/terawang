@@ -1000,8 +1000,6 @@ main.full{flex:1;min-height:0;position:relative}
 .wa-fab:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 @media (max-width:640px){.wa-fab{width:52px;height:52px;right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px))}}
 @media print{.wa-fab{display:none}}
-.nilai-lbl.tiga{padding:1px 6px;font-size:10px;background:rgba(12,22,18,.6)}
-.nilai-lbl.tiga span{opacity:1;font-size:10px;font-weight:600}
 /* menu akun terbuka: bilah atas di atas panel filter (z 15) */
 .kop:has(.akun-pop){z-index:30}
 @media (max-width:899px){.kop .wrap{column-gap:12px}}
