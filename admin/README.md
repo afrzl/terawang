@@ -17,15 +17,19 @@
 Semua tindakan dicatat di `~/.local/share/terawang/admin/jejak.jsonl` (halaman Jejak admin), tanpa nilai secret.
 
 ## Peran
-| Peran | Dasbor | SPHP | Pipeline, unggah manual, jalankan job | Konfigurasi/secret, akun, jejak |
-|---|---|---|---|---|
-| guest (tanpa login) | ya | tidak | tidak | tidak |
-| perusahaan (hilirisasi) | ya | ya | tidak | tidak |
-| dinas | ya | ya | ya | tidak |
-| superadmin | ya | ya | ya | ya |
+Hak tiap peran dicentang per fitur di halaman **Akun & peran** (disimpan di `~/.config/terawang/peran.json`, berlaku langsung).
+Isi awal dari seeder `python -m terawang_admin.seeder` (dijalankan `deploy/deploy-admin.sh`):
 
-Hak per peran ada di `akun.HAK`. Dasbor membaca peran lewat `GET /admin/api/saya` (tanpa login = guest).
-Akun dikelola superadmin di halaman **Akun & peran**; akun pertama dibuat di server: `.venv-pipeline/bin/python -m terawang_admin.sandi NAMA superadmin`.
+| Peran | Dasbor | Harga, SPHP, estimasi | Pipeline, unggah manual, jalankan job, laporan | Konfigurasi/secret, WhatsApp, akun, jejak |
+|---|---|---|---|---|
+| tamu | peta, produksi, stok, arus, laporan pekan (data yang sudah terjadi) | tidak | tidak | tidak |
+| perusahaan | ya | ya | tidak | tidak |
+| dinas (Dinas / Bulog) | ya | ya | ya | tidak |
+| superadmin (Admin) | ya | ya | ya | ya |
+
+Dasbor wajib masuk dan membaca hak lewat `GET /admin/api/saya`. Akun demo (`tamu.demo`, `perusahaan.demo`, `dinas.demo`, `admin.demo`)
+dibuat seeder dan muncul sebagai tombol "Masuk sebagai" (`GET /admin/api/demo`; matikan dengan `TERAWANG_DEMO_LOGIN=0`).
+Akun lain dibuat di halaman Akun & peran, atau di server: `.venv-pipeline/bin/python -m terawang_admin.sandi NAMA superadmin`.
 
 ## Keamanan
 - Sandi di-hash scrypt di `~/.config/terawang/admin.json` (mode 600). Ganti sandi/peran atau nonaktifkan akun = sesi lama akun itu keluar.

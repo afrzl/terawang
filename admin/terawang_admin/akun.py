@@ -7,7 +7,7 @@ Format lama (satu akun: {"pengguna": "admin", "hash", "rahasia", "versi"}) dibac
 
 Peran (hak tiap peran bisa dicentang di halaman Akun & peran, disimpan di pengaturan.BERKAS_PERAN):
   tamu        dasbor tanpa estimasi/prakiraan: peta ringkasan, produksi, stok, arus beras, laporan pekanan
-  perusahaan  dasbor lengkap termasuk harga, SPHP, dan estimasi (hilirisasi)
+  perusahaan  dasbor lengkap termasuk harga, SPHP, dan estimasi
   dinas       dasbor lengkap + admin: pantau pipeline, unggah manual, jalankan job, validasi laporan (dinas/Bulog)
   superadmin  semua hak, selalu (tidak bisa dikurangi supaya tidak terkunci)
 Isi awal matriks dan akun demo: `python -m terawang_admin.seeder`.
@@ -34,7 +34,7 @@ JENDELA_GAGAL = 15 * 60
 NAMA_SAH = re.compile(r"^[a-z0-9][a-z0-9._-]{2,39}$")
 
 PERAN = ("tamu", "perusahaan", "dinas", "superadmin")
-LABEL_PERAN = {"tamu": "Tamu", "perusahaan": "Perusahaan (hilirisasi)", "dinas": "Dinas / Bulog", "superadmin": "Admin"}
+LABEL_PERAN = {"tamu": "Tamu", "perusahaan": "Perusahaan", "dinas": "Dinas / Bulog", "superadmin": "Admin"}
 PERAN_PENUH = "superadmin"  # selalu punya semua hak
 
 # Fitur yang bisa dicentang per peran: (id hak, label, grup)
