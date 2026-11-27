@@ -880,27 +880,31 @@ pemuat.laporan = async () => {
       kpi(String(j.MENUNGGU), "menunggu diperiksa", j.MENUNGGU ? "warn" : ""),
       kpi(String(j.VALID), "diterima"),
       kpi(String(j.DITOLAK), "ditolak"));
-    // ringkasan saran untuk laporan yang masih menunggu (saran saja; keputusan tetap di petugas)
+    // saran untuk laporan yang menunggu: 1-2 kalimat saja; cara hitungnya di tooltip. Keputusan tetap di petugas.
     const tunggu = d.laporan.filter((l) => l.status === "MENUNGGU");
     const rs = $("#ringkas-laporan");
     if (tunggu.length) {
-      const n = (s) => tunggu.filter((l) => l.saran === s).length;
-      const bagian = [["WAJAR", "wajar, aman diterima"], ["CEK", "perlu dicek dulu"], ["SALAH", "kemungkinan salah"]]
-        .filter(([s]) => n(s)).map(([s, k]) => el("span", { class: "st-" + NAMA_SARAN[s][1] + "-teks" }, el("b", {}, String(n(s))), " " + k));
-      // satu daftar: yang perlu perhatian dulu (kemungkinan salah, lalu perlu dicek) dengan alasannya; yang wajar cukup disebut
-      const urut = { SALAH: 0, CEK: 1, WAJAR: 2 };
-      const perhatian = tunggu.filter((l) => l.saran !== "WAJAR").sort((a, b) => urut[a.saran] - urut[b.saran]);
-      const wajar = tunggu.filter((l) => l.saran === "WAJAR");
-      const nama = (l) => `${l.pasar}${l.wilayah ? " (" + l.wilayah + ")" : ""}, ${(l.komoditas || "").replace(/^Beras\s*/i, "").toLowerCase()} Rp${fmtRp.format(l.harga)}`;
-      rs.replaceChildren(
-        el("div", { class: "judul" }, `Saran sistem untuk ${tunggu.length} laporan yang menunggu`),
-        el("div", { class: "jml" }, ...bagian),
-        ...(perhatian.length ? [el("ul", { class: "daftar-saran" }, ...perhatian.map((l) => {
-          const [t, k] = NAMA_SARAN[l.saran];
-          return el("li", {}, el("span", { class: "pill st-" + k }, t), " ", el("b", {}, nama(l)), el("span", { class: "ket" }, " · " + (l.alasan || []).join("; ")));
-        }))] : []),
-        ...(wajar.length ? [el("div", { class: "wajar" }, el("span", { class: "pill st-ok" }, "Wajar"), " ", wajar.map(nama).join(" · "))] : []),
-        el("div", { class: "ket" }, `Dibandingkan dengan panel harga wilayah, laporan warga lain 30 hari terakhir, HET, dan riwayat pelapor. Wajar bila selisih di bawah 10%, kemungkinan salah bila 25% atau lebih. Ini hanya saran, keputusan tetap di petugas.`));
+      const sebut = (xs) => {
+        const n = xs.map((l) => l.wilayah || l.pasar);
+        const unik = [...new Set(n)];
+        return unik.length <= 2 ? unik.join(" dan ") : `${unik.slice(0, 2).join(", ")} dan ${unik.length - 2} lainnya`;
+      };
+      const rentang = (xs) => {
+        const v = xs.map((l) => l.selisih).filter((x) => x != null);
+        if (!v.length) return "";
+        const lo = Math.round(Math.min(...v)), hi = Math.round(Math.max(...v));
+        const arah = lo >= 0 ? "di atas" : hi <= 0 ? "di bawah" : "berbeda dari";
+        const a = Math.abs(lo), b = Math.abs(hi);
+        return `, ${a === b ? a : Math.min(a, b) + "–" + Math.max(a, b)}% ${arah} panel`;
+      };
+      const kel = (s) => tunggu.filter((l) => l.saran === s);
+      const salah = kel("SALAH"), cek = kel("CEK"), wajar = kel("WAJAR");
+      const kalimat = [];
+      if (salah.length) kalimat.push(`${salah.length} laporan kemungkinan salah (${sebut(salah)}${rentang(salah)}).`);
+      if (cek.length) kalimat.push(`${cek.length} laporan perlu dicek (${sebut(cek)}${rentang(cek)}).`);
+      if (wajar.length) kalimat.push(salah.length || cek.length ? `Sisanya ${wajar.length} wajar dan aman diterima.` : `Semua ${wajar.length} laporan wajar dan aman diterima.`);
+      rs.title = "Dibandingkan dengan panel harga wilayah, laporan warga lain 30 hari terakhir, HET, dan riwayat pelapor. Wajar bila selisih di bawah 10%, kemungkinan salah bila 25% atau lebih. Hanya saran; keputusan tetap di petugas.";
+      rs.replaceChildren(el("span", { class: "label" }, "Saran"), el("span", {}, kalimat.join(" ")));
       rs.hidden = false;
     } else rs.hidden = true;
     const kosong = { MENUNGGU: "Tidak ada laporan yang menunggu.", VALID: "Belum ada laporan yang diterima.", DITOLAK: "Belum ada laporan yang ditolak.", "": "Belum ada laporan." }[statusLaporan];
