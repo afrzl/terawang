@@ -463,7 +463,7 @@ async def ubah_laporan(req: Request):
 # ---------- halaman ----------
 
 def _versi_aset() -> str:
-    return str(int(max((STATIC / n).stat().st_mtime for n in ("admin.css", "admin.js"))))
+    return str(int(max((STATIC / n).stat().st_mtime for n in ("admin.css", "admin.js", "tema.js"))))
 
 
 async def halaman(req: Request):
@@ -472,6 +472,7 @@ async def halaman(req: Request):
     html = (STATIC / "index.html").read_text(encoding="utf-8")
     html = html.replace("/admin/static/admin.css\"", f"/admin/static/admin.css?v={v}\"")
     html = html.replace("/admin/static/admin.js\"", f"/admin/static/admin.js?v={v}\"")
+    html = html.replace("/admin/static/tema.js\"", f"/admin/static/tema.js?v={v}\"")
     return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
 
 
