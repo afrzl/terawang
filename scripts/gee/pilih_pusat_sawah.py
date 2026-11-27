@@ -10,8 +10,8 @@ Di sini piksel dihitung "sawah irigasi" bila:
      paling tidak satu bulan. Genangan olah tanah/tanam adalah ciri khas sawah; tegalan tidak pernah tergenang,
   3. pernah hijau pekat: NDVI Sentinel-2 bulanan maksimum >= 0,6 (membuang tambak/rawa),
   4. bukan air permanen: JRC Global Surface Water occurrence < 30%.
-Titik pusat = puncak kepadatan sawah irigasi dalam radius 1 km (kotak contoh 3,6 x 2,1 km), dicari di daratan
-utama kabupaten saja.
+Titik pusat = kotak 3,6 x 2,1 km yang porsi sawah irigasinya paling besar (laut dan luar kabupaten dihitung 0),
+dicari di daratan utama kabupaten saja.
 
 Hasil menimpa kolom "pusat" di src/lib/gee_wilayah.json; titik lama disimpan di "pusat_lama" bila bergeser.
 Kolom lain (luas, fase, profil VH) tidak diubah.
@@ -28,7 +28,7 @@ import time
 import ee
 
 AMBANG_VV = -15.0
-RADIUS_M = 1000
+LEBAR_KM, TINGGI_KM = 3.6, 2.1
 SKALA = 100
 GAUL = {"Batu": ["Kota Batu"], "Jember": ["Jember", "Kota Jember"]}
 
@@ -68,7 +68,7 @@ def sawah_irigasi(aoi, acuan):
     return crop.And(vv_min.lt(AMBANG_VV)).And(ndvi_max.gte(0.6)).And(air).unmask(0).rename("sawah")
 
 
-def kotak(pusat, lebar_km=3.6, tinggi_km=2.1):
+def kotak(pusat, lebar_km=LEBAR_KM, tinggi_km=TINGGI_KM):
     dlat = (tinggi_km / 2) / 110.574
     dlon = (lebar_km / 2) / (111.320 * math.cos(math.radians(pusat[1])))
     return ee.Geometry.Rectangle([pusat[0] - dlon, pusat[1] - dlat, pusat[0] + dlon, pusat[1] + dlat], None, False)
@@ -76,8 +76,11 @@ def kotak(pusat, lebar_km=3.6, tinggi_km=2.1):
 
 def hitung(nama, acuan, pusat_lama):
     aoi = batas(nama)
-    sawah = sawah_irigasi(aoi, acuan).clip(aoi)
-    padat = sawah.focalMean(RADIUS_M, "circle", "meters").rename("padat")
+    # di luar batas (laut, kabupaten lain) dihitung 0, bukan dibuang; kalau dibuang, titik di pantai yang
+    # hanya punya sedikit daratan malah mendapat nilai tinggi dan kotaknya berisi laut.
+    sawah = sawah_irigasi(aoi, acuan).clip(aoi).unmask(0)
+    kernel = ee.Kernel.rectangle(LEBAR_KM * 500, TINGGI_KM * 500, "meters", True)
+    padat = sawah.reduceNeighborhood(ee.Reducer.mean(), kernel).rename("padat")
     top = padat.addBands(ee.Image.pixelLonLat()).reduceRegion(ee.Reducer.max(3), aoi, SKALA, maxPixels=1e10,
                                                                 tileScale=8)
     out = dict(top=top)
@@ -131,9 +134,9 @@ def main():
             lama = w.get("pusat")
             fr_lama = (r.get("lama") or {}).get("sawah")
             km = jarak_km(baru, lama) if lama else float("inf")
-            ket = (f"sawah irigasi di kotak lama {100 * (fr_lama or 0):.0f}%, puncak baru {100 * t['max']:.0f}%")
+            ket = (f"sawah irigasi di kotak lama {100 * (fr_lama or 0):.0f}%, kotak baru {100 * t['max']:.0f}%")
             if km >= a.min_geser:
-                w["pusat_lama"] = lama
+                w.setdefault("pusat_lama", lama)
                 w["pusat"] = baru
                 geser.append(w["n"])
                 print(f"  → {w['n']}: geser {km:.1f} km ke {baru} ({ket})", flush=True)
