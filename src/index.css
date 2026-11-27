@@ -1186,3 +1186,42 @@ main.full{flex:1;min-height:0;position:relative}
 @media (max-width:640px){.peta-sphp{height:340px}.peta-sphp .sphp-lbl{font-size:10px;padding:1px 4px}}
 .sphp-pop .maplibregl-popup-content{font:500 12.5px var(--f-body);color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:7px 10px;box-shadow:0 4px 14px rgba(0,0,0,.2)}
 .sphp-pop .maplibregl-popup-tip{display:none}
+
+/* ===== /linktree: halaman tautan publik, gaya deck pitching (Poppins, hijau-oranye, putih) ===== */
+/* html,body dikunci overflow:hidden di layar lebar (dasbor), jadi halaman ini menggulir sendiri */
+.ltree-gulir{height:100vh;height:100dvh;overflow-y:auto;background:#fff}
+.ltree{--lt-g:#2E6B4A;--lt-leaf:#73B24A;--lt-lg:#E3F0DA;--lt-hl:#C6E0B5;--lt-o:#C8612B;--lt-o2:#F2A66B;--lt-peach:#F9D7C4;--lt-navy:#163E66;--lt-ink:#2C2C2A;--lt-ink2:#5A5A55;
+  position:relative;min-height:100vh;min-height:100dvh;overflow:hidden;display:flex;justify-content:center;padding:48px 16px 150px;
+  background:#fff;color:var(--lt-ink);font-family:"Poppins",var(--f-body);color-scheme:light}
+.ltree-wajik{position:absolute;top:0;right:0;width:min(46vw,360px);height:auto;pointer-events:none}
+.ltree-busur{position:absolute;width:220px;height:220px;border-radius:50%;border:8px solid var(--lt-leaf);pointer-events:none;box-shadow:0 0 0 18px #fff,0 0 0 26px var(--lt-leaf)}
+.ltree-busur.kiri{left:-170px;top:58%}
+.ltree-busur.kanan{right:-170px;top:22%}
+.ltree-awan{position:absolute;left:0;right:0;bottom:-2px;width:100%;height:130px;pointer-events:none}
+.ltree-isi{position:relative;z-index:1;width:100%;max-width:520px;display:flex;flex-direction:column;align-items:center;gap:26px}
+.ltree-brand{display:flex;align-items:center;gap:12px}
+.ltree-logo{width:56px;height:56px;border-radius:16px;background:var(--lt-navy);display:grid;place-items:center}
+.ltree-logo svg{width:40px;height:40px}
+.ltree-brand b{font-size:32px;font-weight:800;letter-spacing:1.5px;color:var(--lt-navy)}
+.ltree-brand b span{color:var(--lt-leaf)}
+.ltree-pill{display:inline-block;padding:6px 18px;border-radius:999px;background:var(--lt-leaf);color:#fff;font-weight:600;font-size:13px;text-align:center}
+.ltree-judul{margin:0;text-align:center;font-size:44px;line-height:1.1;font-weight:800;letter-spacing:-.5px;color:var(--lt-ink)}
+.ltree-judul mark{background:linear-gradient(transparent 8%,var(--lt-hl) 8%,var(--lt-hl) 92%,transparent 92%);color:var(--lt-g);padding:0 8px}
+.ltree-moto{margin:-10px 0 0;text-align:center;font-size:14.5px;line-height:1.6;color:var(--lt-ink2);max-width:44ch;text-wrap:pretty}
+.ltree-bingkai{position:relative;width:100%;border:2px dashed var(--lt-o2);border-radius:22px;padding:30px 14px 14px;margin-top:8px}
+.ltree-bingkai>.ltree-label{position:absolute;top:-15px;left:22px;padding:4px 16px;border-radius:999px;background:var(--lt-o);color:#fff;font-weight:600;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase}
+.ltree-daftar{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.ltree-tautan{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:16px;text-decoration:none;color:var(--lt-ink);background:var(--lt-lg);border:1px solid transparent;transition:transform .15s,border-color .15s,box-shadow .15s}
+.ltree-tautan:hover{transform:translateY(-2px);border-color:var(--lt-leaf);box-shadow:0 8px 20px rgba(46,107,74,.14)}
+.ltree-tautan:focus-visible{outline:2px solid var(--lt-o);outline-offset:3px}
+.ltree-ikon{flex:none;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:var(--lt-g);color:#fff}
+.ltree-teks{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.ltree-teks b{font-size:16px;font-weight:700}
+.ltree-teks span{font-size:13px;line-height:1.4;color:var(--lt-ink2);overflow-wrap:anywhere}
+.ltree-panah{flex:none;color:var(--lt-g);transition:transform .15s}
+.ltree-tautan:hover .ltree-panah{transform:translate(2px,-2px)}
+.ltree-tim{border:0;padding:0;color:var(--lt-ink);display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;margin-top:4px}
+.ltree-tim b{font-size:14.5px;font-weight:700}
+.ltree-tim span{font-size:12.5px;color:var(--lt-ink2)}
+@media (max-width:480px){.ltree{padding-top:40px}.ltree-judul{font-size:34px}.ltree-brand b{font-size:26px}.ltree-logo{width:46px;height:46px;border-radius:13px}.ltree-logo svg{width:32px;height:32px}.ltree-busur{display:none}.ltree-wajik{width:52vw;opacity:.75}}
+@media (prefers-reduced-motion:reduce){.ltree-tautan,.ltree-panah{transition:none}.ltree-tautan:hover{transform:none}}

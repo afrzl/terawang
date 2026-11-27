@@ -15,6 +15,7 @@ import Sphp from "@/pages/Sphp"
 import Whatsapp from "@/pages/Whatsapp"
 import Cerita from "@/pages/Cerita"
 import Masuk from "@/pages/Masuk"
+import Linktree from "@/pages/Linktree"
 import { PerluHak, WajibMasuk } from "@/components/layout/Akses"
 
 export default function App() {
@@ -28,6 +29,8 @@ export default function App() {
               <PetaProvider>
             <Routes>
               <Route path="/masuk" element={<Masuk />} />
+              {/* halaman tautan publik, tanpa login */}
+              <Route path="/linktree" element={<Linktree />} />
               <Route element={<WajibMasuk />}>
               <Route element={<AppShell />}>
                 <Route path="/" element={<PerluHak hak="dasbor_ringkasan"><Ringkasan /></PerluHak>} />
