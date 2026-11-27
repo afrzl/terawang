@@ -4,6 +4,7 @@ import { LogIn, LogOut, Settings, UserRound } from "lucide-react"
 import { ThemeToggle } from "@/components/layout/ThemeToggle"
 import { navItems } from "@/components/layout/nav"
 import { FilterPanel } from "@/components/layout/FilterPanel"
+import { WaFab } from "@/components/layout/WaFab"
 import { useFilter } from "@/lib/filter"
 import { useSelection } from "@/lib/selection"
 import { tautanMasuk, useSesi } from "@/lib/sesi"
@@ -116,6 +117,7 @@ export function AppShell() {
           )}
         </div>
       </div>
+      <WaFab />
     </div>
   )
 }
