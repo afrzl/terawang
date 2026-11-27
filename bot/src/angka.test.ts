@@ -16,3 +16,8 @@ test("angka jawaban harus dari data", () => {
 test("jumlah kab/kota dan nomor urut tidak dianggap asing", () => {
   assert.deepEqual(angkaTakCocok("Urutan 38 kab/kota: 1. Kota Madiun 0,6 bulan", [{ daftar: [{ nilai: 0.6 }] }], ""), [])
 })
+
+test("desimal 3 digit tidak dianggap ribuan", () => {
+  assert.deepEqual(angkaTakCocok("Konsumsi 1,413 kg per kapita per minggu (sekitar 6,1 kg/bulan).", [{ kg_per_kapita: 1.413, kg_per_kapita_per_bulan: 6.1 }], ""), [])
+  assert.deepEqual(angkaTakCocok("Harga Rp12.550/kg.", [{ harga: 12550 }], ""), [])
+})
