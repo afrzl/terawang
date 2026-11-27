@@ -1,4 +1,5 @@
 /** Jawaban baku untuk pertanyaan istilah ("apa itu SPHP?"), tanpa OpenAI. */
+import { akses } from "./hak.ts"
 import { levenshtein, normal } from "./wilayah.ts"
 
 const ISTILAH: { pola: RegExp; teks: string }[] = [
@@ -63,15 +64,16 @@ function mirip(k: string, himpunan: Set<string>): boolean {
 export const TERIMA_KASIH = "Sama-sama! Kalau mau cek lagi, ketik saja nama wilayahnya, misalnya *HARGA Kediri*."
 export const POLA_TERIMA_KASIH = /(ma?ka?si|trima|terima ?kasi|thx|thank|tq\b|nuwun|suwun|tengkyu)/
 
-export const CONTOH = "Contoh yang bisa kamu tanyakan:\n• *HARGA Malang*\n• *STOK Jember*\n• _beras di Surabaya naik nggak bulan depan?_\n\nKetik *BANTUAN* untuk semua perintah."
+export const contoh = () => `Contoh yang bisa kamu tanyakan:\n• *HARGA Malang*\n• *STOK Jember*\n• ${akses().estimasi ? "_beras di Surabaya naik nggak bulan depan?_" : "_harga beras di Surabaya sebulan terakhir gimana?_"}\n\nKetik *BANTUAN* untuk semua perintah.`
+const layanan = () => (akses().sphp ? "harga, stok, dan beras murah/SPHP" : "harga, stok, dan produksi")
 
 /** Balasan untuk pesan yang isinya hanya salam ("helo") atau ucapan terima kasih. */
 export function jawabBasaBasi(teks: string): string | null {
   const kata = normal(teks).split(" ").filter(Boolean).map(ringkas)
   if (!kata.length || kata.length > 6) return null
   if (kata.every((k) => mirip(k, KATA_SALAM))) {
-    if (kata.some((k) => /^(as+a?lam|salam|ass$|askum|aslm)/.test(k))) return `Waalaikumsalam 🙏 Aku bot *TERAWANG*, siap bantu info beras di Jawa Timur: harga, stok, dan beras murah/SPHP.\n\n${CONTOH}`
-    return `Halo! 👋 Aku bot *TERAWANG*, siap bantu info beras di Jawa Timur: harga, stok, dan beras murah/SPHP.\n\n${CONTOH}`
+    if (kata.some((k) => /^(as+a?lam|salam|ass$|askum|aslm)/.test(k))) return `Waalaikumsalam 🙏 Aku bot *TERAWANG*, siap bantu info beras di Jawa Timur: ${layanan()}.\n\n${contoh()}`
+    return `Halo! 👋 Aku bot *TERAWANG*, siap bantu info beras di Jawa Timur: ${layanan()}.\n\n${contoh()}`
   }
   if (kata.every((k) => mirip(k, KATA_TERIMA_KASIH))) {
     return TERIMA_KASIH

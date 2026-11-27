@@ -3,6 +3,7 @@
  * Semua angka diambil lewat function calling ke data.ts. Nomor WA tidak pernah dikirim ke OpenAI.
  */
 import { config } from "./config.ts"
+import { akses, bulanKini } from "./hak.ts"
 import { daftarPeringatan, infoBerasMurah, infoHarga, infoStok, ringkasanJatim, peringkatWilayah, riwayatHarga, infoProduksi, jarakWilayah, peringkatProduksi, infoBulog, konsumsiBeras, type UkuranPeringkat } from "./data.ts"
 import { angkaTakCocok } from "./angka.ts"
 import { kueriData, skemaData } from "./kueri.ts"
@@ -137,13 +138,22 @@ const PROMPT_STATIS = [
   "13. Gabah (GKG/GKP) berbeda dengan beras: jawab sesuai yang ditanya dan sebut jenisnya. Untuk produksi, jarak, dan Bulog tidak ada perintah baku; jangan menyarankan perintah untuk itu. LANGGANAN hanya untuk satu kab/kota, bukan Jawa Timur.",
 ].join("\n")
 
+/** Batasan hak bot (hak Tamu di admin), ditaruh di prompt dinamis supaya prompt statis tetap kena cache. */
+function promptHak(): string {
+  const { estimasi, sphp } = akses()
+  const xs: string[] = []
+  if (!estimasi) xs.push("Pengguna bot ini hanya boleh melihat data yang sudah terjadi. JANGAN memberi prakiraan, prediksi, proyeksi, status harga, atau peringatan dini, dan jangan menyarankan perintah PERINGATAN/LANGGANAN. Bila ditanya hal ke depan, tolak sopan dalam satu kalimat bahwa prakiraan belum dibuka untuk umum di bot (ada di dasbor terawang.tech untuk akun berhak), lalu tawarkan data terakhir yang sudah terjadi.")
+  if (!sphp) xs.push("Rekomendasi SPHP/beras murah tidak tersedia untuk pengguna bot ini; jangan menyarankan perintah SPHP. Boleh menjelaskan arti istilah SPHP saja.")
+  return xs.length ? " " + xs.join(" ") : ""
+}
+
 function promptDinamis(wilayahIngat: Wilayah | null, topik?: string): string {
   const hari = new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", weekday: "long", day: "numeric", month: "long", year: "numeric" })
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }))
   const th = now.getFullYear()
   const bln = now.toLocaleDateString("id-ID", { month: "long" })
   return `Hari ini ${hari}. Tahun ini = ${th}, tahun lalu = ${th - 1}, bulan ini = ${bln} ${th}. Kalau data periode yang diminta tidak ada, tawarkan data periode terakhir yang tersedia dan sebut periodenya.` + (wilayahIngat ? ` Wilayah terakhir pengguna: ${labelWilayah(wilayahIngat)} (pakai bila tidak menyebut wilayah).` : "") +
-    (topik && wilayahIngat ? ` Pengguna sedang bertanya lanjutan soal ${topik} beras di ${labelWilayah(wilayahIngat)}; pertanyaan pendek tanpa wilayah/topik merujuk ke situ.` : "")
+    (topik && wilayahIngat ? ` Pengguna sedang bertanya lanjutan soal ${topik} beras di ${labelWilayah(wilayahIngat)}; pertanyaan pendek tanpa wilayah/topik merujuk ke situ.` : "") + promptHak()
 }
 
 const TENTANG = {
@@ -156,7 +166,40 @@ const TENTANG = {
   perintah: ["HARGA <wilayah>", "STOK <wilayah>", "SPHP <wilayah>", "PERINGATAN", "LANGGANAN <wilayah>", "BERHENTI", "LAPOR", "GRAFIK <wilayah>"],
 }
 
+// ---- hak bot = hak Tamu di admin
+/** Tabel yang tidak boleh dibaca lewat kueri_data bila hak terkait tidak ada. */
+const TABEL_ESTIMASI = /\b(prediksi_harga|prediksi_produksi|estimasi_stok|status_wilayah|peringatan)\b/i
+const TABEL_SPHP = /\brekomendasi_sphp\b/i
+function alatAktif() {
+  const { estimasi, sphp } = akses()
+  return ALAT.filter((a) => (sphp || a.function.name !== "beras_murah") && (estimasi || !["daftar_peringatan", "ringkasan_jatim"].includes(a.function.name)))
+}
+function tabelTerlarang(teks: string): boolean {
+  const { estimasi, sphp } = akses()
+  return (!estimasi && TABEL_ESTIMASI.test(teks)) || (!sphp && TABEL_SPHP.test(teks))
+}
+/** Buang bagian prakiraan/proyeksi dari hasil fungsi bila tidak berhak estimasi. */
+function saring(nama: string, hasil: unknown): unknown {
+  if (akses().estimasi || !hasil || typeof hasil !== "object") return hasil
+  const h = { ...(hasil as Record<string, unknown>) }
+  if (nama === "harga_wilayah") { delete h.prediksi; delete h.status_harga }
+  if (nama === "stok_wilayah") { delete h.bulan_defisit_pertama; delete h.proyeksi }
+  if (nama === "produksi_wilayah") {
+    const batas = bulanKini() - 1
+    const bulanan = ((h.estimasi_model_bulanan as { tahun: number; bulan: number }[]) ?? []).filter((m) => m.tahun * 12 + m.bulan <= batas)
+    h.estimasi_model_bulanan = bulanan
+    delete h.estimasi_model_total_per_tahun
+  }
+  return h
+}
+
 async function jalankanAlat(nama: string, argumen: string): Promise<{ hasil: unknown; wilayahId?: number }> {
+  if (!alatAktif().some((a) => a.function.name === nama)) return { hasil: { galat: "fitur ini tidak tersedia untuk pengguna umum" } }
+  const r = await jalankanAlatInti(nama, argumen)
+  return { ...r, hasil: saring(nama, r.hasil) }
+}
+
+async function jalankanAlatInti(nama: string, argumen: string): Promise<{ hasil: unknown; wilayahId?: number }> {
   let a: { wilayah?: string; [k: string]: unknown } = {}
   try {
     a = JSON.parse(argumen || "{}")
@@ -164,7 +207,10 @@ async function jalankanAlat(nama: string, argumen: string): Promise<{ hasil: unk
     return { hasil: { galat: "argumen tidak valid" } }
   }
   if (nama === "ringkasan_jatim") return { hasil: await ringkasanJatim() }
-  if (nama === "skema_data") return { hasil: await skemaData() }
+  if (nama === "skema_data") {
+    const sk = (await skemaData()) as { tabel: { tabel: string; kolom: string }[]; catatan: string }
+    return { hasil: { ...sk, tabel: sk.tabel.filter((t) => !tabelTerlarang(t.tabel)) } }
+  }
   if (nama === "bulog_jatim") return { hasil: await infoBulog() }
   if (nama === "peringkat_produksi") {
     const ukuran = (["luas_panen_ha", "produksi_gkg_ton", "produksi_beras_ton"] as const).find((x) => x === a.ukuran) ?? "produksi_gkg_ton"
@@ -172,6 +218,7 @@ async function jalankanAlat(nama: string, argumen: string): Promise<{ hasil: unk
   }
   if (nama === "kueri_data") {
     const sql = String(a.sql ?? "")
+    if (tabelTerlarang(sql)) return { hasil: { galat: "tabel ini tidak tersedia untuk pengguna umum; jawab hanya dengan data yang sudah terjadi" } }
     const h = await kueriData(sql)
     console.log(`[llm] kueri_data ${"galat" in h ? `galat=${h.galat}` : `baris=${h.baris.length}`} sql=${sql.replace(/\s+/g, " ").slice(0, 300)}`)
     return { hasil: h }
@@ -181,7 +228,10 @@ async function jalankanAlat(nama: string, argumen: string): Promise<{ hasil: unk
     const ukuran = (["harga_medium", "harga_premium", "stok_cakupan"] as const).find((x) => x === p.ukuran) ?? "harga_medium"
     return { hasil: { ukuran, urutan: p.urutan === "tertinggi" ? "tertinggi" : "terendah", daftar: await peringkatWilayah(ukuran, p.urutan === "tertinggi" ? "tertinggi" : "terendah", p.jumlah ?? 5) } }
   }
-  if (nama === "tentang_terawang") return { hasil: TENTANG }
+  if (nama === "tentang_terawang") {
+    const { estimasi, sphp } = akses()
+    return { hasil: { ...TENTANG, perintah: TENTANG.perintah.filter((p) => (sphp || !p.startsWith("SPHP")) && (estimasi || !/^(PERINGATAN|LANGGANAN|BERHENTI)/.test(p))) } }
+  }
   const daftar = await semuaWilayah()
   if (nama === "bandingkan_wilayah") {
     const nama2 = (Array.isArray(a.wilayah) ? (a.wilayah as unknown[]) : []).map(String).slice(0, 6)
@@ -190,7 +240,9 @@ async function jalankanAlat(nama: string, argumen: string): Promise<{ hasil: unk
       if (c.jenis === "ambigu") return { wilayah: x, ambigu: true, pilihan: c.pilihan.map(labelWilayah) }
       if (c.jenis === "tidak_ada") return { wilayah: x, galat: "tidak ditemukan di Jawa Timur" }
       const [h, s] = await Promise.all([infoHarga(c.wilayah), infoStok(c.wilayah)])
-      return { wilayah: h.wilayah, tanggal_data: h.tanggal_data, medium_rp_kg: h.medium_rp_kg, premium_rp_kg: h.premium_rp_kg, status_harga: h.status_harga,
+      const dasar = { wilayah: h.wilayah, tanggal_data: h.tanggal_data, medium_rp_kg: h.medium_rp_kg, premium_rp_kg: h.premium_rp_kg }
+      if (!akses().estimasi) return { ...dasar, stok_bulan_lengkap_terakhir: s.bulan_ini }
+      return { ...dasar, status_harga: h.status_harga,
         prediksi: h.prediksi.map(({ horizon_hari, harga_rp_kg }) => ({ horizon_hari, harga_rp_kg })), stok_bulan_ini: s.bulan_ini, bulan_defisit_pertama: s.bulan_defisit_pertama }
     }))
     return { hasil }
@@ -231,7 +283,7 @@ async function panggilOpenAI(pesan: Pesan[], wajibAlat = false, tanpaAlat = fals
   const body: Record<string, unknown> = {
     model: config.openai.model,
     messages: pesan,
-    tools: ALAT,
+    tools: alatAktif(),
     max_completion_tokens: config.openai.maksKeluaran,
   }
   // pesan yang menyebut wilayah: model wajib mengambil data dulu, jadi angka selalu dari DB
