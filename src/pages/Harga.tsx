@@ -229,6 +229,15 @@ function PanelPeta({ jenis }: { jenis: Komoditas[] }) {
   )
 }
 
+/** Rata-rata Jawa Timur (bobot penduduk seluruh kab/kota): riwayat pekanan dan prakiraan 4 pekan, untuk garis pembanding. */
+function seriJatim(kom: Komoditas) {
+  const popAll = sum(WILAYAH, (q) => q.pop) || 1
+  const rata = (f: (q: (typeof WILAYAH)[number]) => number) => sum(WILAYAH, (q) => f(q) * q.pop) / popAll
+  const harga = histDates.map((_, i) => rata((q) => seriHarga(q, kom)[i]))
+  const fcM = fcDates.map((_, h) => rata((q) => fcHarga(q, kom)[h].m))
+  return { harga, fcM }
+}
+
 function PricePanel({ jenis }: { jenis: Komoditas[] }) {
   const { pisah } = usePerWilayah()
   return pisah ? <PricePanelWil jenis={jenis} /> : <PricePanelGab jenis={jenis} />
@@ -246,8 +255,9 @@ function PricePanelWil({ jenis }: { jenis: Komoditas[] }) {
     const fc = fcHarga(k, kom)
     return { k, harga, fcM: fc.map((f) => f.m), fcLo: fc.map((f) => f.lo), fcHi: fc.map((f) => f.hi), pNow: harga[HIST - 1] }
   })
-  const lo = Math.min(het, ...data.flatMap((d) => [...d.harga, ...d.fcLo])) - 150
-  const hi = Math.max(het, ...data.flatMap((d) => d.fcHi)) + 120
+  const jt = seriJatim(kom)
+  const lo = Math.min(het, ...jt.harga, ...data.flatMap((d) => [...d.harga, ...d.fcLo])) - 150
+  const hi = Math.max(het, ...jt.fcM, ...data.flatMap((d) => d.fcHi)) + 120
   return (
     <Panel
       title={`Harga beras ${kom} per wilayah`}
@@ -275,10 +285,14 @@ function PricePanelWil({ jenis }: { jenis: Komoditas[] }) {
           sebarLabel
           bands={data.map((d) => ({ lo: [d.pNow].concat(d.fcLo), hi: [d.pNow].concat(d.fcHi), off: HIST - 1, color: warna(d.k), op: 0.08, nama: `${d.k.n} P10–P90` }))}
           refs={[{ v: het, label: `HET ${nf(het)}`, color: "var(--ink-2)" }]}
-          series={data.flatMap((d) => [
-            { vals: d.harga, color: warna(d.k), w: 2, nama: d.k.n },
-            { vals: [d.pNow].concat(d.fcM), off: HIST - 1, color: warna(d.k), dash: "5 4", w: 2, label: short(d.k.n), nama: d.k.n },
-          ])}
+          series={[
+            { vals: jt.harga, color: "var(--ink-3)", w: 1.4, nama: "Jawa Timur" },
+            { vals: [jt.harga[HIST - 1]].concat(jt.fcM), off: HIST - 1, color: "var(--ink-3)", dash: "3 4", w: 1.4, label: "Jatim", nama: "Jawa Timur" },
+            ...data.flatMap((d) => [
+              { vals: d.harga, color: warna(d.k), w: 2, nama: d.k.n },
+              { vals: [d.pNow].concat(d.fcM), off: HIST - 1, color: warna(d.k), dash: "5 4", w: 2, label: short(d.k.n), nama: d.k.n },
+            ]),
+          ]}
           tip={(i) => (
             <>
               <b>
@@ -300,10 +314,22 @@ function PricePanelWil({ jenis }: { jenis: Komoditas[] }) {
                     )}
                   </span>
                 ))}
+              <br />
+              <span className="sw-dot" style={{ background: "var(--ink-3)" }} />
+              Jawa Timur <span className="m">{rp(i >= HIST ? jt.fcM[i - HIST] : jt.harga[i])}</span>
             </>
           )}
         />
-        <LegendaWilayah wil={wil} warna={warna} extra={<span>garis putus = prakiraan 4 pekan, pita = P10–P90</span>} />
+        <LegendaWilayah
+          wil={wil}
+          warna={warna}
+          extra={
+            <span>
+              <span className="sw" style={{ background: "var(--ink-3)" }} />
+              Jawa Timur · garis putus = prakiraan 4 pekan, pita = P10–P90
+            </span>
+          }
+        />
       </div>
     </Panel>
   )
@@ -318,7 +344,6 @@ function PricePanelGab({ jenis }: { jenis: Komoditas[] }) {
   // Premium: seri K3a premium dari API; hanya bila API mati selisih terhadap medium dianggap tetap (simulasi).
   const popT = sum(wil, (q) => q.pop) || 1
   const rata = (f: (q: (typeof wil)[number]) => number) => sum(wil, (q) => f(q) * q.pop) / popT
-  const popAll = sum(WILAYAH, (q) => q.pop)
   const sebagian = wil.length < WILAYAH.length
   const data = jenis.map((kom) => {
     const het = kom === "premium" ? HET_PREMIUM : HET
@@ -326,14 +351,17 @@ function PricePanelGab({ jenis }: { jenis: Komoditas[] }) {
     const fcM = fcDates.map((_, h) => rata((q) => fcHarga(q, kom)[h].m))
     const fcLo = fcDates.map((_, h) => rata((q) => fcHarga(q, kom)[h].lo))
     const fcHi = fcDates.map((_, h) => rata((q) => fcHarga(q, kom)[h].hi))
-    const prov = histDates.map((_, i) => sum(WILAYAH, (q) => seriHarga(q, kom)[i] * q.pop) / popAll)
+    const jt = seriJatim(kom)
+    const prov = jt.harga
+    const provFc = jt.fcM
     const status = statusDari(fcM[3], fcHi[3], het, 4, kom)
     // peluang melewati HET: rata-rata (menurut penduduk) peluang per kab dari K3a
     const peluang = fcDates.map((_, h) => rata((q) => { const f = fcHarga(q, kom)[h]; return peluangHet(q.n, kom, h + 1, f.m, f.hi, het) }))
-    return { kom, het, siaga: Math.round(het * SIAGA_KALI), harga, fcM, fcLo, fcHi, prov, status, peluang, pNow: harga[HIST - 1] }
+    return { kom, het, siaga: Math.round(het * SIAGA_KALI), harga, fcM, fcLo, fcHi, prov, provFc, status, peluang, pNow: harga[HIST - 1] }
   })
-  const lo = Math.min(...data.flatMap((d) => [...d.harga, ...d.fcLo, d.het])) - 150
-  const hi = Math.max(...data.flatMap((d) => [...d.fcHi, ...(ganda ? [d.het] : [d.siaga])])) + 120
+  const pembanding = (d: (typeof data)[number]) => (sebagian ? [...d.prov, ...d.provFc] : [])
+  const lo = Math.min(...data.flatMap((d) => [...d.harga, ...d.fcLo, d.het, ...pembanding(d)])) - 150
+  const hi = Math.max(...data.flatMap((d) => [...d.fcHi, ...(ganda ? [d.het] : [d.siaga]), ...pembanding(d)])) + 120
   // Label ujung garis dan label HET dijauhkan satu sama lain bila nilainya berdekatan.
   const dekat = (d: (typeof data)[number], v: number) => Math.abs(d.fcM[3] - v) < 120
   const warna = (d: (typeof data)[number]) => (ganda ? WARNA_JENIS[d.kom] : STATUS[d.status].c)
@@ -366,7 +394,21 @@ function PricePanelGab({ jenis }: { jenis: Komoditas[] }) {
             ...(ganda ? [] : [{ v: d.siaga, label: "HET +5%", color: "var(--crit)", dy: dekat(d, d.siaga) ? (d.fcM[3] >= d.siaga ? 16 : -7) : 4 }]),
           ])}
           series={data.flatMap((d) => [
-            ...(sebagian && !ganda ? [{ vals: d.prov, color: "var(--ink-3)", w: 1.5, label: "rata-rata Jatim", ly: d.pNow > d.prov[HIST - 1] ? 14 : -6 }] : []),
+            ...(sebagian
+              ? [
+                  { vals: d.prov, color: "var(--ink-3)", w: 1.4, nama: `Jawa Timur ${d.kom}` },
+                  {
+                    vals: [d.prov[HIST - 1]].concat(d.provFc),
+                    off: HIST - 1,
+                    color: "var(--ink-3)",
+                    dash: "3 4",
+                    w: 1.4,
+                    label: ganda ? `Jatim ${d.kom}` : "Jatim",
+                    nama: `Jawa Timur ${d.kom}`,
+                    ly: d.fcM[3] > d.provFc[3] ? 14 : -6,
+                  },
+                ]
+              : []),
             { vals: d.harga, color: garisHarga(d), w: 2.2, nama: `harga ${d.kom}` },
             {
               vals: [d.pNow].concat(d.fcM),
@@ -395,11 +437,16 @@ function PricePanelGab({ jenis }: { jenis: Komoditas[] }) {
                         {rp(d.fcLo[i - HIST])}–{rp(d.fcHi[i - HIST])}
                       </span>
                       , peluang lewat HET <span className="m">{nf(d.peluang[i - HIST] * 100, 0)}%</span>
+                      {sebagian && (
+                        <>
+                          , Jatim <span className="m">{rp(d.provFc[i - HIST])}</span>
+                        </>
+                      )}
                     </>
                   ) : (
                     <>
                       <span className="m">{rp(d.harga[i])}</span>
-                      {sebagian && !ganda && (
+                      {sebagian && (
                         <>
                           , rata-rata Jatim <span className="m">{rp(d.prov[i])}</span>
                         </>
