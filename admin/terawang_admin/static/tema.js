@@ -11,7 +11,8 @@
     document.documentElement.dataset.theme = t;
     var tombol = document.getElementById("tombol-tema");
     if (tombol) {
-      tombol.textContent = t === "dark" ? "Mode terang" : "Mode gelap";
+      var lbl = tombol.querySelector(".lbl") || tombol;
+      lbl.textContent = t === "dark" ? "Mode terang" : "Mode gelap";
       tombol.setAttribute("aria-pressed", t === "dark" ? "true" : "false");
     }
   }

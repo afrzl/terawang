@@ -188,6 +188,7 @@ async function masukBerhasil(d, baruMasuk = false) {
   $("#layar-masuk").hidden = true;
   $("#nama-pengguna").textContent = d.pengguna;
   $("#peran-pengguna").textContent = d.labelPeran;
+  $("#inisial-pengguna").textContent = (d.pengguna || "?").trim().charAt(0);
   document.querySelectorAll("[data-hak]").forEach((e) => (e.hidden = !punya(e.dataset.hak)));
   if (!Object.values(HAK_HAL).some(punya)) {
     $("#nama-tanpa-akses").textContent = d.pengguna;
@@ -995,6 +996,31 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!job || !confirm(`Jalankan ${job} sekarang?`)) return;
     await sibuk(e.currentTarget, async () => { toast((await api("/jalankan", { method: "POST", json: { job } })).pesan); setTimeout(() => muatPipeline(true), 4000); });
   });
+  // Menu akun di bawah menu samping: panah atas/bawah, Home/End, Esc menutup, klik di luar menutup.
+  const akun = $("#akun"), tombolAkun = $("#tombol-akun"), menuAkun = $("#menu-akun");
+  const itemAkun = () => [...menuAkun.querySelectorAll('[role="menuitem"]')];
+  const menuAkunBuka = (buka, fokus) => {
+    menuAkun.hidden = !buka;
+    tombolAkun.setAttribute("aria-expanded", String(buka));
+    if (buka) { const xs = itemAkun(); (fokus === "akhir" ? xs[xs.length - 1] : xs[0]).focus(); }
+  };
+  tombolAkun.addEventListener("click", () => menuAkunBuka(menuAkun.hidden));
+  tombolAkun.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); menuAkunBuka(true, e.key === "ArrowDown" ? "akhir" : "awal"); }
+  });
+  menuAkun.addEventListener("keydown", (e) => {
+    const xs = itemAkun(), i = xs.indexOf(document.activeElement);
+    const ke = (n) => { e.preventDefault(); xs[(n + xs.length) % xs.length].focus(); };
+    if (e.key === "ArrowDown") ke(i + 1);
+    else if (e.key === "ArrowUp") ke(i - 1);
+    else if (e.key === "Home") ke(0);
+    else if (e.key === "End") ke(xs.length - 1);
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); menuAkunBuka(false); tombolAkun.focus(); }
+    else if (e.key === "Tab") menuAkunBuka(false);
+  });
+  // Ganti tema membiarkan menu terbuka supaya labelnya terlihat berubah; item lain menutup menu.
+  menuAkun.addEventListener("click", (e) => { const it = e.target.closest('[role="menuitem"]'); if (it && it.id !== "tombol-tema") menuAkunBuka(false); });
+  document.addEventListener("pointerdown", (e) => { if (!menuAkun.hidden && !akun.contains(e.target)) menuAkunBuka(false); });
   $("#tombol-keluar").addEventListener("click", async () => { try { await api("/keluar", { method: "POST" }); } catch { /* abaikan */ } tampilMasuk(); });
   $("#form-masuk").addEventListener("submit", async (e) => {
     e.preventDefault();
