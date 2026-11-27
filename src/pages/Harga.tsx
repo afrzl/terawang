@@ -9,7 +9,7 @@ import { DataTable, type Column } from "@/components/ui/DataTable"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
 import { HET, HET_PREMIUM, HIST, SIAGA_KALI, STATUS, WILAYAH, fcDates, fcHarga, flowsBulan, histDates, pNowHarga, peluangHet, seriHarga, statusDari, type Flow } from "@/lib/data"
-import { dfmt, nf, rp, sum } from "@/lib/format"
+import { NOW, dfmt, nf, rp, sum } from "@/lib/format"
 import { bulanLabel, useFilter, useWilayah } from "@/lib/filter"
 import { covBulan, statusHargaAt, type Komoditas } from "@/lib/petaLayers"
 import { useSesi } from "@/lib/sesi"
@@ -251,6 +251,7 @@ function PricePanelWil({ jenis }: { jenis: Komoditas[] }) {
   return (
     <Panel
       title={`Harga beras ${kom} per wilayah`}
+      note="pekanan · prakiraan 4 pekan"
       tafsir="Rupiah per kg, rata-rata pekanan; titik berlabel prakiraan = prakiraan model K3a; HET = harga eceran tertinggi"
       actions={
         jenis.length > 1 ? (
@@ -271,6 +272,8 @@ function PricePanelWil({ jenis }: { jenis: Komoditas[] }) {
           yFmt={(v) => nf(v)}
           W={760}
           H={420}
+          xDomain={SUMBU_HARGA}
+          xNow={NOW}
           splitAt={HIST - 1}
           sebarLabel
           bands={data.map((d) => ({ lo: [d.pNow].concat(d.fcLo), hi: [d.pNow].concat(d.fcHi), off: HIST - 1, color: warna(d.k), op: 0.08, nama: `${d.k.n} P10–P90` }))}
@@ -343,6 +346,7 @@ function PricePanelGab({ jenis }: { jenis: Komoditas[] }) {
   return (
     <Panel
       title={ganda ? "Harga beras" : `Harga beras ${d0.kom}`}
+      note="pekanan · prakiraan 4 pekan"
       tafsir={`Rupiah per kg, rata-rata pekanan ${wil.length === WILAYAH.length ? "Jawa Timur" : wil.length === 1 ? wil[0].n : `${wil.length} wilayah`} (bobot penduduk); titik berlabel prakiraan = prakiraan model K3a`}
     >
       <div className="pb chart">
@@ -352,6 +356,8 @@ function PricePanelGab({ jenis }: { jenis: Komoditas[] }) {
           yFmt={(v) => nf(v)}
           W={760}
           H={420}
+          xDomain={SUMBU_HARGA}
+          xNow={NOW}
           splitAt={HIST - 1}
           bands={data.map((d) => ({
             lo: [d.pNow].concat(d.fcLo),
@@ -421,7 +427,17 @@ function PricePanelGab({ jenis }: { jenis: Komoditas[] }) {
 }
 
 const BLN_GKP = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
-const tglBulan = (b: string) => new Date(Number(b.slice(0, 4)), Number(b.slice(5, 7)) - 1, 1)
+/** Titik bulanan diletakkan di tengah bulan, karena nilainya rata-rata satu bulan penuh. */
+const tglBulan = (b: string) => new Date(Number(b.slice(0, 4)), Number(b.slice(5, 7)) - 1, 15)
+
+/** Sumbu waktu bersama grafik harga beras (pekanan) dan GKP (bulanan): dari awal bulan pekan pertama riwayat beras
+ *  sampai ujung prakiraan terjauh (GKP 3 bulan, beras 4 pekan), supaya bulan yang sama tepat sejajar di kedua grafik. */
+const SUMBU_AWAL = new Date(histDates[0].getFullYear(), histDates[0].getMonth(), 1)
+const SUMBU_HARGA: [Date, Date] = [
+  SUMBU_AWAL,
+  new Date(Math.max(+fcDates[fcDates.length - 1], ...(GKP?.prakiraan ?? []).map((f) => +tglBulan(f.bulan_target)))),
+]
+const dalamSumbu = (b: string) => +tglBulan(b) >= +SUMBU_AWAL
 const labelBulan = (d: Date) => `${BLN_GKP[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`
 const SUMBER_LUAS: Record<string, string> = {
   bps_potensi_terbaru: "potensi BPS",
@@ -460,20 +476,20 @@ function PanelGkpWil() {
   const n = bulan.length
   const target = g.prakiraan.map((f) => f.bulan_target)
   const dates = bulan.concat(target).map(tglBulan)
+  // Grafik dimulai di awal sumbu bersama dengan grafik harga beras.
+  const awal = Math.max(0, Math.min(n - 1, bulan.findIndex(dalamSumbu) < 0 ? n - 1 : bulan.findIndex(dalamSumbu)))
   const data = kabs.map(({ k, x }) => {
     const peta = new Map(x.riwayat.map((r) => [r.bulan, r.harga]))
     const harga = bulan.map((b) => peta.get(b) ?? null)
     return { k, x, harga, pNow: harga[n - 1], fc: x.prakiraan }
   })
   const semua = [
-    ...data.flatMap((d) => [...(d.harga.filter((v) => v != null) as number[]), ...d.fc.map((f) => f.p10), ...d.fc.map((f) => f.p90)]),
-    ...g.riwayat.slice(-24).map((r) => r.harga),
+    ...data.flatMap((d) => [...(d.harga.slice(awal).filter((v) => v != null) as number[]), ...d.fc.map((f) => f.p10), ...d.fc.map((f) => f.p90)]),
+    ...g.riwayat.slice(awal).map((r) => r.harga),
     g.hpp_sekarang,
   ]
   const lo = Math.min(...semua) - 150
   const hi = Math.max(...semua) + 150
-  // Grafik dimulai 24 bulan sebelum acuan (riwayat kab dari Bapanas sejak 2024).
-  const awal = Math.max(0, n - 24)
   const potong = <T,>(a: T[]) => a.slice(awal)
   const nn = n - awal
   const mape = (h: number) => g.uji_mundur_kab?.[`h${h}`]?.mape
@@ -494,11 +510,13 @@ function PanelGkpWil() {
   const ujungJatim = g.prakiraan[g.prakiraan.length - 1]
   return (
     <div className="grid-2">
-      <Panel title="Harga GKP petani per wilayah, bulanan" tafsir="Rupiah per kg gabah kering panen di tingkat petani, per kab/kota terpilih dan Jawa Timur; titik berlabel prakiraan = prakiraan 1–3 bulan; HPP = harga pembelian pemerintah">
+      <Panel title="Harga GKP petani per wilayah" note="bulanan · prakiraan 3 bulan" tafsir="Rupiah per kg gabah kering panen di tingkat petani, per kab/kota terpilih dan Jawa Timur; titik berlabel prakiraan = prakiraan 1–3 bulan; HPP = harga pembelian pemerintah">
         <div className="pb chart">
           <LineChart
             xDates={potong(dates.slice(0, n)).concat(dates.slice(n))}
             xFmt={labelBulan}
+            xDomain={SUMBU_HARGA}
+            xNow={NOW}
             yDom={[Math.floor(lo / 100) * 100, Math.ceil(hi / 100) * 100]}
             yFmt={(v) => nf(v)}
             W={760}
@@ -577,7 +595,10 @@ function PanelGkpSatu() {
   const satu = wil.length === 1 ? wil[0].n : null
   const sebagian = wil.length < WILAYAH.length
   const kab = satu ? g.kabupaten?.find((k) => k.nama === satu) : undefined
-  const rw = kab ? kab.riwayat.map((r) => ({ ...r, sumber: "Bapanas" })) : g.riwayat
+  const rwSemua = kab ? kab.riwayat.map((r) => ({ ...r, sumber: "Bapanas" })) : g.riwayat
+  // Riwayat dipotong ke awal sumbu bersama dengan grafik harga beras (paling sedikit bulan terakhir).
+  const rwSumbu = rwSemua.filter((r) => dalamSumbu(r.bulan))
+  const rw = rwSumbu.length ? rwSumbu : rwSemua.slice(-1)
   const fc: BarisGkp[] = kab ? kab.prakiraan : g.prakiraan
   const n = rw.length
   const dates = rw.map((r) => tglBulan(r.bulan)).concat(fc.map((f) => tglBulan(f.bulan_target)))
@@ -603,11 +624,13 @@ function PanelGkpSatu() {
   const wilayahLabel = kab ? kab.nama : "Jawa Timur"
   return (
     <div className="grid-2">
-      <Panel title={`Harga GKP petani ${wilayahLabel}, bulanan`} tafsir="Rupiah per kg gabah kering panen di tingkat petani; titik berlabel prakiraan = prakiraan 1–3 bulan; HPP = harga pembelian pemerintah">
+      <Panel title={`Harga GKP petani ${wilayahLabel}`} note="bulanan · prakiraan 3 bulan" tafsir="Rupiah per kg gabah kering panen di tingkat petani; titik berlabel prakiraan = prakiraan 1–3 bulan; HPP = harga pembelian pemerintah">
         <div className="pb chart">
           <LineChart
             xDates={dates}
             xFmt={labelBulan}
+            xDomain={SUMBU_HARGA}
+            xNow={NOW}
             yDom={[Math.floor(lo / 100) * 100, Math.ceil(hi / 100) * 100]}
             yFmt={(v) => nf(v)}
             W={760}
