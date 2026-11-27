@@ -6,7 +6,7 @@ import { HargaPill, StokPill } from "@/components/ui/Pill"
 import { WeekSlider } from "@/components/ui/WeekSlider"
 import type { Wilayah } from "@/lib/data"
 import { HET, HET_PREMIUM, byName, fcHarga, flowsBulan, pNowHarga, risk } from "@/lib/data"
-import { covBulan, hargaAt, makeSpec, pAtasHet, produksiBeras, produksiPrevRentang, statusHargaAt, yoyRentang } from "@/lib/petaLayers"
+import { covBulan, hakLapisan, hargaAt, makeSpec, pAtasHet, produksiBeras, produksiPrevRentang, statusHargaAt, statusStok, yoyRentang } from "@/lib/petaLayers"
 import { NOW, dfmt, nf, rp, sum } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { useSesi } from "@/lib/sesi"
@@ -20,12 +20,13 @@ export default function Ringkasan() {
   const wil = useWilayah()
   const { layer, kom, hor, setHor, arus, dim, setLayer, setArus } = usePeta()
   const { siap, boleh } = useSesi()
-  // Pilihan SPHP yang tersimpan dibatalkan bila pengguna tidak berhak melihatnya.
+  // Lapisan yang tersimpan dibatalkan bila peran pengguna tidak berhak melihatnya (SPHP, harga/prakiraan).
   useEffect(() => {
-    if (!siap || boleh("dasbor_sphp")) return
-    if (layer === "sphp") setLayer("statusHarga")
-    if (arus === "sphp") setArus("off")
+    if (!siap) return
+    if (!hakLapisan(layer).every(boleh)) setLayer(boleh("dasbor_harga") && boleh("dasbor_estimasi") ? "statusHarga" : "produksiBeras")
+    if (arus === "sphp" && !boleh("dasbor_sphp")) setArus("off")
   }, [siap, boleh, layer, arus, setLayer, setArus])
+  const lihatHarga = boleh("dasbor_harga") && boleh("dasbor_estimasi")
   const { mulai, akhir } = useFilter()
   const { select } = useSelection()
   // Panel kanan menampilkan daftar perhatian sampai pengguna memilih satu wilayah.
@@ -59,7 +60,7 @@ export default function Ringkasan() {
   const kpi = [
     { to: "/produksi", k: "Produksi", v: nf(prodT, 0), u: "ton beras", d: `${nf(yoy * 100, 1)}% YoY`, neg: yoy < 0 },
     { to: "/stok", k: "Stok", v: nf(stT, 0), u: "ton beras", d: `${nDef} defisit, ${nTip} tipis`, neg: nDef > 0 },
-    { to: "/harga", k: "Harga", v: rp(pAvg), u: `/kg ${kom}`, d: `${nS} Siaga, ${nW} Waspada`, neg: nS > 0 },
+    ...(lihatHarga ? [{ to: "/harga", k: "Harga", v: rp(pAvg), u: `/kg ${kom}`, d: `${nS} Siaga, ${nW} Waspada`, neg: nS > 0 }] : []),
   ]
 
   return (
@@ -142,23 +143,31 @@ export default function Ringkasan() {
   )
 }
 
-/** Bulan berjalan dan dua bulan sesudahnya; produksi tiap bulan dari K1 (produksiBeras). */
-const POLA_PANEN = [{ i: BULAN_KINI }, { i: BULAN_KINI + 1 }, { i: BULAN_KINI + 2 }]
+/** Tiga bulan yang ditampilkan kartu wilayah: dengan hak estimasi bulan berjalan dan dua bulan ke depan,
+ *  tanpa hak estimasi tiga bulan lengkap terakhir (data yang sudah terjadi). */
+const tigaBulan = (estimasi: boolean) => (estimasi ? [BULAN_KINI, BULAN_KINI + 1, BULAN_KINI + 2] : [BULAN_KINI - 3, BULAN_KINI - 2, BULAN_KINI - 1]).map((i) => ({ i }))
 
 const G_MAX = 4
 
 /** Wilayah dengan risiko harga/stok tertinggi bulan ini, tampil sebelum ada wilayah yang dipilih. */
 function DaftarPerhatian({ wil, onPick }: { wil: Wilayah[]; onPick: (n: string) => void }) {
-  const daftar = wil
-    .filter((k) => k.hs !== "aman" || k.ss === "defisit" || k.ss === "tipis")
-    .sort((a, b) => risk(b) - risk(a))
-    .slice(0, 10)
+  const { boleh } = useSesi()
+  const estimasi = boleh("dasbor_estimasi")
+  const lihatHarga = estimasi && boleh("dasbor_harga")
+  // Tanpa hak estimasi: urut menurut cakupan stok bulan lengkap terakhir saja.
+  const bulanDaftar = estimasi ? BULAN_KINI : BULAN_KINI - 1
+  const ssDi = (k: Wilayah) => (estimasi ? k.ss : statusStok(covBulan(k, bulanDaftar)))
+  const daftar = (
+    estimasi
+      ? wil.filter((k) => (lihatHarga && k.hs !== "aman") || k.ss === "defisit" || k.ss === "tipis").sort((a, b) => risk(b) - risk(a))
+      : wil.filter((k) => covBulan(k, bulanDaftar) < 1).sort((a, b) => covBulan(a, bulanDaftar) - covBulan(b, bulanDaftar))
+  ).slice(0, 10)
   return (
     <aside className="panel dp" aria-live="polite">
       <div className="kab-h">
         <div>
           <div className="eyebrow">Daftar perhatian</div>
-          <h3>{bulanLabel(BULAN_KINI)}</h3>
+          <h3>{bulanLabel(bulanDaftar)}</h3>
         </div>
         <span className="pill-est">{daftar.length} wilayah</span>
       </div>
@@ -173,15 +182,17 @@ function DaftarPerhatian({ wil, onPick }: { wil: Wilayah[]; onPick: (n: string) 
                 <span className="dp-n">
                   <b>{k.n}</b>
                   <span className="dp-pills">
-                    <HargaPill s={k.hs} pre="Harga" />
-                    <StokPill s={k.ss} pre="Stok" />
+                    {lihatHarga && <HargaPill s={k.hs} pre="Harga" />}
+                    <StokPill s={ssDi(k)} pre="Stok" />
                   </span>
                   <small className="dp-sub">
-                    <span title="Harga medium kini → prakiraan 4 pekan">
-                      {rp(k.pNow)} → {rp(k.p4)}
-                    </span>
+                    {lihatHarga && (
+                      <span title="Harga medium kini → prakiraan 4 pekan">
+                        {rp(k.pNow)} → {rp(k.p4)}
+                      </span>
+                    )}
                     <span title="Cakupan stok: berapa bulan konsumsi wilayah ini bisa dipenuhi stok yang ada (defisit < 0,75, tipis < 1)">
-                      stok {nf(k.cov, 2)} bln
+                      stok {nf(estimasi ? k.cov : covBulan(k, bulanDaftar), 2)} bln
                     </span>
                   </small>
                 </span>
@@ -199,6 +210,13 @@ function KabCard({ onBack }: { onBack: () => void }) {
   const { mulai, akhir } = useFilter()
   const { kom, setKom } = usePeta()
   const k = byName[sel]
+  const { boleh } = useSesi()
+  const estimasi = boleh("dasbor_estimasi")
+  const lihatHarga = estimasi && boleh("dasbor_harga")
+  const POLA_PANEN = tigaBulan(estimasi)
+  const b0 = POLA_PANEN[0].i
+  const b2 = POLA_PANEN[2].i
+  const ssK = estimasi ? k.ss : statusStok(covBulan(k, b2))
   const het = kom === "medium" ? HET : HET_PREMIUM
   const periodeFlow = flowsBulan(mulai, akhir)
   const fl = periodeFlow.filter((f) => f.to === k)
@@ -232,15 +250,15 @@ function KabCard({ onBack }: { onBack: () => void }) {
           <h3>{k.n}</h3>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
-          <HargaPill s={k.hs} />
-          <StokPill s={k.ss} />
+          {lihatHarga && <HargaPill s={k.hs} />}
+          <StokPill s={ssK} />
         </div>
       </div>
       <div className="facts">
         <div className="fact blk">
           <div className="blk-h">
             <span className="k">Produksi beras <small>ton</small></span>
-            <span className="pill-est">Estimasi</span>
+            <span className="pill-est">{estimasi ? "Estimasi" : "Riwayat"}</span>
           </div>
           <div className="mrows">
             {POLA_PANEN.map((m) => {
@@ -257,24 +275,27 @@ function KabCard({ onBack }: { onBack: () => void }) {
             })}
           </div>
           <div className="kv">
-            <span>Total {bulanLabel(BULAN_KINI).split(" ")[0]}–{bulanLabel(BULAN_KINI + 2).split(" ")[0]}</span>
+            <span>Total {bulanLabel(b0).split(" ")[0]}–{bulanLabel(b2).split(" ")[0]}</span>
             <b>{nf(POLA_PANEN.reduce((a, m) => a + produksiBeras(k, m.i), 0), 0)} ton</b>
             <span>YoY</span>
-            <b className={yoyRentang(k, BULAN_KINI, BULAN_KINI + 2) < 0 ? "delta-dn" : "delta-up"}>{nf(yoyRentang(k, BULAN_KINI, BULAN_KINI + 2) * 100, 1)}%</b>
+            <b className={yoyRentang(k, b0, b2) < 0 ? "delta-dn" : "delta-up"}>{nf(yoyRentang(k, b0, b2) * 100, 1)}%</b>
           </div>
         </div>
 
         <div className="fact blk">
           <div className="blk-h">
             <span className="k">Cakupan stok <small>bulan konsumsi</small></span>
-            <span className="pill-est">Estimasi</span>
+            <span className="pill-est">{estimasi ? "Estimasi" : "Riwayat"}</span>
           </div>
           <div className="gauge">
-            {[
-              { i: BULAN_KINI, v: k.cov },
-              { i: BULAN_KINI + 1, v: k.covP[3] },
-              { i: BULAN_KINI + 2, v: k.covP[7] },
-            ].map((m) => {
+            {(estimasi
+              ? [
+                  { i: BULAN_KINI, v: k.cov },
+                  { i: BULAN_KINI + 1, v: k.covP[3] },
+                  { i: BULAN_KINI + 2, v: k.covP[7] },
+                ]
+              : POLA_PANEN.map((m) => ({ i: m.i, v: covBulan(k, m.i) }))
+            ).map((m) => {
               const st = m.v < 0.75 ? "defisit" : m.v < 1 ? "tipis" : m.v < 1.5 ? "cukup" : "surplus"
               return (
                 <div key={m.i} className={"grow" + (m.i >= mulai && m.i <= akhir ? " on" : "")}>
@@ -301,11 +322,12 @@ function KabCard({ onBack }: { onBack: () => void }) {
           <div className="kv">
             <span>Konsumsi</span>
             <b>{nf(k.C * 1000)} ton/bln</b>
-            <span>Stok kini</span>
-            <b>{nf(k.cov * k.C * 1000)} ton</b>
+            <span>{estimasi ? "Stok kini" : `Stok akhir ${bulanLabel(b2).split(" ")[0]}`}</span>
+            <b>{nf((estimasi ? k.cov : covBulan(k, b2)) * k.C * 1000)} ton</b>
           </div>
         </div>
 
+        {lihatHarga && (
         <div className="fact blk">
           <div className="blk-h">
             <span className="k">Harga beras <small>Rp/kg</small></span>
@@ -339,6 +361,7 @@ function KabCard({ onBack }: { onBack: () => void }) {
             </div>
           ))}
         </div>
+        )}
       </div>
       <Terkunci judul="Rekomendasi SPHP" ringkas>
       <div className={"rek " + peran.toLowerCase()}>

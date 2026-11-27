@@ -6,7 +6,7 @@ import { MultiSelect } from "@/components/ui/MultiSelect"
 import { WilayahSelect } from "@/components/ui/WilayahSelect"
 import { Select } from "@/components/ui/Select"
 import { SSTAT, STATUS, WILAYAH } from "@/lib/data"
-import { SPEC_GROUPS, SPEC_LABEL, isHarga, statusHargaAt, type Komoditas } from "@/lib/petaLayers"
+import { SPEC_GROUPS, SPEC_LABEL, hakLapisan, isHarga, statusHargaAt, type Komoditas } from "@/lib/petaLayers"
 import { usePeta, type ArusMode, type Basemap, type CitraMode } from "@/lib/peta"
 import { useSelection } from "@/lib/selection"
 import { useSesi } from "@/lib/sesi"
@@ -15,11 +15,13 @@ import { BULAN_KINI, HS_ALL, N_BULAN, SS_ALL, bulanLabel, useFilter, type Satuan
 
 const WARNA_STOK = { surplus: "var(--d5)", cukup: "var(--ok)", tipis: "var(--warn)", defisit: "var(--crit)" } as const
 
-const PINTASAN: { t: string; a: number; b: number }[] = [
-  { t: "3 bulan terakhir", a: BULAN_KINI - 2, b: BULAN_KINI },
+// `est`: true = hanya untuk peran berhak estimasi, false = hanya untuk peran tanpa estimasi (berhenti di bulan lengkap terakhir).
+const PINTASAN: { t: string; a: number; b: number; est?: boolean }[] = [
+  { t: "3 bulan terakhir", a: BULAN_KINI - 2, b: BULAN_KINI, est: true },
+  { t: "3 bulan terakhir", a: BULAN_KINI - 3, b: BULAN_KINI - 1, est: false },
   { t: "Riwayat", a: 0, b: BULAN_KINI - 1 },
-  { t: "Estimasi", a: BULAN_KINI, b: N_BULAN - 1 },
-  { t: `Tahun ${2026 + Math.floor(BULAN_KINI / 12)}`, a: BULAN_KINI - (BULAN_KINI % 12), b: Math.min(BULAN_KINI - (BULAN_KINI % 12) + 11, N_BULAN - 1) },
+  { t: "Estimasi", a: BULAN_KINI, b: N_BULAN - 1, est: true },
+  { t: `Tahun ${2026 + Math.floor(BULAN_KINI / 12)}`, a: BULAN_KINI - (BULAN_KINI % 12), b: Math.min(BULAN_KINI - (BULAN_KINI % 12) + 11, N_BULAN - 1), est: true },
 ]
 
 /** Pilihan waktu: satu bulan atau rentang bulan. */
@@ -49,7 +51,7 @@ function Waktu() {
             <BulanPicker bulan={f.bulan2} setBulan={f.setBulan2} label="Bulan akhir" />
           </div>
           <div className="wt-chips fp-pin" role="group" aria-label="Pintasan rentang">
-            {PINTASAN.map((p) => (
+            {PINTASAN.filter((p) => p.est === undefined || p.est === f.estimasi).map((p) => (
               <button key={p.t} type="button" className={`wt-chip${f.bulan === p.a && f.bulan2 === p.b ? " on" : ""}`} onClick={() => f.setRange(p.a, p.b)}>
                 {p.t}
               </button>
@@ -69,7 +71,8 @@ function Waktu() {
 /** Pengaturan lapisan peta: visualisasi, peta dasar, lapisan GEE, citra, opasitas. */
 function PetaSet({ lapisan }: { lapisan: boolean }) {
   const p = usePeta()
-  const sphp = useSesi().boleh("dasbor_sphp")
+  const { boleh } = useSesi()
+  const sphp = boleh("dasbor_sphp")
   const { sel } = useSelection()
   const ck = p.citra.find((c) => c.lokasi.toLowerCase() === sel.toLowerCase())
   return (
@@ -81,7 +84,7 @@ function PetaSet({ lapisan }: { lapisan: boolean }) {
             <span>Visualisasi</span>
             <Select
               label="Visualisasi"
-              options={SPEC_GROUPS.flatMap((g) => g.keys.filter((k) => sphp || k !== "sphp").map((k) => ({ value: k, label: SPEC_LABEL[k], grup: g.grup })))}
+              options={SPEC_GROUPS.flatMap((g) => g.keys.filter((k) => hakLapisan(k).every(boleh)).map((k) => ({ value: k, label: SPEC_LABEL[k], grup: g.grup })))}
               value={p.layer}
               onChange={p.setLayer}
             />
@@ -273,7 +276,7 @@ export function FilterPanel() {
 
   )
   const reset = (
-    <button type="button" className="fp-reset" onClick={f.reset} disabled={f.aktif === 0 && f.bulan === BULAN_KINI && !f.rentang}>
+    <button type="button" className="fp-reset" onClick={f.reset} disabled={f.aktif === 0 && f.bulan === f.bulanAwal && !f.rentang}>
       <RotateCcw size={13} />
       Atur ulang filter
     </button>

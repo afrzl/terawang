@@ -7,9 +7,10 @@ import { WaFab } from "@/components/layout/WaFab"
 import { useFilter } from "@/lib/filter"
 import { useSelection } from "@/lib/selection"
 import { AkunMenu } from "@/components/layout/AkunMenu"
+import { useSesi } from "@/lib/sesi"
 
 
-function Logo() {
+export function Logo() {
   return (
     <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
       <circle cx="16" cy="16" r="13" fill="none" stroke="#B9E39A" strokeWidth="1.4" strokeDasharray="2 3" />
@@ -24,6 +25,7 @@ export function AppShell() {
   const { pathname } = useLocation()
   const { W, reset } = useFilter()
   const { sel, select } = useSelection()
+  const { boleh } = useSesi()
 
   // Kalau wilayah terpilih tersaring keluar oleh filter, pindah ke wilayah pertama yang lolos.
   useEffect(() => {
@@ -68,7 +70,7 @@ export function AppShell() {
             </h1>
           </div>
           <nav className="tabs" aria-label="Bagian dasbor" ref={tabsRef}>
-            {navItems.map((it) => (
+            {navItems.filter((it) => boleh(it.hak)).map((it) => (
               <NavLink key={it.to} to={it.to} end>
                 {it.label}
               </NavLink>

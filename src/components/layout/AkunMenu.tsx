@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react"
 import { useLocation } from "react-router-dom"
 import { ChevronDown, LogIn, LogOut, Settings, ShieldCheck } from "lucide-react"
-import { tautanMasuk, useSesi } from "@/lib/sesi"
+import { HAK_ADMIN, tautanMasuk, useSesi } from "@/lib/sesi"
 
 /**
- * Akun di bilah atas. Guest: tombol Masuk. Sudah masuk: tombol bernama pengguna yang membuka
+ * Akun di bilah atas. Belum masuk: tombol Masuk. Sudah masuk: tombol bernama pengguna yang membuka
  * menu berisi peran, tautan Admin (bila berhak), dan Keluar. Pola menu ARIA: panah atas/bawah,
  * Home/End, Esc menutup dan mengembalikan fokus ke tombol, Tab atau klik di luar menutup.
  */
@@ -122,7 +122,7 @@ export function AkunMenu() {
               </span>
             </div>
           </div>
-          {boleh("pipeline") && (
+          {HAK_ADMIN.some(boleh) && (
             <a role="menuitem" tabIndex={-1} className="akun-item" href="/admin/">
               <Settings size={15} aria-hidden="true" />
               Halaman Admin

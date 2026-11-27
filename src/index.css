@@ -1113,3 +1113,54 @@ main.full{flex:1;min-height:0;position:relative}
 }
 /* Tablet mendatar: grafik berpasangan ditumpuk satu kolom agar teks grafik tidak terlalu kecil */
 @media (max-width:1180px){.grid-2{grid-template-columns:minmax(0,1fr)}}
+
+/* halaman masuk */
+.masuk{min-height:100vh;min-height:100dvh;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);background:var(--bg)}
+.masuk-kop{position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:40px clamp(24px,5vw,64px);color:#F2F6F1;background:
+  radial-gradient(120% 140% at 100% 0%,rgba(127,180,99,.35) 0%,transparent 55%),
+  linear-gradient(150deg,#0E2547 0%,#163E66 45%,#1C5B4E 100%)}
+:root[data-theme="dark"] .masuk-kop{background:radial-gradient(120% 140% at 100% 0%,rgba(125,184,98,.22) 0%,transparent 55%),linear-gradient(150deg,#091729 0%,#0F2A45 45%,#123B33 100%)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .masuk-kop{background:radial-gradient(120% 140% at 100% 0%,rgba(125,184,98,.22) 0%,transparent 55%),linear-gradient(150deg,#091729 0%,#0F2A45 45%,#123B33 100%)}}
+.masuk-kop-isi{margin-top:auto;margin-bottom:auto;max-width:440px}
+.masuk-kop .brand h1{font-size:46px}
+.masuk-kop .brand .logo{width:52px;height:52px;border-radius:14px}
+.masuk-kop .brand .logo svg{width:36px;height:36px}
+.masuk-moto{margin:18px 0 0;font-size:16px;line-height:1.55;color:rgba(242,246,241,.82);max-width:36ch;text-wrap:pretty}
+.masuk-tema{position:absolute;top:20px;right:20px}
+.masuk-tema .icon-btn{border-radius:999px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.22);color:#fff}
+.masuk-badan{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px 16px}
+.masuk-kartu{width:100%;max-width:460px;display:flex;flex-direction:column;gap:14px;padding:28px;background:var(--panel);border:1px solid var(--rule)}
+.masuk-judul h2{font-size:26px;font-weight:700}
+.masuk-judul p{margin:4px 0 0;color:var(--ink-2);font-size:13.5px}
+.masuk-demo{border:0;margin:0;padding:0;min-width:0}
+.masuk-demo legend{padding:0;margin-bottom:8px;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.masuk-demo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.masuk-peran{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:10px 12px;text-align:left;background:var(--panel-2);border:1px solid var(--rule-2);color:var(--ink);cursor:pointer;transition:border-color .15s,background .15s}
+.masuk-peran:hover{border-color:var(--rule)}
+.masuk-peran b{font-weight:650;font-size:14px}
+.masuk-peran span{font-size:12px;line-height:1.35;color:var(--ink-2)}
+.masuk-peran[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.masuk-peran[aria-pressed="true"] b{color:var(--accent)}
+.masuk-isian{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:var(--ink-2)}
+.masuk-isian input{font:inherit;font-weight:400;font-size:15px;color:var(--ink);background:var(--bg);border:1px solid var(--rule);padding:10px 12px;border-radius:0}
+.masuk-isian input:focus-visible{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+.masuk-galat{margin:0;min-height:18px;font-size:13px;color:var(--crit)}
+.masuk-galat:empty{min-height:0}
+.masuk-tombol{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border:0;background:var(--accent);color:var(--onaccent);font-weight:650;font-size:14.5px;cursor:pointer}
+.masuk-tombol:disabled{opacity:.55;cursor:not-allowed}
+.masuk-kaki{font-size:12px;color:var(--ink-3);text-align:center}
+@media (max-width:860px){
+  .masuk{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 1fr}
+  .masuk-kop{padding:28px 16px 24px}
+  .masuk-kop .brand h1{font-size:34px}
+  .masuk-kop .brand .logo{width:42px;height:42px}
+  .masuk-kop .brand .logo svg{width:30px;height:30px}
+  .masuk-moto{font-size:14px;margin-top:12px}
+  .masuk-tema{top:14px;right:14px}
+  .masuk-badan{justify-content:flex-start;padding:20px 16px 28px}
+  .masuk-kartu{padding:20px}
+}
+@media (max-width:380px){.masuk-demo-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* menunggu sesi */
+.memuat-sesi{min-height:100vh;display:grid;place-items:center;color:var(--ink-3);font-size:13px}

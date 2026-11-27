@@ -13,6 +13,8 @@ import ArusBeras from "@/pages/ArusBeras"
 import Harga from "@/pages/Harga"
 import Whatsapp from "@/pages/Whatsapp"
 import Cerita from "@/pages/Cerita"
+import Masuk from "@/pages/Masuk"
+import { PerluHak, WajibMasuk } from "@/components/layout/Akses"
 
 export default function App() {
   return (
@@ -24,17 +26,20 @@ export default function App() {
             <FilterProvider>
               <PetaProvider>
             <Routes>
+              <Route path="/masuk" element={<Masuk />} />
+              <Route element={<WajibMasuk />}>
               <Route element={<AppShell />}>
-                <Route path="/" element={<Ringkasan />} />
+                <Route path="/" element={<PerluHak hak="dasbor_ringkasan"><Ringkasan /></PerluHak>} />
                 {/* /ringkasan versi lama memakai riwayat stok simulasi; dialihkan ke Peta Ringkasan */}
                 <Route path="/ringkasan" element={<Navigate to="/" replace />} />
-                <Route path="/produksi" element={<Produksi />} />
-                <Route path="/stok" element={<Stok />} />
-                <Route path="/arus" element={<ArusBeras />} />
-                <Route path="/harga" element={<Harga />} />
-                <Route path="/whatsapp" element={<Whatsapp />} />
-                <Route path="/cerita" element={<Cerita />} />
+                <Route path="/produksi" element={<PerluHak hak="dasbor_produksi"><Produksi /></PerluHak>} />
+                <Route path="/stok" element={<PerluHak hak="dasbor_stok"><Stok /></PerluHak>} />
+                <Route path="/arus" element={<PerluHak hak="dasbor_arus"><ArusBeras /></PerluHak>} />
+                <Route path="/harga" element={<PerluHak hak="dasbor_harga"><Harga /></PerluHak>} />
+                <Route path="/whatsapp" element={<PerluHak hak="dasbor_whatsapp"><Whatsapp /></PerluHak>} />
+                <Route path="/cerita" element={<PerluHak hak="dasbor_cerita"><Cerita /></PerluHak>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
               </Route>
             </Routes>
             </PetaProvider>

@@ -7,7 +7,7 @@ import { byName, type Flow, type Wilayah } from "@/lib/data"
 import { useSesi } from "@/lib/sesi"
 import { nf } from "@/lib/format"
 import { EdisiPicker } from "@/components/ui/EdisiPicker"
-import { susunFakta, type LangkahFakta, type PetaLangkah } from "@/lib/ceritaFakta"
+import { susunFakta, susunFaktaRiwayat, type LangkahFakta, type PetaLangkah } from "@/lib/ceritaFakta"
 
 /** Edisi pekanan dari /api/cerita (lihat api/src/cerita.ts). */
 interface LangkahEdisi {
@@ -125,11 +125,21 @@ export default function Cerita() {
   const [edisi, setEdisi] = useState<Edisi | null>(null)
   const [arsip, setArsip] = useState<RingkasEdisi[]>([])
   const [memuat, setMemuat] = useState(true)
+  const { boleh } = useSesi()
+  // Tanpa hak estimasi edisi pekanan (berisi prakiraan) tidak dimuat; laporan disusun dari tiga bulan lengkap terakhir.
+  const estimasi = boleh("dasbor_estimasi")
+  const denganHarga = boleh("dasbor_harga")
 
   useEffect(() => {
+    if (!estimasi) return
     muatJson<RingkasEdisi[]>("/api/cerita/arsip").then((xs) => setArsip(xs ?? []))
-  }, [])
+  }, [estimasi])
   useEffect(() => {
+    if (!estimasi) {
+      setEdisi(null)
+      setMemuat(false)
+      return
+    }
     let batal = false
     setMemuat(true)
     muatJson<Edisi>(pekan ? `/api/cerita?pekan=${encodeURIComponent(pekan)}` : "/api/cerita").then((e) => {
@@ -140,12 +150,16 @@ export default function Cerita() {
     return () => {
       batal = true
     }
-  }, [pekan])
+  }, [pekan, estimasi])
 
-  const sphp = useSesi().boleh("dasbor_sphp")
+  const sphp = boleh("dasbor_sphp")
 
   // Edisi dari server bila ada; selain itu fakta langsung dari data dasbor dengan teks templat.
   const isi = useMemo(() => {
+    if (!estimasi) {
+      const f = susunFaktaRiwayat(denganHarga)
+      return { pekan: null, data_per_label: f.data_per_label, sumber: "langsung" as const, judul: f.judul, dek: f.dek, tigaAngka: f.tigaAngka, langkah: f.langkah.map(keEdisi), banding: null }
+    }
     if (edisi) {
       const langkah = edisi.langkah.map((l) => (l.key === "aksi" && sphp && edisi.aksi_sphp ? edisi.aksi_sphp : l))
       return { ...edisi, langkah }
@@ -154,7 +168,7 @@ export default function Cerita() {
     const f = faktaLangsung()
     const langkah = f.langkah.map((l) => keEdisi(l.key === "aksi" && !sphp ? f.aksiUmum : l))
     return { pekan: null, data_per_label: f.data_per_label, sumber: "langsung" as const, judul: f.judul, dek: f.dek, tigaAngka: f.tigaAngka, langkah, banding: null }
-  }, [edisi, memuat, sphp])
+  }, [edisi, memuat, sphp, estimasi, denganHarga])
 
   const steps = useMemo(() => (isi ? isi.langkah.map(tampilkan) : []), [isi])
   const st = steps[Math.min(active, steps.length - 1)]
@@ -186,7 +200,7 @@ export default function Cerita() {
             <a className="story-cue" href="#langkah-1">
               Mulai membaca <ChevronDown size={15} />
             </a>
-            {arsip.length > 0 && (
+            {estimasi && arsip.length > 0 && (
               <EdisiPicker
                 opsi={arsip.map((a) => ({ pekan: a.pekan, ...bagianPekan(a.pekan), judul: a.judul }))}
                 nilai={pekan ?? isi?.pekan ?? null}
