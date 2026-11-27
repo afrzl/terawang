@@ -886,8 +886,19 @@ pemuat.laporan = async () => {
       const n = (s) => tunggu.filter((l) => l.saran === s).length;
       const bagian = [["WAJAR", "wajar, aman diterima"], ["CEK", "perlu dicek dulu"], ["SALAH", "kemungkinan salah"]]
         .filter(([s]) => n(s)).map(([s, k]) => el("span", { class: "st-" + NAMA_SARAN[s][1] + "-teks" }, el("b", {}, String(n(s))), " " + k));
-      rs.replaceChildren(el("div", { class: "judul" }, `Saran sistem untuk ${tunggu.length} laporan yang menunggu`),
+      // satu daftar: yang perlu perhatian dulu (kemungkinan salah, lalu perlu dicek) dengan alasannya; yang wajar cukup disebut
+      const urut = { SALAH: 0, CEK: 1, WAJAR: 2 };
+      const perhatian = tunggu.filter((l) => l.saran !== "WAJAR").sort((a, b) => urut[a.saran] - urut[b.saran]);
+      const wajar = tunggu.filter((l) => l.saran === "WAJAR");
+      const nama = (l) => `${l.pasar}${l.wilayah ? " (" + l.wilayah + ")" : ""}, ${(l.komoditas || "").replace(/^Beras\s*/i, "").toLowerCase()} Rp${fmtRp.format(l.harga)}`;
+      rs.replaceChildren(
+        el("div", { class: "judul" }, `Saran sistem untuk ${tunggu.length} laporan yang menunggu`),
         el("div", { class: "jml" }, ...bagian),
+        ...(perhatian.length ? [el("ul", { class: "daftar-saran" }, ...perhatian.map((l) => {
+          const [t, k] = NAMA_SARAN[l.saran];
+          return el("li", {}, el("span", { class: "pill st-" + k }, t), " ", el("b", {}, nama(l)), el("span", { class: "ket" }, " · " + (l.alasan || []).join("; ")));
+        }))] : []),
+        ...(wajar.length ? [el("div", { class: "wajar" }, el("span", { class: "pill st-ok" }, "Wajar"), " ", wajar.map(nama).join(" · "))] : []),
         el("div", { class: "ket" }, `Dibandingkan dengan panel harga wilayah, laporan warga lain 30 hari terakhir, HET, dan riwayat pelapor. Wajar bila selisih di bawah 10%, kemungkinan salah bila 25% atau lebih. Ini hanya saran, keputusan tetap di petugas.`));
       rs.hidden = false;
     } else rs.hidden = true;
@@ -904,14 +915,10 @@ pemuat.laporan = async () => {
         el("td", {}, (l.komoditas || "").replace(/^Beras\s*/i, "")), el("td", { class: "id" }, "Rp" + fmtRp.format(l.harga)),
         el("td", { class: "id", title: jauh ? "Selisih dari panel harga 25% atau lebih" : "" }, selisih),
         el("td", {}, l.peran ? el("span", { class: "pill peran-" + l.peran.toLowerCase() }, NAMA_PERAN[l.peran]) : el("span", { class: "ket", title: "Laporan sebelum ada pilihan penjual/pembeli" }, "–")),
-        el("td", { class: "saran" }, ...(() => {
-          const [t, k] = NAMA_SARAN[l.saran] || [l.saran, ""];
-          return [el("span", { class: "pill st-" + k }, t), el("div", { class: "ket" }, (l.alasan || []).join("; "))];
-        })()),
         el("td", { class: "ket", title: `${l.laporanPelapor} laporan dari nomor ini` }, `${l.pelapor} · ${l.laporanPelapor} laporan`),
         el("td", {}, el("span", { class: "pill st-" + stK }, stT)), el("td", { class: "aksi" }, ...aksi));
     });
-    $("#tabel-laporan tbody").replaceChildren(...(baris.length ? baris : [el("tr", {}, el("td", { colspan: "11", class: "ket" }, kosong))]));
+    $("#tabel-laporan tbody").replaceChildren(...(baris.length ? baris : [el("tr", {}, el("td", { colspan: "10", class: "ket" }, kosong))]));
     labeli($("#tabel-laporan"));
   } catch (e) { toast(e.message, true); }
 };

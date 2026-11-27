@@ -362,5 +362,6 @@ label input{font-weight:400}
 .ringkas-saran .judul{font-weight:600;margin-bottom:3px}
 .ringkas-saran .jml{display:flex;flex-wrap:wrap;gap:4px 18px}.ringkas-saran .jml>span{display:inline}.ringkas-saran .jml b{font-size:15px}
 .ringkas-saran .ket{color:var(--ink-3);font-size:12px;margin-top:4px}
-#tabel-laporan td.saran{min-width:150px;max-width:200px}
-#tabel-laporan td.saran .ket{margin-top:4px;line-height:1.35}
+.ringkas-saran .daftar-saran{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:5px}
+.ringkas-saran .daftar-saran .ket{display:inline;margin:0}
+.ringkas-saran .wajar{margin-top:6px}

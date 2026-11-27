@@ -112,7 +112,7 @@ def daftar(status: str | None, batas: int = 200, peran: str | None = None) -> di
         jumlah = {s: 0 for s in STATUS} | {s: n for s, n in c.fetchall()}
         c.execute(
             """
-            select l.id, extract(epoch from l.dibuat_pada)::float8, l.status::text, l.nama_pasar, l.harga_rp_kg,
+            select l.id, extract(epoch from l.dibuat_pada::timestamptz)::float8, l.status::text, l.nama_pasar, l.harga_rp_kg,
                    l.selisih_panel_pct, k.nama as komoditas, w.nama as wilayah, kw.nomor_wa,
                    (select count(*) from app.laporan_harga_warga x where x.kontak_id = l.kontak_id) as n_pelapor,
                    l.peran_pelapor::text,
