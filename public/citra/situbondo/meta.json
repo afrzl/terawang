@@ -37,12 +37,12 @@
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 52.34375,
-    "genang_sebelum_pct": 12.5,
-    "jumlah_petak": 1152,
-    "luas_sawah_ha": 406.06776747759795,
-    "tertanam_sesudah_pct": 71.61458333333334,
-    "tertinggal_pct": 0.08680555555555555
+    "belum_hijau_sebelum_pct": 46.33304572907679,
+    "genang_sebelum_pct": 7.24762726488352,
+    "jumlah_petak": 1159,
+    "luas_sawah_ha": 405.7167827333406,
+    "tertanam_sesudah_pct": 70.66436583261432,
+    "tertinggal_pct": 0.08628127696289906
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }
