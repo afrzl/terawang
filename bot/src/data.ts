@@ -359,7 +359,7 @@ export async function infoBulog() {
 /** Konsumsi beras per kapita (Susenas BPS) beberapa tahun terakhir, dengan konversi per bulan. */
 export async function konsumsiBeras(w: Wilayah) {
   const rows = await q<{ tahun: number; putaran: string; klasifikasi: string; satuan: string; kg_per_kapita: number }>(
-    `select tahun, putaran::text as putaran, klasifikasi::text as klasifikasi, satuan::text as satuan, round(kg_per_kapita::numeric, 3)::float8 as kg_per_kapita
+    `select tahun, putaran::text as putaran, klasifikasi::text as klasifikasi, satuan::text as satuan, round(kg_per_kapita::numeric, 2)::float8 as kg_per_kapita
        from silver.konsumsi_beras where wilayah_id = $1 and klasifikasi = 'TOTAL'
       order by tahun desc, putaran desc limit 6`,
     [w.id],
