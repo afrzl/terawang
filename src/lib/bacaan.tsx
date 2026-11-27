@@ -102,7 +102,7 @@ export function bacaCitra(k: Wilayah, s: { before: number; after: number; lag: n
       {petak}, <b>{pct(s.after)}</b> petak sudah tertanam sebulan setelah citra pertama, sementara saat itu {pct(s.before)} petak tergenang siap
       tanam. {tahap}
       {lag}
-      {nol && " Angka nol di kotak ini bisa juga berarti klasifikasi otomatis belum menangkap genangan, jadi perlu dicek lapangan sebelum dipakai."}
+      {nol && " Genangan belum terdeteksi di citra awal, jadi pantau citra berikutnya untuk wilayah ini."}
     </>
   )
 }
@@ -223,7 +223,7 @@ export function bacaProyeksi(): ReactNode {
           2025 berada di luar selang 90%, jadi penurunannya hampir pasti, bukan sekadar ketidakpastian model.
         </>
       ) : (
-        "Semua titik 2025 masih di dalam selang 90%, jadi penurunannya belum pasti."
+        "Semua titik 2025 berada di dalam selang 90%, jadi selisihnya dengan 2025 masih dalam rentang wajar."
       )}{" "}
       Selang paling lebar di {lebar.n} (±{pct((lebar.ci / lebar.est) * 100)}), tempat citra masih sering tertutup awan.
     </>

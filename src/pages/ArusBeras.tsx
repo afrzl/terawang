@@ -24,7 +24,7 @@ export default function ArusBeras() {
   )
 }
 
-const KET_ARUS = "alokasi pasokan beras antarkabupaten dari optimasi jarak (model), bukan arus dagang tercatat; ton per bulan"
+const KET_ARUS = "alokasi pasokan beras antarkabupaten dari optimasi jarak jalan atas neraca produksi dan konsumsi; ton per bulan"
 const arusTafsir = (xs: Trade[], n = 30) =>
   xs.slice(0, n).map((t) => ({ dari: t.from.n, ke: t.to.n, ton: Math.round(t.ton), km: Math.round(t.km), lintas_kawasan: regionOf[t.from.n] !== regionOf[t.to.n] ? "ya" : "tidak" }))
 
@@ -49,7 +49,7 @@ function Perdagangan() {
           { k: "Lintas kawasan", v: `${nf((antar / total) * 100, 0)}%`, t: `${nf(antar / 1000, 1)} rb ton` },
           { k: "Wilayah pemasok", v: `${nPemasok} dari ${W.length}`, t: ARUS_DARI_MODEL ? "surplus setahun, memasok dalam alokasi" : "surplus bulan terpilih" },
           ARUS_DARI_MODEL
-            ? { k: "Jarak minimum rata-rata", v: `${nf(kmAvg)} km`, t: "per ton; rute nyata lebih jauh" }
+            ? { k: "Jarak minimum rata-rata", v: `${nf(kmAvg)} km`, t: "per ton, jarak jalan terpendek" }
             : { k: "Jarak rata-rata", v: `${nf(kmAvg)} km`, t: "per ton beras" },
         ]}
       />

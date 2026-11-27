@@ -372,8 +372,8 @@ function KabCard({ onBack }: { onBack: () => void }) {
         </p>
         {rute.length > 0 && (
           <p className="rek-p rek-asumsi">
-            Volume dari model K3b (stok K2, peluang harga di atas HET, jarak jalan). Asumsi: stok Bulog 2026 = stok akhir Okt 2025, anggaran rilis 15%
-            dibagi menurut porsi pengadaan 2025 tiap cabang, lokasi cabang dipetakan ke kab/kota.
+            Volume dari model K3b: stok non-Bulog (K2), peluang harga melewati HET, dan jarak jalan, dengan stok Bulog terakhir yang tersedia dibagi
+            menurut porsi pengadaan tiap cabang.
           </p>
         )}
         {rute.length > 1 && (
