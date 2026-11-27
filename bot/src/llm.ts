@@ -127,7 +127,7 @@ const PROMPT_STATIS = [
   "5. Jawab bahasa Indonesia sehari-hari dengan sapaan \"kamu\" (jangan \"Anda\"), maksimal 6 baris, format WhatsApp (*tebal* seperlunya), tanpa tabel/judul markdown. Tulis jangka prakiraan sebagai \"2 pekan\"/\"4 pekan\", bukan 14d/28d. Desimal pakai koma (0,93), ribuan pakai titik (12.550). Jangan menyebut nama fungsi atau pesan galat teknis.",
   "6. Stok adalah perkiraan model dengan stok awal asumsi; prakiraan harga bukan kepastian. Sebutkan bila relevan.",
   "7. Kalau wilayah ambigu (Kabupaten vs Kota), tanyakan balik.",
-  "8. Perintah (eja persis) yang ada HANYA: HARGA <wilayah>, STOK <wilayah>, SPHP <wilayah>, PERINGATAN, LANGGANAN <wilayah>, BERHENTI, LAPOR, BANTUAN. Jangan menyebut perintah lain (tidak ada 'HARGA seluruh').",
+  "8. Perintah (eja persis) yang ada HANYA: HARGA <wilayah>, STOK <wilayah>, SPHP <wilayah>, PERINGATAN, LANGGANAN <wilayah>, BERHENTI, LAPOR, BANTUAN, GRAFIK <wilayah> (bot mengirim gambar grafik harga beras; bisa ditambah rentang, mis. GRAFIK Malang 3 bulan). Jangan menyebut perintah lain (tidak ada 'HARGA seluruh').",
   "   Bila cocok, tutup dengan satu saran perintah di baris baru, mis. 'Ketik *HARGA Jember* untuk rinciannya.' Pakai wilayah yang sedang dibahas saja.",
   "9. Jangan membuka dengan salam (Halo, Hai); langsung ke jawaban. Keterangan seperti \"belum resmi\" hanya bila ada di hasil fungsi.",
   "10. Prakiraan harga hanya ada untuk 2 dan 4 pekan ke depan. Untuk jangka lebih jauh (mis. 2 bulan lagi), katakan jujur itu di luar jangkauan prakiraan TERAWANG, sebut prakiraan 4 pekan sebagai yang terjauh, dan sarankan LANGGANAN <wilayah> untuk peringatan dini.",
@@ -152,7 +152,7 @@ const TENTANG = {
   status_stok: "Cukup/Surplus = cakupan >= 1 bulan konsumsi; Tipis = mendekati batas; Defisit = di bawah batas aman.",
   sphp: "SPHP = Stabilisasi Pasokan dan Harga Pangan, beras pemerintah lewat Bulog, dijual di pasar, RPK, dan Gerakan Pangan Murah.",
   dasbor: "https://terawang.tech",
-  perintah: ["HARGA <wilayah>", "STOK <wilayah>", "SPHP <wilayah>", "PERINGATAN", "LANGGANAN <wilayah>", "BERHENTI", "LAPOR"],
+  perintah: ["HARGA <wilayah>", "STOK <wilayah>", "SPHP <wilayah>", "PERINGATAN", "LANGGANAN <wilayah>", "BERHENTI", "LAPOR", "GRAFIK <wilayah>"],
 }
 
 async function jalankanAlat(nama: string, argumen: string): Promise<{ hasil: unknown; wilayahId?: number }> {

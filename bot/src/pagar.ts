@@ -127,7 +127,7 @@ export function simpanCache(kunci: string, jawaban: string, wilayahId?: number) 
 // ---- pemeriksaan jawaban
 
 /** Rapikan jawaban LLM untuk WhatsApp dan potong bila kepanjangan. */
-const PERINTAH_RESMI = new Set(["HARGA", "STOK", "SPHP", "PERINGATAN", "LANGGANAN", "BERHENTI", "LAPOR", "BANTUAN"])
+const PERINTAH_RESMI = new Set(["HARGA", "STOK", "SPHP", "PERINGATAN", "LANGGANAN", "BERHENTI", "LAPOR", "BANTUAN", "GRAFIK"])
 
 export function rapikanJawaban(s: string): string {
   let t = s

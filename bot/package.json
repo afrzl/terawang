@@ -4,7 +4,9 @@
   "private": true,
   "description": "Bot WhatsApp TERAWANG: GoWA + data app.* + OpenAI untuk pesan bebas",
   "type": "module",
-  "engines": { "node": ">=20.19" },
+  "engines": {
+    "node": ">=20.19"
+  },
   "scripts": {
     "start": "tsx src/server.ts",
     "dev": "tsx watch src/server.ts",
@@ -13,6 +15,7 @@
     "test": "tsx --test src/*.test.ts"
   },
   "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "pg": "^8.23.1",
     "tsx": "^4.23.15"
   },
