@@ -447,6 +447,11 @@ async def daftar_laporan(req: Request):
 
 
 @perlu_login("laporan")
+async def saran_laporan(req: Request):
+    return JSONResponse(await run_in_threadpool(laporan.saran_ai))
+
+
+@perlu_login("laporan")
 async def ubah_laporan(req: Request):
     try:
         id_laporan = int(req.path_params["id"])
@@ -528,6 +533,7 @@ routes = [
     Route(f"{API}/sumber/{{sumber}}/{{nama}}/contoh", templat),
     Route(f"{API}/jejak", lihat_jejak),
     Route(f"{API}/laporan", daftar_laporan),
+    Route(f"{API}/laporan/saran", saran_laporan),
     Route(f"{API}/laporan/{{id}}/{{aksi}}", ubah_laporan, methods=["POST"]),
     Route(f"{API}/wa", wa_status),
     Route(f"{API}/wa/{{aksi}}", wa_aksi, methods=["POST"]),
