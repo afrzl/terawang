@@ -129,10 +129,16 @@ export interface GkpData {
 
 export interface GkpKab {
   nama: string
-  bulan_data_terakhir: string
-  /** gabungan = rata-rata naif kab dan provinsi x rasio; rasio_provinsi = kab tanpa data bulan acuan. */
+  /** null = Bapanas belum pernah mencatat GKP kab ini. */
+  bulan_data_terakhir: string | null
+  /** gabungan = rata-rata naif kab dan provinsi x rasio; rasio_provinsi = kab tanpa data bulan acuan;
+   * taksiran_rasio_terakhir / taksiran_median_kab = data taksiran (provinsi x rasio terakhir, atau median rasio semua kab). */
   metode: string
-  riwayat: { bulan: string; harga: number }[]
+  /** true = angka taksiran, bukan pengamatan (sejak versi 0.3). */
+  taksiran?: boolean
+  rasio_jatim?: number
+  /** sumber "Bapanas" (pengamatan) atau "taksiran"; tidak ada pada berkas sebelum versi 0.3. */
+  riwayat: { bulan: string; harga: number; sumber?: string }[]
   prakiraan: { bulan_target: string; horizon_bulan: number; harga_prediksi: number; p10: number; p90: number }[]
 }
 
