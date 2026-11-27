@@ -41,17 +41,14 @@ export default function Produksi() {
   const prevT = (sum(wil, (k) => produksiPrevRentang(k, mulai, akhir)) / 1000) * sat.f
   const luasHa = sum(wil, (k) => luasRentang(k, mulai, akhir))
   const luasPrevHa = sum(wil, (k) => luasPrevRentang(k, mulai, akhir))
-  const luasYoy = luasPrevHa ? (luasHa / luasPrevHa - 1) * 100 : 0
   const prodHa = luasHa ? (berasT * 1000 * sat.f) / luasHa : 0 // ton satuan terpilih per ha
   const turun = wil.filter((k) => yoyRentang(k, mulai, akhir) < 0).length
-  const yoy = prevT ? (prodT / prevT - 1) * 100 : 0
   const { pisah, warna, wil: wilP } = usePerWilayah()
   const prodWil = (k: Wilayah) => {
     const v = (produksiRentang(k, mulai, akhir) / 1000) * sat.f
-    const y = yoyRentang(k, mulai, akhir) * 100
     return (
       <>
-        {v >= 1000 ? `${nf(v / 1000, 2)} jt` : `${nf(v, 0)} rb`} <small className={y < 0 ? "delta-dn" : "delta-up"}>{nf(y, 1)}%</small>
+        {v >= 1000 ? `${nf(v / 1000, 2)} jt` : `${nf(v, 0)} rb`} <Delta kini={produksiRentang(k, mulai, akhir)} lalu={produksiPrevRentang(k, mulai, akhir)} small />
       </>
     )
   }
@@ -59,10 +56,9 @@ export default function Produksi() {
   const luasWil = (k: Wilayah) => {
     const v = luasRentang(k, mulai, akhir)
     const p = luasPrevRentang(k, mulai, akhir)
-    const y = p ? (v / p - 1) * 100 : 0
     return (
       <>
-        {fmtHa(v)} <small className={y < 0 ? "delta-dn" : "delta-up"}>{nf(y, 1)}%</small>
+        {fmtHa(v)} <Delta kini={v} lalu={p} small />
       </>
     )
   }
@@ -79,7 +75,7 @@ export default function Produksi() {
             v: prodT >= 1000 ? `${nf(prodT / 1000, 2)} jt ton` : `${nf(prodT, 0)} rb ton`,
             t: (
               <>
-                <span className={yoy < 0 ? "delta-dn" : "delta-up"}>{nf(yoy, 1)}%</span> YoY
+                <Delta kini={prodT * 1000} lalu={prevT * 1000} /> YoY
               </>
             ),
           },
@@ -90,7 +86,7 @@ export default function Produksi() {
                 v: fmtHa(luasHa),
                 t: (
                   <>
-                    <span className={luasYoy < 0 ? "delta-dn" : "delta-up"}>{nf(luasYoy, 1)}%</span> YoY · {nf(prodHa, 2)} ton {sat.lab}/ha
+                    <Delta kini={luasHa} lalu={luasPrevHa} /> YoY · {nf(prodHa, 2)} ton {sat.lab}/ha
                   </>
                 ),
               },
@@ -142,6 +138,22 @@ export default function Produksi() {
       </div>
     </section>
   )
+}
+
+/** Perubahan terhadap periode sama 2025. Bila 2025 tanpa panen (pembagi nol), persen tidak bermakna: tampil "baru" atau "–". */
+function Delta({ kini, lalu, small, kurung }: { kini: number; lalu: number; small?: boolean; kurung?: boolean }) {
+  const Tag = small ? "small" : "span"
+  const bungkus = (t: string) => (kurung ? `(${t})` : t)
+  if (!(lalu > 0.5)) {
+    const baru = kini >= 5
+    return (
+      <Tag className={baru ? "delta-up" : "delta-nol"} title={baru ? "periode sama 2025 tanpa panen" : "panen kedua periode nihil atau sangat kecil"}>
+        {bungkus(baru ? "baru" : "–")}
+      </Tag>
+    )
+  }
+  const y = (kini / lalu - 1) * 100
+  return <Tag className={y < 0 ? "delta-dn" : "delta-up"}>{bungkus(`${nf(y, 1)}%`)}</Tag>
 }
 
 /** "12,3 rb ha", "1,25 jt ha", atau "850 ha". */
@@ -306,7 +318,7 @@ function LuasBars() {
       .map((k) => {
         const ha = luasRentang(k, mulai, akhir)
         const prev = luasPrevRentang(k, mulai, akhir)
-        return { n: k.n, ha: ha / 1000, prev: prev / 1000, yoy: prev ? (ha / prev - 1) * 100 : 0, prod: ha ? (produksiRentang(k, mulai, akhir) * sat.f) / ha : 0 }
+        return { n: k.n, ha: ha / 1000, prev: prev / 1000, yoy: prev * 1000 >= 0.5 ? (ha / prev - 1) * 100 : null, prod: ha >= 0.5 ? (produksiRentang(k, mulai, akhir) * sat.f) / ha : 0 }
       })
       .sort((a, b) => b.ha - a.ha),
     16,
@@ -330,7 +342,7 @@ function LuasBars() {
             <g key={t}>
               <line x1={xs(t)} x2={xs(t)} y1={MT} y2={H - 22} />
               <text x={xs(t)} y={H - 8} textAnchor="middle">
-                {nf(t, xm < 5 ? 1 : 0)}
+                {nf(t, xm < 0.05 ? 3 : xm < 0.5 ? 2 : xm < 5 ? 1 : 0)}
               </text>
             </g>
           ))}
@@ -350,9 +362,9 @@ function LuasBars() {
                     Luas panen <span className="m">{nf(k.ha * 1000)} ha</span>
                     <br />
                     Periode sama 2025 <span className="m">{nf(k.prev * 1000)} ha</span>{" "}
-                    <span className={k.yoy < 0 ? "delta-dn" : "delta-up"}>({nf(k.yoy, 1)}%)</span>
+                    {k.prev * 1000 < 0.5 ? <span className="delta-nol">(tidak ada panen)</span> : <Delta kini={k.ha * 1000} lalu={k.prev * 1000} kurung />}
                     <br />
-                    Produktivitas <span className="m">{nf(k.prod, 2)} ton {sat.lab}/ha</span>
+                    Produktivitas <span className="m">{k.prod ? `${nf(k.prod, 2)} ton ${sat.lab}/ha` : "–"}</span>
                   </>,
                   e,
                 )
@@ -367,7 +379,7 @@ function LuasBars() {
               <rect x={ml} y={y - 5} width={Math.max(0, xs(k.ha) - ml)} height={10} fill={isSel ? "var(--accent)" : "var(--s4)"} />
               <circle cx={xs(k.prev)} cy={y} r={3.6} fill="var(--panel)" stroke="var(--ink-2)" strokeWidth={1.6} />
               <text x={xs(Math.max(k.ha, k.prev)) + 8} y={y + 4}>
-                {nf(k.prod, 1)}
+                {k.prod ? nf(k.prod, 1) : "–"}
               </text>
             </g>
           )
