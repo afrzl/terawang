@@ -36,6 +36,7 @@
     <nav class="menu" id="menu">
       <div class="grup-menu">Pemantauan</div>
       <a href="#pipeline" data-hal="pipeline" data-hak="pipeline"><span class="k">PL</span><span class="lbl">Ringkasan pipeline</span></a>
+      <a href="#laporan" data-hal="laporan" data-hak="laporan"><span class="k">LPR</span><span class="lbl">Laporan warga</span><i class="jumlah-menu" id="jumlah-laporan" hidden></i></a>
       <div class="grup-menu" data-hak="pipeline">Sumber data</div>
       <div id="menu-sumber" data-hak="pipeline"></div>
       <div class="grup-menu" data-hak="pipeline">Pengaturan</div>
@@ -137,6 +138,23 @@
         </div>
         <div id="isi-log" class="log"></div>
       </div>
+    </section>
+
+    <section id="bagian-laporan" class="bagian" hidden>
+      <div class="vh">
+        <div><div class="eyebrow">Pemantauan · bot WhatsApp</div><h2>Laporan harga warga</h2></div>
+        <div class="aksi">
+          <div class="seg" id="seg-laporan" role="tablist" aria-label="Status laporan">
+            <button type="button" data-status="MENUNGGU" aria-selected="true">Menunggu</button>
+            <button type="button" data-status="VALID" aria-selected="false">Diterima</button>
+            <button type="button" data-status="DITOLAK" aria-selected="false">Ditolak</button>
+            <button type="button" data-status="" aria-selected="false">Semua</button>
+          </div>
+          <button class="tombol" id="segarkan-laporan" type="button">Segarkan</button>
+        </div>
+      </div>
+      <div class="kpis" id="kpi-laporan"></div>
+      <div class="panel"><div class="tbl-wrap"><table class="tabel" id="tabel-laporan"><thead><tr><th>Waktu</th><th>Wilayah</th><th>Pasar</th><th>Jenis</th><th>Harga/kg</th><th>Vs panel</th><th>Pelapor</th><th>Status</th><th></th></tr></thead><tbody></tbody></table></div></div>
     </section>
 
     <section id="bagian-whatsapp" class="bagian" hidden>

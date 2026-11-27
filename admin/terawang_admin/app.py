@@ -17,7 +17,7 @@ from starlette.responses import FileResponse, HTMLResponse, JSONResponse, Redire
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
-from . import akun, dagster, data, envfile, jejak, pengaturan, sumber, uji, whatsapp
+from . import akun, dagster, data, envfile, jejak, laporan, pengaturan, sumber, uji, whatsapp
 
 STATIC = Path(__file__).parent / "static"
 HEADER_CSRF = "x-terawang-admin"
@@ -51,7 +51,7 @@ def perlu_login(hak: str | None = None):
                 return galat(str(e), 502)
             except whatsapp.GalatWa as e:
                 return galat(str(e), 502)
-            except (sumber.GagalUnggah, akun.GalatAkun, data.GagalData) as e:
+            except (sumber.GagalUnggah, akun.GalatAkun, data.GagalData, laporan.GagalLaporan) as e:
                 return galat(str(e), 400)
         return bungkus
     return hias
@@ -437,6 +437,28 @@ async def wa_aksi(req: Request):
     return galat("Aksi tidak dikenal.")
 
 
+# ---------- laporan harga warga ----------
+
+@perlu_login("laporan")
+async def daftar_laporan(req: Request):
+    status = req.query_params.get("status") or None
+    return JSONResponse(await run_in_threadpool(laporan.daftar, status))
+
+
+@perlu_login("laporan")
+async def ubah_laporan(req: Request):
+    try:
+        id_laporan = int(req.path_params["id"])
+    except ValueError:
+        return galat("ID laporan tidak sah.")
+    aksi = req.path_params["aksi"]
+    r = await run_in_threadpool(laporan.ubah, id_laporan, aksi)
+    jejak.catat("validasi_laporan", req.state.pengguna, ip_klien(req), laporan=r["id"], status=r["status"],
+                pasar=r["pasar"], harga=r["harga"])
+    pesan = {"VALID": "diterima", "DITOLAK": "ditolak", "MENUNGGU": "dikembalikan ke antrean"}[r["status"]]
+    return JSONResponse({"pesan": f"Laporan {r['pasar']} {pesan}.", **r})
+
+
 # ---------- halaman ----------
 
 def _versi_aset() -> str:
@@ -503,6 +525,8 @@ routes = [
     Route(f"{API}/sumber/{{sumber}}/{{nama}}", tarik, methods=["DELETE"]),
     Route(f"{API}/sumber/{{sumber}}/{{nama}}/contoh", templat),
     Route(f"{API}/jejak", lihat_jejak),
+    Route(f"{API}/laporan", daftar_laporan),
+    Route(f"{API}/laporan/{{id}}/{{aksi}}", ubah_laporan, methods=["POST"]),
     Route(f"{API}/wa", wa_status),
     Route(f"{API}/wa/{{aksi}}", wa_aksi, methods=["POST"]),
     Mount("/admin/static", StaticFiles(directory=STATIC), name="static"),
