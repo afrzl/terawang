@@ -8,7 +8,7 @@ import { jawabBebas, llmAktif, pilahNiat } from "./llm.ts"
 import * as pagar from "./pagar.ts"
 import { pantau } from "./pantau.ts"
 import { buangSalam, CONTOH, jawabBasaBasi, jawabIstilah, POLA_TERIMA_KASIH, TERIMA_KASIH } from "./istilah.ts"
-import { dataGrafik, pngGrafik, POLA_GRAFIK, svgGrafik, teksGrafik, uraiJenis, uraiRentang } from "./grafik.ts"
+import { dataGrafik, jenisDisebut, pngGrafik, POLA_GRAFIK, rentangDisebut, svgGrafik, teksGrafik, type Jenis } from "./grafik.ts"
 import { cariDiKalimat, cocokkan, labelWilayah, normal, semuaWilayah, type Wilayah } from "./wilayah.ts"
 
 type Perintah = "harga" | "stok" | "sphp" | "peringatan" | "langganan" | "berhenti" | "lapor" | "bantuan" | "grafik"
@@ -111,7 +111,7 @@ async function jalankan(p: Perintah, w: Wilayah | null, k: kontak.Kontak, arg: s
     case "lapor":
       return laporHarga(k, arg)
     case "grafik":
-      return buatGrafik(w, arg)
+      return buatGrafik(w, arg, k)
     case "bantuan":
       return { teks: BANTUAN, intent: "bantuan", wilayahId: null }
   }
@@ -119,15 +119,27 @@ async function jalankan(p: Perintah, w: Wilayah | null, k: kontak.Kontak, arg: s
 
 // ---- grafik harga (gambar PNG dari data, tanpa OpenAI)
 
-async function buatGrafik(w: Wilayah | null, teks: string): Promise<Balasan> {
+// grafik terakhir per kontak (30 menit): pesan lanjutan "kalau setahun?" atau "premium aja" memakai wilayah/rentang/jenis ini
+type KonteksGrafik = { wilayahId: number | null; hari: number; jenis: Jenis; sampai: number }
+const konteksGrafik = new Map<number, KonteksGrafik>()
+function grafikAktif(kontakId: number): KonteksGrafik | null {
+  const g = konteksGrafik.get(kontakId)
+  return g && g.sampai > Date.now() ? g : null
+}
+
+async function buatGrafik(w: Wilayah | null, teks: string, k: kontak.Kontak): Promise<Balasan> {
   const n = normal(teks)
   if (/\b(stok|stock|persediaan|produksi|panen)\b/.test(n) && !/\bharga\b/.test(n)) {
     return { teks: "Grafik baru tersedia untuk harga beras. Coba ketik *GRAFIK Jember* atau _grafik harga beras sebulan ini_.", intent: "grafik_belum", wilayahId: w?.id ?? null }
   }
-  const d = await dataGrafik(w, uraiRentang(teks), uraiJenis(teks))
+  const lalu = grafikAktif(k.id)
+  const hari = rentangDisebut(teks) ?? lalu?.hari ?? 30
+  const jenis = jenisDisebut(teks) ?? lalu?.jenis ?? "keduanya"
+  const d = await dataGrafik(w, hari, jenis)
   if (d.titik.length < 2) {
     return { teks: `Belum ada cukup data harga beras ${d.judul} untuk dibuat grafik.`, intent: "grafik_kosong", wilayahId: d.wilayahId }
   }
+  konteksGrafik.set(k.id, { wilayahId: d.wilayahId, hari: d.hari, jenis, sampai: Date.now() + 30 * MENIT })
   return { teks: teksGrafik(d), intent: "grafik", wilayahId: d.wilayahId, topik: "harga", gambar: pngGrafik(svgGrafik(d)) }
 }
 
@@ -139,16 +151,28 @@ async function grafikDariKalimat(nomor: string, k: kontak.Kontak, teks: string):
   const di = cariDiKalimat(teks.replace(/jawa timur|jatim/gi, ""), daftar)
   if (di.jenis === "pas") {
     await kontak.ingatWilayah(k.id, di.wilayah.id)
-    return buatGrafik(di.wilayah, teks)
+    return buatGrafik(di.wilayah, teks, k)
   }
   if (di.jenis === "ambigu") {
     tunda.set(nomor, { jenis: "pilih", perintah: "grafik", pilihan: di.pilihan, sampai: Date.now() + 10 * MENIT, sisa: teks })
     return { teks: teksPilihWilayah(di.pilihan, labelWilayah), intent: "pilih_wilayah", wilayahId: null }
   }
-  // tanpa nama wilayah: lanjutkan wilayah percakapan (30 menit terakhir), selain itu rata-rata Jawa Timur
+  if (seJatim) return buatGrafik(null, teks, k)
+  // tanpa nama wilayah: wilayah grafik terakhir, lalu wilayah percakapan (30 menit), selain itu rata-rata Jawa Timur
+  const g = grafikAktif(k.id)
+  if (g) return buatGrafik(daftar.find((w) => w.id === g.wilayahId) ?? null, teks, k)
   const kt = konteks.get(k.id)
-  const lanjut = !seJatim && kt && kt.sampai > Date.now() ? daftar.find((w) => w.id === kt.wilayahId) ?? null : null
-  return buatGrafik(lanjut, teks)
+  const lanjut = kt && kt.sampai > Date.now() ? daftar.find((w) => w.id === kt.wilayahId) ?? null : null
+  return buatGrafik(lanjut, teks, k)
+}
+
+/** Pesan pendek setelah grafik yang hanya mengganti rentang/jenis/wilayah: "klo setahun?", "premium aja", "kalau jember?". */
+export function lanjutanGrafik(teks: string, adaWilayah: boolean): boolean {
+  const n = normal(teks)
+  if (n.split(" ").length > 7) return false
+  if (/\b(berapa|brp|stok|stock|sphp|lapor|prakiraan|prediksi|naik|turun|kenapa|mengapa|lagi|depan|kedepan|besok)\b/.test(n)) return false
+  if (rentangDisebut(teks) != null || jenisDisebut(teks) != null) return true
+  return adaWilayah && /\b(kalau|kalo|klo|kl|gimana|gmn|bagaimana|kalau di|terus|trs)\b/.test(n)
 }
 
 const BUTUH_WILAYAH: Perintah[] = ["harga", "stok", "sphp", "langganan"]
@@ -368,7 +392,7 @@ async function proses(nomor: string, k: kontak.Kontak, teks: string): Promise<Ba
       if (w) {
         tunda.delete(nomor)
         if (BUTUH_WILAYAH.includes(t.perintah)) await kontak.ingatWilayah(k.id, w.id)
-        if (t.perintah === "grafik") return buatGrafik(w, t.sisa ?? "")
+        if (t.perintah === "grafik") return buatGrafik(w, t.sisa ?? "", k)
         // pertanyaan bebas yang tadi ditunda: jawab ulang dengan wilayah yang dipilih
         if (t.sisa && llmAktif()) return pesanBebas(k, t.sisa, w)
         return jalankan(t.perintah, w, k, "")
@@ -376,7 +400,8 @@ async function proses(nomor: string, k: kontak.Kontak, teks: string): Promise<Ba
     }
     if (t.jenis === "lapor") return laporHarga(k, teks)
   }
-  if (cmd?.perintah === "grafik" || (!cmd && POLA_GRAFIK.test(normal(teks)))) {
+  const lanjutGrafik = !cmd && grafikAktif(k.id) && lanjutanGrafik(teks, cariDiKalimat(teks, await semuaWilayah()).jenis !== "tidak_ada")
+  if (cmd?.perintah === "grafik" || (!cmd && POLA_GRAFIK.test(normal(teks))) || lanjutGrafik) {
     tunda.delete(nomor)
     return grafikDariKalimat(nomor, k, teks)
   }
