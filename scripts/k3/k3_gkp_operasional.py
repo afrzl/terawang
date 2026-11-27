@@ -31,7 +31,7 @@ import pandas as pd
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 
 warnings.filterwarnings("ignore")
-VERSI = "k3-gkp-sarimax-gab-0.2"
+VERSI = "k3-gkp-sarimax-gab-0.3"
 R = pathlib.Path(__file__).resolve().parents[2]
 D = R / "data"
 H = 3
@@ -39,7 +39,12 @@ AWAL_LATIH = pd.Period("2019-01", "M")
 ORDE, MUSIM = (0, 1, 0), (1, 0, 0, 12)
 N_UJI = 36
 MIN_HARI_KAB = 5   # bulan kab dihitung bila ada >=5 hari data Bapanas
-KAB_MAKS_JEDA = 2  # kab dilewati bila data terakhirnya lebih dari 2 bulan sebelum bulan acuan
+KAB_MAKS_JEDA = 2  # kab dengan data terakhir lebih dari 2 bulan sebelum bulan acuan tidak dimodelkan, hanya ditaksir (lihat _kab_taksiran)
+# 29 kabupaten Jawa Timur (city_id Bapanas). Kota tidak ditaksir: bukan sentra gabah, Bapanas tidak mencatat GKP di kota.
+KAB_JATIM = dict(zip(range(226, 255), [
+    "Pacitan", "Ponorogo", "Trenggalek", "Tulungagung", "Blitar", "Kediri", "Malang", "Lumajang", "Jember", "Banyuwangi",
+    "Bondowoso", "Situbondo", "Probolinggo", "Pasuruan", "Sidoarjo", "Mojokerto", "Jombang", "Nganjuk", "Madiun", "Magetan",
+    "Ngawi", "Bojonegoro", "Tuban", "Lamongan", "Gresik", "Bangkalan", "Sampang", "Pamekasan", "Sumenep"]))
 
 
 def _bulan(df):
@@ -150,6 +155,42 @@ def _kab_prakira(K, prov, T, mu_prov, rasio):
     return hasil
 
 
+def _kab_taksiran(K, prov, T, mu_prov, rasio, q, sudah, nama):
+    """DATA TAKSIRAN untuk kabupaten tanpa GKP Bapanas terkini: harga provinsi (Bapanas) x rasio kab/provinsi terakhir
+    (rata-rata 3 bulan berdata terakhir). Kab yang tak pernah berdata memakai median rasio terakhir semua kab.
+    Riwayat bulan tanpa data diisi dengan cara yang sama dan ditandai sumber "taksiran"."""
+    lr = np.log(K[:T]).sub(np.log(prov[:T]), axis=0)
+    akhir = {c: lr[c].dropna() for c in K.columns}
+    akhir = {c: r.iloc[-3:].mean() for c, r in akhir.items() if len(r)}
+    median = float(np.median(list(akhir.values()))) if akhir else 0.0
+    keluar = []
+    for c, nm in KAB_JATIM.items():
+        if c in sudah:
+            continue
+        punya = c in akhir
+        r = akhir.get(c, median)
+        pr = np.asarray(mu_prov) - np.log(rasio) + r
+        asli = K[c] if c in K.columns else pd.Series(np.nan, index=K.index)
+        riwayat = []
+        for b in pd.period_range(T - 23, T, freq="M"):
+            v = asli.get(b, np.nan)
+            if not np.isnan(v):
+                riwayat.append({"bulan": str(b), "harga": round(float(v), 1), "sumber": "Bapanas"})
+            elif b in prov.index and not np.isnan(prov[b]):
+                riwayat.append({"bulan": str(b), "harga": round(float(prov[b] * np.exp(r)), 1), "sumber": "taksiran"})
+        s = asli.dropna()
+        keluar.append({
+            "nama": nama.get(c, nm) if hasattr(nama, "get") else nm, "city_id": int(c),
+            "bulan_data_terakhir": str(s.index[-1]) if len(s) else None,
+            "metode": "taksiran_rasio_terakhir" if punya else "taksiran_median_kab", "taksiran": True,
+            "rasio_jatim": round(float(np.exp(r)), 4),
+            "riwayat": riwayat,
+            "prakiraan": [{"bulan_target": str(T + h), "horizon_bulan": h, "harga_prediksi": round(float(np.exp(pr[h - 1])), 1),
+                           "p10": round(float(np.exp(pr[h - 1] + q[h][0])), 1), "p90": round(float(np.exp(pr[h - 1] + q[h][1])), 1)}
+                          for h in range(1, H + 1)]})
+    return keluar
+
+
 def kabupaten(panel, hari_ini, T, mu, mu_uji, rasio):
     """Prakiraan GKP petani per kab/kota (Bapanas sejak 2024, belum cukup panjang untuk SARIMAX per kab).
     Uji mundur pada origin yang sama dengan provinsi (2025-26): MAPE 2,4/3,3/4,3% vs naif kab 2,4/3,5/4,5%."""
@@ -174,10 +215,12 @@ def kabupaten(panel, hari_ini, T, mu, mu_uji, rasio):
         s = K[c].dropna()
         keluar.append({
             "nama": nama[c], "city_id": int(c), "bulan_data_terakhir": str(s.index[-1]), "metode": metode,
-            "riwayat": [{"bulan": str(b), "harga": round(float(v), 1)} for b, v in K[c][T - 23:T].items() if not np.isnan(v)],
+            "riwayat": [{"bulan": str(b), "harga": round(float(v), 1), "sumber": "Bapanas"} for b, v in K[c][T - 23:T].items() if not np.isnan(v)],
             "prakiraan": [{"bulan_target": str(T + h), "horizon_bulan": h, "harga_prediksi": round(float(np.exp(pr[h - 1])), 1),
                            "p10": round(float(np.exp(pr[h - 1] + q[h][0])), 1), "p90": round(float(np.exp(pr[h - 1] + q[h][1])), 1)}
                           for h in range(1, H + 1)]})
+    keluar += _kab_taksiran(K, prov, T, mu, rasio, q, {d["city_id"] for d in keluar}, nama)
+    keluar.sort(key=lambda d: d["nama"])
     mp = lambda e: round(float(np.mean(np.abs(np.expm1(-np.array(e)))) * 100), 2) if e else None
     uji = {f"h{h}": {"n": len(gal[h]), "mape": mp(gal[h]), "n_berdata": len(gal_sama[h]), "mape_berdata": mp(gal_sama[h]), "mape_naif": mp(gal_naif[h])}
            for h in gal}
