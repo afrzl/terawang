@@ -136,7 +136,7 @@ function grafikAktif(kontakId: number): KonteksGrafik | null {
   return g && g.sampai > Date.now() ? g : null
 }
 
-async function buatGrafik(w: Wilayah | null, teks: string, k: kontak.Kontak): Promise<Balasan> {
+async function buatGrafik(w: Wilayah | null, teks: string, k: kontak.Kontak, topikObrolan?: TopikGrafik): Promise<Balasan> {
   const n = normal(teks)
   const lalu = grafikAktif(k.id)
   const disebut = topikDisebut(teks)
@@ -146,7 +146,7 @@ async function buatGrafik(w: Wilayah | null, teks: string, k: kontak.Kontak): Pr
       intent: "grafik_belum", wilayahId: w?.id ?? null,
     }
   }
-  const topik = disebut ?? lalu?.topik ?? "harga"
+  const topik = disebut ?? topikObrolan ?? lalu?.topik ?? "harga"
   // rentang yang tidak disebut ikut grafik sebelumnya; jenis beras hanya untuk grafik harga
   const hariDisebut = rentangDisebut(teks)
   const hari = hariDisebut ?? (lalu && lalu.topik === topik ? lalu.hari : null)
@@ -181,12 +181,17 @@ async function grafikDariKalimat(nomor: string, k: kontak.Kontak, teks: string):
     return { teks: teksPilihWilayah(di.pilihan, labelWilayah), intent: "pilih_wilayah", wilayahId: null }
   }
   if (seJatim) return buatGrafik(null, teks, k)
-  // tanpa nama wilayah: wilayah grafik terakhir, lalu wilayah percakapan (30 menit), selain itu rata-rata Jawa Timur
+  // tanpa nama wilayah: wilayah yang paling akhir dibicarakan (30 menit), selain itu rata-rata Jawa Timur.
+  // "kota probolinggo" lalu "grafiknya" harus Probolinggo walau grafik sebelumnya Jember.
   const g = grafikAktif(k.id)
+  const kt0 = konteks.get(k.id)
+  const kt = kt0 && kt0.sampai > Date.now() ? kt0 : null
+  if (kt && (!g || kt.sampai > g.sampai)) {
+    const topikObrolan = kt.topik === "harga" || kt.topik === "stok" ? kt.topik : undefined
+    return buatGrafik(daftar.find((w) => w.id === kt.wilayahId) ?? null, teks, k, g && g.wilayahId === kt.wilayahId ? undefined : topikObrolan)
+  }
   if (g) return buatGrafik(daftar.find((w) => w.id === g.wilayahId) ?? null, teks, k)
-  const kt = konteks.get(k.id)
-  const lanjut = kt && kt.sampai > Date.now() ? daftar.find((w) => w.id === kt.wilayahId) ?? null : null
-  return buatGrafik(lanjut, teks, k)
+  return buatGrafik(null, teks, k)
 }
 
 /** Jawaban pilihan "kota", "kab", "kabupatennya", "yang kota" untuk Kab./Kota bernama sama. */
