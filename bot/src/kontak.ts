@@ -80,3 +80,11 @@ export async function simpanLaporan(kontakId: number, wilayahId: number | null, 
     [kontakId, wilayahId, kodeKomoditas, pasar.slice(0, 120), harga, peran],
   )
 }
+
+/** Koreksi peran pelapor; hanya laporan milik kontak itu sendiri yang masih menunggu validasi. */
+export async function ubahPeranLaporan(id: number, kontakId: number, peran: "PENJUAL" | "PEMBELI") {
+  await q(
+    `update app.laporan_harga_warga set peran_pelapor = $3::app."PeranPelapor" where id = $1 and kontak_id = $2 and status = 'MENUNGGU'`,
+    [id, kontakId, peran],
+  )
+}
