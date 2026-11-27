@@ -5,7 +5,8 @@
  * supaya angka atau nama pasar tidak dikarang.
  */
 import { config } from "./config.ts"
-import { normal } from "./wilayah.ts"
+import { KECAMATAN } from "./kecamatan-jatim.ts"
+import { normal, type Wilayah } from "./wilayah.ts"
 
 export type Peran = "PENJUAL" | "PEMBELI"
 export type JenisBeras = "medium" | "premium"
@@ -86,9 +87,9 @@ const PENGHENTI_PASAR = /(,|;|\.|!|\?|\n|\s(beras|medium|premium|harga\w*|hrg|rp
 
 /** "di pasar induk kota batu, ..." -> "Pasar Induk Kota Batu"; juga toko/warung/kios/swalayan. */
 export function pasarDisebut(teks: string): string | undefined {
-  const m = teks.match(/\b(pasar|psr|toko|warung|kios|swalayan|minimarket|supermarket|indomaret|alfamart|grosir|koperasi|rpk)\b\s*(.*)$/i)
+  const m = teks.match(/\b(pasar|psr|toko|warung|kios|swalayan|minimarket|supermarket|indomaret|alfamart|grosir|koperasi|rpk|kecamatan|kec|kelurahan|desa)\b\.?\s*(.*)$/i)
   if (!m) return undefined
-  const kata = m[1].toLowerCase() === "psr" ? "pasar" : m[1]
+  const kata = ({ psr: "pasar", kec: "kecamatan" } as Record<string, string>)[m[1].toLowerCase()] ?? m[1]
   const sisa = " " + m[2]
   const henti = sisa.search(PENGHENTI_PASAR)
   const nama = (henti >= 0 ? sisa.slice(0, henti) : sisa).trim().split(/\s+/).slice(0, 6).join(" ")
@@ -186,3 +187,33 @@ export async function lengkapiDenganLLM(teks: string, d: Draf): Promise<Draf> {
     return d
   }
 }
+
+// nama kecamatan yang juga kata umum: hanya dipakai bila didahului "kecamatan"/"kec"
+const KEC_UMUM = new Set(["kota", "taman", "waru", "pasar", "besuki", "wates", "glagah", "bandar", "kauman", "pesantren", "sukun", "jetis"])
+
+/**
+ * Kecamatan yang disebut di kalimat -> kab/kota calon. "kecamatan blimbing" -> [Kota Malang].
+ * Nama kecamatan yang sama dengan nama kab/kota diabaikan (sudah ditangani pencocokan kab/kota).
+ */
+export function kecamatanDisebut(teks: string, daftar: Wilayah[]): { kecamatan: string; wilayah: Wilayah[] } | null {
+  const n = ` ${normal(teks)} `
+  const eksplisit = n.match(/ (?:kecamatan|kec|kcmtn|kecamtan) ((?:\S+ ){1,3})/)?.[1]?.trim()
+  const dasarKab = new Set(daftar.map((w) => w.dasar))
+  let terbaik: { kecamatan: string; wilayah: Wilayah[]; panjang: number } | null = null
+  for (const [kode, kec] of Object.entries(KECAMATAN)) {
+    const w = daftar.find((x) => x.kode.replace(/\D/g, "") === kode)
+    if (!w) continue
+    for (const nama of kec) {
+      const nn = normal(nama)
+      if (dasarKab.has(nn)) continue
+      const kena = eksplisit ? ` ${eksplisit} `.startsWith(` ${nn} `) : !KEC_UMUM.has(nn) && n.includes(` ${nn} `)
+      if (!kena) continue
+      if (!terbaik || nn.length > terbaik.panjang) terbaik = { kecamatan: nama, wilayah: [w], panjang: nn.length }
+      else if (nn === normal(terbaik.kecamatan) && !terbaik.wilayah.includes(w)) terbaik.wilayah.push(w)
+    }
+  }
+  return terbaik ? { kecamatan: terbaik.kecamatan, wilayah: terbaik.wilayah } : null
+}
+
+export const POLA_YA = /^(ya+|iy+a*|y|yup|yoi|betul|bener|benar|ok|oke|okey|sip|siap|he ?eh|iya bener|bener banget|yes|yap)\b/
+export const POLA_BUKAN = /^(bukan|bkn|salah|tidak|nggak|ngga|gak|ga|enggak|no)\b/

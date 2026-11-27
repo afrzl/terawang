@@ -63,7 +63,7 @@ export async function berhenti(kontakId: number, wilayahId?: number) {
   await q(`update app.kontak_warga set opt_in = false, berhenti_pada = now() where id = $1`, [kontakId])
 }
 
-export async function simpanLaporan(kontakId: number, wilayahId: number | null, kodeKomoditas: string, pasar: string, harga: number, peran: "PENJUAL" | "PEMBELI") {
+export async function simpanLaporan(kontakId: number, wilayahId: number | null, kodeKomoditas: string, pasar: string, harga: number, peran: "PENJUAL" | "PEMBELI", pesan = "") {
   return q1<{ id: number; panel: number | null; selisih: number | null }>(
     `with k as (select id from ref.komoditas where kode = $3),
      panel as (
@@ -72,12 +72,12 @@ export async function simpanLaporan(kontakId: number, wilayahId: number | null, 
         order by tanggal desc limit 1
      ),
      ins as (
-       insert into app.laporan_harga_warga (kontak_id, wilayah_id, komoditas_id, nama_pasar, harga_rp_kg, selisih_panel_pct, peran_pelapor)
-       values ($1, $2, (select id from k), $4, $5::int, (select round(((($5::int::float8 / h) - 1) * 100)::numeric, 1)::float8 from panel), $6::app."PeranPelapor")
+       insert into app.laporan_harga_warga (kontak_id, wilayah_id, komoditas_id, nama_pasar, harga_rp_kg, selisih_panel_pct, peran_pelapor, pesan_laporan)
+       values ($1, $2, (select id from k), $4, $5::int, (select round(((($5::int::float8 / h) - 1) * 100)::numeric, 1)::float8 from panel), $6::app."PeranPelapor", nullif($7, ''))
        returning id, selisih_panel_pct
      )
      select ins.id, (select round(h)::int from panel) as panel, ins.selisih_panel_pct as selisih from ins`,
-    [kontakId, wilayahId, kodeKomoditas, pasar.slice(0, 120), harga, peran],
+    [kontakId, wilayahId, kodeKomoditas, pasar.slice(0, 120), harga, peran, pesan.slice(0, 600)],
   )
 }
 
