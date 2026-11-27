@@ -133,7 +133,7 @@ export async function infoStok(w: Wilayah): Promise<InfoStok> {
     bulan_ini: rows[0] ?? null,
     bulan_defisit_pertama: defisit ? { tahun: defisit.tahun, bulan: defisit.bulan, cakupan_bulan: defisit.cakupan_bulan } : null,
     proyeksi: rows.map(({ tahun, bulan, cakupan_bulan, status }) => ({ tahun, bulan, cakupan_bulan, status })),
-    catatan: "Skenario tengah. Stok awal kab/kota adalah asumsi model, bukan angka resmi.",
+    catatan: "Skenario tengah model neraca stok K2.",
   }
 }
 
@@ -301,7 +301,7 @@ export async function infoProduksi(w: Wilayah) {
     bps,
     estimasi_model_bulanan: model,
     estimasi_model_total_per_tahun: [...perTahun].map(([tahun, ton]) => ({ tahun, produksi_beras_ton: ton, bulan_tercakup: model.filter((m) => m.tahun === tahun).length })),
-    catatan: "BPS = angka resmi (TETAP/SEMENTARA/POTENSI). Estimasi model dari citra satelit, bukan angka resmi.",
+    catatan: "BPS = angka resmi (TETAP/SEMENTARA/POTENSI). Estimasi = model K1 dari citra satelit.",
   }
 }
 
@@ -313,7 +313,7 @@ export async function jarakWilayah(dari: Wilayah, ke: Wilayah) {
        from silver.jarak_antar_wilayah where dari_id = $1 and ke_id = $2`,
     [dari.id, ke.id],
   )
-  return { dari: labelWilayah(dari), ke: labelWilayah(ke), ...(r ?? { galat: "jarak belum tersedia" }), catatan: "Perkiraan rute mobil tanpa macet." }
+  return { dari: labelWilayah(dari), ke: labelWilayah(ke), ...(r ?? { galat: "jarak belum tersedia" }), catatan: "Jarak dan waktu tempuh rute mobil." }
 }
 
 /** Peringkat produksi/luas panen BPS tahunan antar kab/kota untuk satu tahun (tahun terbaru yang ada bila tidak diisi). */

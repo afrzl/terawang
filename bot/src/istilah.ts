@@ -20,7 +20,7 @@ const ISTILAH: { pola: RegExp; teks: string }[] = [
   },
   {
     pola: /\b(data|sumber)(nya)? (dari|darimana|mana|apa)\b|\bsumber data\b/,
-    teks: "Sumber data TERAWANG:\n• Harga harian: Panel Harga Bapanas / SISKAPERBAPO Jatim\n• Produksi dan konsumsi: BPS\n• Stok: Bulog, dilengkapi perkiraan model\n• Citra sawah: satelit Sentinel-1 dan Sentinel-2\n\nPrakiraan harga dan stok adalah hasil model, bukan angka resmi.",
+    teks: "Sumber data TERAWANG:\n• Harga harian: Panel Harga Bapanas / SISKAPERBAPO Jatim\n• Produksi dan konsumsi: BPS\n• Stok: Bulog, dilengkapi perkiraan model\n• Citra sawah: satelit Sentinel-1 dan Sentinel-2\n\nPrakiraan harga dan stok dihitung model TERAWANG dari data tersebut.",
   },
 ]
 

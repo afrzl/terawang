@@ -208,7 +208,7 @@ export function svgBulanan(d: GrafikBulanan): string {
     if (u1 - u0 > 14) o.push(`<line x1="${px.toFixed(1)}" y1="${u0.toFixed(1)}" x2="${px.toFixed(1)}" y2="${u1.toFixed(1)}" stroke="${warna}" stroke-width="1.5" stroke-dasharray="3 3"/>`)
     o.push(`<text x="${lx0.toFixed(1)}" y="${ly.toFixed(1)}" font-size="21" font-weight="bold" text-anchor="middle" fill="${warna}" stroke="${WARNA.latar}" stroke-width="5" paint-order="stroke">${esc(lbl)}</text>`)
   }
-  const sumber = d.topik === "stok" ? "Model neraca stok TERAWANG (K2); stok awal kab/kota adalah asumsi" : "Model estimasi produksi TERAWANG (K1), citra satelit + BPS"
+  const sumber = d.topik === "stok" ? "Model neraca stok TERAWANG (K2)" : "Model estimasi produksi TERAWANG (K1), citra satelit + BPS"
   o.push(`<text x="${kiri - 70}" y="${H - 26}" font-size="17" fill="${WARNA.tinta2}">Sumber: ${esc(sumber)} · terawang.tech</text>`)
   o.push(`</svg>`)
   return o.join("")
@@ -235,9 +235,9 @@ export function teksBulanan(d: GrafikBulanan): string {
       const tipis = d.titik.slice(Math.max(d.iKini, 0)).find((t) => t.nilai < d.aman!)
       if (tipis) baris.push(`⚠️ Total Jatim diproyeksi di bawah batas aman mulai ${namaBulan(tipis.tahun, tipis.bulan)}`)
     }
-    baris.push("_Estimasi model, skenario tengah. Stok awal kab/kota adalah asumsi, bukan angka resmi._")
+    baris.push("_Estimasi model neraca stok TERAWANG, skenario tengah._")
   } else {
-    baris.push("_Estimasi model K1, bukan angka resmi BPS._")
+    baris.push("_Estimasi model K1 TERAWANG dari citra satelit._")
   }
   baris.push("", "Mau lihat yang lain? Balas aja _harganya_, _produksinya_, _setahun_, atau nama wilayah lain.")
   return baris.join("\n")
