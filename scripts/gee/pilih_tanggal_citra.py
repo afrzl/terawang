@@ -39,7 +39,7 @@ def deret(pusat, mulai, akhir):
            .linkCollection(cs, ["cs_cdf"]))
 
     def f(img):
-        cerah = img.select("cs_cdf").gte(0.6)
+        cerah = img.select("cs_cdf").gte(0.75)
         ndvi = img.normalizedDifference(["B8", "B4"]).updateMask(cerah.And(sawah))
         c = cerah.reduceRegion(ee.Reducer.mean(), aoi, 20, maxPixels=1e8).get("cs_cdf")
         n = ndvi.reduceRegion(ee.Reducer.median(), aoi, 20, maxPixels=1e8).get("nd")
@@ -57,14 +57,14 @@ def deret(pusat, mulai, akhir):
 def pilih(rows, hari_ini, min_jarak, maks_jarak):
     d = lambda s: date.fromisoformat(s)
     terbaru = None
-    for ambang in (0.8, 0.6, 0.4):
+    for ambang in (0.95, 0.85, 0.7, 0.5):
         kand = [r for r in rows if r[1] >= ambang and (hari_ini - d(r[0])).days <= 40]
         if kand:
             terbaru = kand[-1]
             break
     if not terbaru:
         return None
-    for ambang in (0.8, 0.6, 0.4):
+    for ambang in (0.95, 0.85, 0.7, 0.5):
         kand = [r for r in rows if r[1] >= ambang and min_jarak <= (d(terbaru[0]) - d(r[0])).days <= maks_jarak]
         if kand:
             awal = min(kand, key=lambda r: r[2])
