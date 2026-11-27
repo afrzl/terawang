@@ -18,7 +18,7 @@ type Jenis = "medium" | "premium"
 const WARNA: Record<Jenis, string> = { medium: "var(--accent)", premium: "var(--warn)" }
 
 /** Ridgeline sebaran harga beras 38 wilayah per pekan: 12 pekan terakhir dan 4 pekan prakiraan.
- *  Satu jenis: warna menurut posisi terhadap HET. Dua jenis: dua punggung bertumpuk per pekan, satu warna per jenis. Premium: selisih tetap dari medium (DUMMY). */
+ *  Satu jenis: warna menurut posisi terhadap HET. Dua jenis: dua punggung bertumpuk per pekan, satu warna per jenis. Premium: seri K3a premium (selisih tetap dari medium hanya bila API mati). */
 export function PriceRidgeline({ jenis }: { jenis: Jenis[] }) {
   const wil = useWilayah()
   const ganda = jenis.length > 1

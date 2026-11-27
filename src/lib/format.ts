@@ -15,7 +15,8 @@ export const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b
 export const nf = (v: number, d = 0) =>
   v.toLocaleString("id-ID", { minimumFractionDigits: d, maximumFractionDigits: d })
 
-export const rp = (v: number) => "Rp" + nf(Math.round(v / 10) * 10)
+/** Rupiah utuh. Dulu dibulatkan ke puluhan, sehingga narasi (mis. "Rp13.670") berbeda dari tabel yang memakai nf (13.667). */
+export const rp = (v: number) => "Rp" + nf(Math.round(v))
 
 export const dfmt = (d: Date) => d.getDate() + " " + BLN[d.getMonth()]
 

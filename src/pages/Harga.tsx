@@ -315,7 +315,7 @@ function PricePanelGab({ jenis }: { jenis: Komoditas[] }) {
   const ganda = jenis.length > 1
   const dates = histDates.concat(fcDates)
   // Seri harga mengikuti filter wilayah di sidebar: rata-rata menurut jumlah penduduk wilayah yang dipilih.
-  // Premium: selisih terhadap medium dianggap tetap (data simulasi belum punya seri premium).
+  // Premium: seri K3a premium dari API; hanya bila API mati selisih terhadap medium dianggap tetap (simulasi).
   const popT = sum(wil, (q) => q.pop) || 1
   const rata = (f: (q: (typeof wil)[number]) => number) => sum(wil, (q) => f(q) * q.pop) / popT
   const popAll = sum(WILAYAH, (q) => q.pop)

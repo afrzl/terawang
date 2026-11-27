@@ -789,6 +789,7 @@ main.full{flex:1;min-height:0;position:relative}
 .rek-t{flex:1;font-weight:600;font-size:13px;color:var(--ink)}
 .rek-pill{padding:1px 9px;border:1px solid var(--rc);border-radius:999px;color:var(--rc);font:500 10px var(--f-mono);letter-spacing:.06em;text-transform:uppercase}
 .rek-p{margin:0;font-size:13px;line-height:1.55;color:var(--ink-2)}
+.rek-p.rek-asumsi{font-size:11.5px;color:var(--ink-3, var(--ink-2));opacity:.85}
 .rek-p .hl{font:600 13px var(--f-mono);color:var(--ink);border-bottom:1.5px solid var(--rc)}
 .rek-chips{display:flex;flex-wrap:wrap;gap:5px}
 .rek-chip{display:inline-flex;align-items:baseline;gap:7px;padding:3px 8px;background:var(--panel);border:1px solid var(--rule);font-size:11.5px;color:var(--ink)}
