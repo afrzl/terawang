@@ -8,7 +8,7 @@ import { PriceRidgeline } from "@/components/charts/PriceRidgeline"
 import { DataTable, type Column } from "@/components/ui/DataTable"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
-import { HET, HET_PREMIUM, HIST, SIAGA_KALI, STATUS, WILAYAH, fcDates, fcHarga, flowsBulan, histDates, pNowHarga, peluangDi, seriHarga, statusDari, type Flow } from "@/lib/data"
+import { HET, HET_PREMIUM, HIST, SIAGA_KALI, STATUS, WILAYAH, fcDates, fcHarga, flowsBulan, histDates, pNowHarga, peluangHet, seriHarga, statusDari, type Flow } from "@/lib/data"
 import { dfmt, nf, rp, sum } from "@/lib/format"
 import { bulanLabel, useFilter, useWilayah } from "@/lib/filter"
 import { covBulan, statusHargaAt, type Komoditas } from "@/lib/petaLayers"
@@ -328,7 +328,9 @@ function PricePanelGab({ jenis }: { jenis: Komoditas[] }) {
     const fcHi = fcDates.map((_, h) => rata((q) => fcHarga(q, kom)[h].hi))
     const prov = histDates.map((_, i) => sum(WILAYAH, (q) => seriHarga(q, kom)[i] * q.pop) / popAll)
     const status = statusDari(fcM[3], fcHi[3], het, 4, kom)
-    return { kom, het, siaga: Math.round(het * SIAGA_KALI), harga, fcM, fcLo, fcHi, prov, status, pNow: harga[HIST - 1] }
+    // peluang melewati HET: rata-rata (menurut penduduk) peluang per kab dari K3a
+    const peluang = fcDates.map((_, h) => rata((q) => { const f = fcHarga(q, kom)[h]; return peluangHet(q.n, kom, h + 1, f.m, f.hi, het) }))
+    return { kom, het, siaga: Math.round(het * SIAGA_KALI), harga, fcM, fcLo, fcHi, prov, status, peluang, pNow: harga[HIST - 1] }
   })
   const lo = Math.min(...data.flatMap((d) => [...d.harga, ...d.fcLo, d.het])) - 150
   const hi = Math.max(...data.flatMap((d) => [...d.fcHi, ...(ganda ? [d.het] : [d.siaga])])) + 120
@@ -392,7 +394,7 @@ function PricePanelGab({ jenis }: { jenis: Komoditas[] }) {
                       <span className="m">
                         {rp(d.fcLo[i - HIST])}–{rp(d.fcHi[i - HIST])}
                       </span>
-                      , peluang di atas HET <span className="m">{nf(peluangDi(d.fcM[i - HIST], d.fcHi[i - HIST], d.het) * 100, 0)}%</span>
+                      , peluang lewat HET <span className="m">{nf(d.peluang[i - HIST] * 100, 0)}%</span>
                     </>
                   ) : (
                     <>

@@ -63,6 +63,12 @@ export function peluangDi(m: number, hi: number, x: number) {
   const sd = Math.max(1e-6, (hi - m) / 1.2816)
   return 0.5 * (1 - erfKu((x - m) / sd / Math.SQRT2))
 }
+/** Peluang kab `nama` melewati HET pada pekan `hor` (1..4). Dari pipeline K3a bila ada (beras medium kab <= HET: regresi logistik
+ *  terkalibrasi, kejadian melewati HET kapan saja dalam h hari; lainnya sebaran galat EW60); bila tidak, pendekatan normal dari P10/P90. */
+export function peluangHet(nama: string, kom: "medium" | "premium", hor: number, m: number, hi: number, het: number) {
+  const p = K3A?.meta.peluang_het?.[kom]?.[String(7 * hor)]?.[nama]
+  return typeof p === "number" ? p : peluangDi(m, hi, het)
+}
 /** Status harga menurut aturan K3a: SIAGA bila P(> 1,05·HET) ≥ max(ambang, 0,5); WASPADA bila P(> HET) ≥ ambang horizon; selain itu AMAN. `hor` = 1..4 pekan. */
 export function statusDari(m: number, hi: number, het: number, hor: number, kom: "medium" | "premium"): "aman" | "waspada" | "siaga" {
   const amb = AMBANG_WASPADA[kom][Math.max(0, Math.min(3, hor - 1))]
