@@ -15,6 +15,10 @@ def _path(nama: str, bawaan: Path) -> Path:
 REPO = _path("TERAWANG_REPO", Path(__file__).resolve().parents[2])
 # Berkas akun admin: {"pengguna", "hash", "rahasia", "versi"} (dibuat lewat `python -m terawang_admin.sandi`)
 BERKAS_AKUN = _path("TERAWANG_ADMIN_AKUN", RUMAH / ".config/terawang/admin.json")
+# Matriks hak per peran (dicentang di halaman Akun & peran; isi awal dari `python -m terawang_admin.seeder`)
+BERKAS_PERAN = _path("TERAWANG_ADMIN_PERAN", BERKAS_AKUN.parent / "peran.json")
+# Tombol "Masuk sebagai" (akun demo) di halaman masuk. Isi 0 untuk mematikan setelah masa penjurian.
+DEMO_LOGIN = os.environ.get("TERAWANG_DEMO_LOGIN", "1") == "1"
 # Folder unggahan manual, dibaca aset bronze sebagai fallback (kontrak dengan pipeline)
 MANUAL_DIR = _path("TERAWANG_MANUAL_DIR", RUMAH / ".local/share/terawang/manual")
 # Jejak audit tindakan admin

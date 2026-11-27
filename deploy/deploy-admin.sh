@@ -19,6 +19,8 @@ DAGSTER_HOME="${DAGSTER_HOME:-$HOME/dagster_home}"
 
 [ -x "$VENV/bin/python" ] || { echo "$VENV belum ada; jalankan deploy/deploy-pipeline.sh dulu"; exit 1; }
 "$VENV/bin/pip" install -q -e admin
+# Peran, matriks hak, dan akun demo (idempoten: tidak menimpa matriks yang sudah dicentang atau akun yang sudah ada)
+( cd admin && "$VENV/bin/python" -m terawang_admin.seeder )
 
 DOCKER_BIN="$(dirname "$(command -v docker 2>/dev/null || echo /usr/bin/docker)")"
 cat > "$APP_DIR/deploy/admin-ensure.sh" <<SH

@@ -2,7 +2,7 @@
 
     .venv-pipeline/bin/python -m terawang_admin.sandi NAMA [PERAN]
 
-PERAN: superadmin | dinas | perusahaan (bawaan: superadmin untuk akun baru, tetap untuk akun lama).
+PERAN: superadmin | dinas | perusahaan | tamu (bawaan: superadmin untuk akun baru, tetap untuk akun lama).
 Sandi diketik tanpa tampil. Akun lain dikelola dari tab Akun di halaman admin (superadmin).
 """
 import getpass

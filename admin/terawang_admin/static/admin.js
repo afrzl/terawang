@@ -84,7 +84,7 @@ const lencana = (st) => { const [t, k] = STATUS[st] || [st ? st.toLowerCase() : 
 let halAktif = "pipeline";
 const pemuat = {};
 const JUDUL_HAL = { pipeline: "Ringkasan pipeline", laporan: "Laporan harga warga", whatsapp: "Bot WhatsApp", konfigurasi: "Konfigurasi & secret", akun: "Akun & peran", jejak: "Jejak admin" };
-const HAK_HAL = { pipeline: "pipeline", laporan: "laporan", whatsapp: "pipeline", konfigurasi: "konfigurasi", akun: "akun", jejak: "jejak" };
+const HAK_HAL = { pipeline: "pipeline", laporan: "laporan", whatsapp: "whatsapp", konfigurasi: "konfigurasi", akun: "akun", jejak: "jejak" };
 
 let sesi = null;
 let daftarSumber = [];
@@ -189,7 +189,8 @@ async function masukBerhasil(d, baruMasuk = false) {
   $("#nama-pengguna").textContent = d.pengguna;
   $("#peran-pengguna").textContent = d.labelPeran;
   $("#inisial-pengguna").textContent = (d.pengguna || "?").trim().charAt(0);
-  document.querySelectorAll("[data-hak]").forEach((e) => (e.hidden = !punya(e.dataset.hak)));
+  document.querySelectorAll("[data-hak]").forEach((e) => (e.hidden = !e.dataset.hak.split(" ").some(punya)));
+  $("#tombol-sandi").hidden = !!d.demo;
   if (!Object.values(HAK_HAL).some(punya)) {
     $("#nama-tanpa-akses").textContent = d.pengguna;
     $("#peran-tanpa-akses").textContent = d.labelPeran;
@@ -959,15 +960,42 @@ pemuat.laporan = async () => {
 };
 
 // ---------- akun ----------
-const NAMA_HAK = { dasbor_sphp: "Dasbor lengkap termasuk SPHP", pipeline: "Pantau pipeline", laporan: "Validasi laporan warga", jalankan: "Jalankan job",
-  unggah: "Unggah data manual", konfigurasi: "Konfigurasi & secret", akun: "Kelola akun", jejak: "Jejak admin" };
+// Matriks hak: baris = fitur (dikelompokkan Dasbor/Admin), kolom = peran. Admin selalu penuh (tidak bisa dicabut).
+function gambarMatriks(d) {
+  const t = $("#matriks-hak");
+  const PENDEK = { tamu: "Tamu", perusahaan: "Perusahaan", dinas: "Dinas", superadmin: "Admin" };
+  t.tHead.replaceChildren(el("tr", {}, el("th", {}, "Fitur"), ...d.peran.map((p) => el("th", { class: "kolom-peran", title: p.label },
+    el("span", { class: "lbl-panjang" }, p.label), el("span", { class: "lbl-pendek" }, PENDEK[p.id] || p.label)))));
+  const baris = [];
+  let grup = "";
+  for (const f of d.fitur) {
+    if (f.grup !== grup) {
+      grup = f.grup;
+      baris.push(el("tr", { class: "grup-hak" }, el("td", { colspan: String(d.peran.length + 1) }, grup)));
+    }
+    baris.push(el("tr", {}, el("td", {}, f.label), ...d.peran.map((p) => {
+      const cek = el("input", { type: "checkbox", "aria-label": `${f.label} untuk ${p.label}`, checked: p.hak.includes(f.id), disabled: p.penuh,
+        title: p.penuh ? "Admin selalu punya semua hak" : null });
+      cek.addEventListener("change", async () => {
+        cek.disabled = true;
+        try {
+          const r = await api("/peran", { method: "PUT", json: { peran: p.id, hak: f.id, aktif: cek.checked } });
+          p.hak = r.hak;
+          toast(r.pesan);
+        } catch (e) { cek.checked = !cek.checked; toast(e.message, true); } finally { cek.disabled = false; }
+      });
+      return el("td", { class: "sel-cek" }, el("label", { class: "cek" }, cek));
+    })));
+  }
+  t.tBodies[0].replaceChildren(...baris);
+}
+
 pemuat.akun = async () => {
   try {
     const d = await api("/akun");
-    $("#daftar-peran").replaceChildren(el("div", { class: "peran" },
-      el("div", {}, el("b", {}, "Guest (tanpa login)"), el("ul", {}, el("li", {}, "Dasbor umum"))),
-      ...d.peran.map((p) => el("div", {}, el("b", {}, p.label), el("ul", {}, el("li", {}, "Dasbor umum"), ...p.hak.map((h) => el("li", {}, NAMA_HAK[h] || h)))))));
+    gambarMatriks(d);
     const pilih = $("#pilih-peran-baru");
+    if (pilih.options.length !== d.peran.length) pilih.replaceChildren();
     if (!pilih.options.length) pilih.append(...d.peran.map((p) => el("option", { value: p.id, selected: p.id === "dinas" }, p.label)));
     $("#tabel-akun tbody").replaceChildren(...d.akun.map((a) => {
       const diri = a.nama === sesi?.pengguna;
@@ -991,7 +1019,7 @@ pemuat.akun = async () => {
           await sibuk(e.currentTarget, async () => toast((await api(`/akun/${encodeURIComponent(a.nama)}`, { method: "DELETE" })).pesan));
           pemuat.akun();
         } }, "Hapus"));
-      return el("tr", { class: a.aktif ? "" : "waspada" }, el("td", { class: "id" }, a.nama, diri ? " (kamu)" : ""), el("td", {}, peran),
+      return el("tr", { class: a.aktif ? "" : "waspada" }, el("td", { class: "id" }, a.nama, diri ? " (kamu)" : "", a.demo ? el("span", { class: "pill" }, "demo") : null), el("td", {}, peran),
         el("td", {}, a.aktif ? el("span", { class: "pill st-ok" }, "Aktif") : el("span", { class: "pill st-waspada" }, "Nonaktif")),
         el("td", { class: "waktu" }, relatif(a.terakhirMasuk)), aksi);
     }));
@@ -1118,4 +1146,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     const d = await api("/saya");
     if (d.pengguna) masukBerhasil(d); else tampilMasuk();
   } catch { tampilMasuk(); }
+  muatDemo();
 });
+
+// Tombol "Masuk sebagai": mengisi otomatis nama & sandi akun demo (untuk juri), lalu pengguna menekan Masuk.
+async function muatDemo() {
+  let akunDemo = [];
+  try { akunDemo = (await api("/demo")).akun || []; } catch { /* abaikan */ }
+  $("#masuk-demo").hidden = !akunDemo.length;
+  $("#pilih-demo").replaceChildren(...akunDemo.map((a) => el("button", { class: "tombol kecil", type: "button", "aria-pressed": "false", onclick: (e) => {
+    const f = $("#form-masuk");
+    f.elements.pengguna.value = a.pengguna;
+    f.elements.sandi.value = a.sandi;
+    $("#pilih-demo").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === e.currentTarget)));
+    f.querySelector('button[type="submit"]').focus();
+  } }, a.label)));
+}

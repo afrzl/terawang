@@ -40,9 +40,9 @@
       <a href="#laporan" data-hal="laporan" data-hak="laporan"><span class="k">LPR</span><span class="lbl">Laporan warga</span><i class="jumlah-menu" id="jumlah-laporan" hidden></i></a>
       <div class="grup-menu" data-hak="pipeline">Sumber data</div>
       <div id="menu-sumber" data-hak="pipeline"></div>
-      <div class="grup-menu" data-hak="pipeline">Pengaturan</div>
+      <div class="grup-menu" data-hak="konfigurasi whatsapp akun jejak">Pengaturan</div>
       <a href="#konfigurasi" data-hal="konfigurasi" data-hak="konfigurasi"><span class="k">ENV</span><span class="lbl">Konfigurasi &amp; secret</span></a>
-      <a href="#whatsapp" data-hal="whatsapp" data-hak="pipeline"><span class="k">WA</span><span class="lbl">Bot WhatsApp</span><i class="titik" id="titik-wa" aria-hidden="true"></i></a>
+      <a href="#whatsapp" data-hal="whatsapp" data-hak="whatsapp"><span class="k">WA</span><span class="lbl">Bot WhatsApp</span><i class="titik" id="titik-wa" aria-hidden="true"></i></a>
       <a href="#akun" data-hal="akun" data-hak="akun"><span class="k">AKN</span><span class="lbl">Akun &amp; peran</span></a>
       <a href="#jejak" data-hal="jejak" data-hak="jejak"><span class="k">JJK</span><span class="lbl">Jejak admin</span></a>
     </nav>
@@ -79,13 +79,16 @@
         <div><div class="merek besar">TERA<span>WANG</span></div><div class="eyebrow-kop">Ruang kendali data · admin</div></div>
       </div>
       <form id="form-masuk" class="panel form-masuk">
-        <div class="ph"><h3>Masuk</h3><span class="note">akun dinas, perusahaan, tim</span></div>
+        <div class="ph"><h3>Masuk</h3><span class="note">tamu, perusahaan, dinas/Bulog, admin</span></div>
         <div class="pb tumpuk">
           <label>Nama pengguna<input name="pengguna" autocomplete="username" required /></label>
           <label>Sandi<input name="sandi" type="password" autocomplete="current-password" required /></label>
           <p class="pesan-galat" id="galat-masuk" role="alert"></p>
           <button class="tombol utama penuh" type="submit">Masuk</button>
-          <p class="catatan">Pengunjung umum tidak perlu masuk: <a href="/">buka dasbor</a>.</p>
+          <div class="masuk-demo" id="masuk-demo" hidden>
+            <p class="catatan">Masuk sebagai</p>
+            <div class="pilih-demo" id="pilih-demo"></div>
+          </div>
         </div>
       </form>
     </section>
@@ -94,7 +97,7 @@
       <div class="panel form-masuk">
         <div class="ph"><h3>Sudah masuk</h3></div>
         <div class="pb tumpuk">
-          <p>Akun <b id="nama-tanpa-akses"></b> (<span id="peran-tanpa-akses"></span>) tidak punya akses ke ruang kendali, tapi bisa membuka dasbor lengkap termasuk rekomendasi SPHP.</p>
+          <p>Akun <b id="nama-tanpa-akses"></b> (<span id="peran-tanpa-akses"></span>) memakai dasbor; ruang kendali data khusus akun dinas/Bulog dan admin.</p>
           <a class="tombol utama penuh" href="/">Buka dasbor</a>
         </div>
       </div>
@@ -184,7 +187,7 @@
         <div class="panel">
           <div class="ph"><h3>Alur pesan</h3><span class="note" id="info-wa">Memuat…</span></div>
           <div id="alur-wa" class="baris-daftar"></div>
-          <form id="form-uji-wa" class="form-baris" data-hak="konfigurasi">
+          <form id="form-uji-wa" class="form-baris" data-hak="whatsapp">
             <input name="teks" placeholder="Uji pertanyaan, mis. beras di Jember naik nggak bulan depan?" maxlength="300" autocomplete="off" aria-label="Pertanyaan uji" />
             <button class="tombol" type="submit">Uji bot → OpenAI</button>
           </form>
@@ -255,8 +258,8 @@
     <section id="bagian-akun" class="bagian" hidden>
       <div class="vh"><div><div class="eyebrow">Pengaturan · akses</div><h2>Akun &amp; peran</h2></div></div>
       <div class="panel">
-        <div class="ph"><h3>Hak tiap peran</h3></div>
-        <div id="daftar-peran"></div>
+        <div class="ph"><h3>Hak tiap peran</h3><span class="note">centang untuk memberi akses; berlaku langsung</span></div>
+        <div class="tbl-wrap"><table class="tabel matriks-hak" id="matriks-hak"><thead></thead><tbody></tbody></table></div>
       </div>
       <div class="panel">
         <div class="ph"><h3>Daftar akun</h3></div>
