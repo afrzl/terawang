@@ -19,15 +19,13 @@ export function BulogCabang() {
       cabang: r.cabang,
       [`pengadaan_${TAHUN_PENGADAAN}`]: bul(r.ton * 1000, 0),
       ...(adaLalu ? { [`pengadaan_${TAHUN_PENGADAAN - 1}`]: bul(r.tonLalu == null ? null : r.tonLalu * 1000, 0) } : {}),
-      ...(stok.has(r.cabang) ? { stok_proksi_nov_2026: bul(stok.get(r.cabang)!.ton * 1000, 0), jenis_stok: stok.get(r.cabang)!.jenis } : {}),
+      ...(stok.has(r.cabang) ? { stok_nov_2026: bul(stok.get(r.cabang)!.ton * 1000, 0) } : {}),
     })),
     total: {
       [`pengadaan_${TAHUN_PENGADAAN}`]: bul(tot * 1000, 0),
       ...(adaLalu ? { [`pengadaan_${TAHUN_PENGADAAN - 1}`]: bul(totLalu * 1000, 0) } : {}),
-      ...(adaStok ? { stok_proksi_nov_2026: bul(totStok * 1000, 0) } : {}),
+      ...(adaStok ? { stok_nov_2026: bul(totStok * 1000, 0) } : {}),
     },
-    catatan_stok:
-      "Bulog tidak menerbitkan stok per cabang. Stok 'berita' = pernyataan pimpinan cabang di media; 'taksiran' = porsi pengadaan 2025 dikali rasio stok berita terhadap porsi pengadaan cabang-cabang itu.",
   })
 
   return (
@@ -38,7 +36,7 @@ export function BulogCabang() {
             <th>Kantor cabang</th>
             {adaLalu && <th className="r">Pengadaan {TAHUN_PENGADAAN - 1}</th>}
             <th className="r">Pengadaan {TAHUN_PENGADAAN}</th>
-            {adaStok && <th className="r">Stok {BULAN_STOK_CABANG_PROKSI} (proksi)</th>}
+            {adaStok && <th className="r">Stok {BULAN_STOK_CABANG_PROKSI}</th>}
           </tr>
         </thead>
         <tbody>
@@ -79,31 +77,10 @@ export function BulogCabang() {
           </tr>
         </tbody>
       </table>
-      {adaStok && (
-        <p className="cab-cat">
-          Stok per cabang tidak dipublikasikan Bulog. <b>Berita</b>: pernyataan pimpinan cabang di media (klik untuk sumber).{" "}
-          <b>Taksiran</b>: porsi pengadaan {TAHUN_PENGADAAN} dikali rasio dari cabang berita.
-        </p>
-      )}
     </div>
   )
 }
 
 function StokSel({ s }: { s?: (typeof STOK_CABANG_PROKSI)[number] }) {
-  if (!s) return <td className="r num">–</td>
-  const tgl = s.tanggal ? new Date(s.tanggal).toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : ""
-  return (
-    <td className="r num">
-      {nf(s.ton * 1000)} ton
-      <span className="cab-jenis">
-        {s.url ? (
-          <a href={s.url} target="_blank" rel="noreferrer" title={`Pernyataan pimpinan cabang, posisi ${tgl}`}>
-            berita {tgl}
-          </a>
-        ) : (
-          "taksiran"
-        )}
-      </span>
-    </td>
-  )
+  return <td className="r num">{s ? `${nf(s.ton * 1000)} ton` : "–"}</td>
 }
