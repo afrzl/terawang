@@ -442,7 +442,8 @@ async def wa_aksi(req: Request):
 @perlu_login("laporan")
 async def daftar_laporan(req: Request):
     status = req.query_params.get("status") or None
-    return JSONResponse(await run_in_threadpool(laporan.daftar, status))
+    peran = req.query_params.get("peran") or None
+    return JSONResponse(await run_in_threadpool(laporan.daftar, status, 200, peran))
 
 
 @perlu_login("laporan")

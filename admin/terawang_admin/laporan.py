@@ -10,6 +10,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from . import envfile, pengaturan
 
 STATUS = ("MENUNGGU", "VALID", "DITOLAK")
+PERAN = ("PENJUAL", "PEMBELI")
 AKSI = {"terima": "VALID", "tolak": "DITOLAK", "kembalikan": "MENUNGGU"}
 
 
@@ -43,31 +44,39 @@ def _samarkan(nomor: str | None) -> str:
     return "…" + angka[-4:] if len(angka) >= 4 else "–"
 
 
-def daftar(status: str | None, batas: int = 200) -> dict:
+def daftar(status: str | None, batas: int = 200, peran: str | None = None) -> dict:
     if status and status not in STATUS:
         raise GagalLaporan("Status tidak dikenal.")
+    if peran and peran not in PERAN:
+        raise GagalLaporan("Peran pelapor tidak dikenal.")
     batas = max(1, min(int(batas), 500))
     with _sambung() as kon, kon.cursor() as c:
-        c.execute("select status::text, count(*) from app.laporan_harga_warga group by 1")
+        c.execute(
+            "select status::text, count(*) from app.laporan_harga_warga"
+            " where (%(pr)s::text is null or peran_pelapor::text = %(pr)s) group by 1",
+            {"pr": peran},
+        )
         jumlah = {s: 0 for s in STATUS} | {s: n for s, n in c.fetchall()}
         c.execute(
             """
             select l.id, extract(epoch from l.dibuat_pada)::float8, l.status::text, l.nama_pasar, l.harga_rp_kg,
                    l.selisih_panel_pct, k.nama as komoditas, w.nama as wilayah, kw.nomor_wa,
-                   (select count(*) from app.laporan_harga_warga x where x.kontak_id = l.kontak_id) as n_pelapor
+                   (select count(*) from app.laporan_harga_warga x where x.kontak_id = l.kontak_id) as n_pelapor,
+                   l.peran_pelapor::text
               from app.laporan_harga_warga l
               join ref.komoditas k on k.id = l.komoditas_id
               left join ref.wilayah w on w.id = l.wilayah_id
               join app.kontak_warga kw on kw.id = l.kontak_id
              where (%(st)s::text is null or l.status::text = %(st)s)
+               and (%(pr)s::text is null or l.peran_pelapor::text = %(pr)s)
              order by l.dibuat_pada desc
              limit %(batas)s
             """,
-            {"st": status, "batas": batas},
+            {"st": status, "batas": batas, "pr": peran},
         )
         baris = [
             {"id": r[0], "waktu": r[1], "status": r[2], "pasar": r[3], "harga": r[4], "selisih": r[5],
-             "komoditas": r[6], "wilayah": r[7], "pelapor": _samarkan(r[8]), "laporanPelapor": r[9]}
+             "komoditas": r[6], "wilayah": r[7], "pelapor": _samarkan(r[8]), "laporanPelapor": r[9], "peran": r[10]}
             for r in c.fetchall()
         ]
     return {"jumlah": jumlah, "laporan": baris}
