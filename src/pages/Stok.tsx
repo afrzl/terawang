@@ -106,7 +106,7 @@ export default function Stok() {
         </div>
       </Panel>
       <div className="grid-21">
-        <Panel title="Stok Bulog Jawa Timur" note={`Tingkat provinsi, ${TAHUN_STOK_BULOG} (data terakhir yang tersedia)`}>
+        <Panel title="Stok Bulog Jawa Timur" note={`Tingkat provinsi, ${TAHUN_STOK_BULOG}`}>
           <div className="pb chart">
             <BulogStok />
           </div>
