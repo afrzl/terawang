@@ -126,13 +126,13 @@
   "jarak_hari": 110
  },
  "sidoarjo": {
-  "sebelum": "2026-10-04",
-  "sesudah": "2026-11-23",
-  "ndvi_sebelum": 0.323,
-  "ndvi_sesudah": 0.26,
+  "sebelum": "2026-09-24",
+  "sesudah": "2026-11-10",
+  "ndvi_sebelum": 0.335,
+  "ndvi_sesudah": 0.209,
   "cerah_sebelum": 1,
-  "cerah_sesudah": 0.99,
-  "jarak_hari": 50
+  "cerah_sesudah": 1,
+  "jarak_hari": 47
  },
  "mojokerto": {
   "sebelum": "2026-10-01",
@@ -172,12 +172,12 @@
  },
  "magetan": {
   "sebelum": "2026-07-31",
-  "sesudah": "2026-11-10",
+  "sesudah": "2026-11-03",
   "ndvi_sebelum": 0.221,
-  "ndvi_sesudah": 0.155,
+  "ndvi_sesudah": 0.365,
   "cerah_sebelum": 1,
-  "cerah_sesudah": 0.81,
-  "jarak_hari": 102
+  "cerah_sesudah": 0.93,
+  "jarak_hari": 95
  },
  "ngawi": {
   "sebelum": "2026-08-10",
