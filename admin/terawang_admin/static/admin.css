@@ -356,3 +356,11 @@ label input{font-weight:400}
 .jumlah-menu{flex:none;margin-left:auto;font-style:normal;font-family:var(--f-mono);font-size:11px;font-weight:600;min-width:18px;padding:1px 6px;border-radius:999px;background:var(--warn-bg);color:var(--warn);text-align:center}
 @media (min-width:701px){#tabel-laporan td.aksi{display:table-cell;white-space:nowrap}}
 #tabel-laporan td.aksi .tombol+.tombol{margin-left:6px}
+
+/* ringkasan saran laporan warga */
+.ringkas-saran{background:var(--panel);border:1px solid var(--rule);border-left:3px solid var(--accent);padding:10px 14px;margin:0 0 14px;font-size:13px}
+.ringkas-saran .judul{font-weight:600;margin-bottom:3px}
+.ringkas-saran .jml{display:flex;flex-wrap:wrap;gap:4px 18px}.ringkas-saran .jml>span{display:inline}.ringkas-saran .jml b{font-size:15px}
+.ringkas-saran .ket{color:var(--ink-3);font-size:12px;margin-top:4px}
+#tabel-laporan td.saran{min-width:150px;max-width:200px}
+#tabel-laporan td.saran .ket{margin-top:4px;line-height:1.35}
