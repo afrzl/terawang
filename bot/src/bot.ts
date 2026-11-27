@@ -250,6 +250,12 @@ async function denganWilayah(nomor: string, k: kontak.Kontak, p: Perintah, arg: 
   return { teks: `Hmm, aku nggak nemu wilayah "${arg}". Aku bisa bantu 38 kab/kota di Jawa Timur, misalnya Jember, Kota Malang, atau Kota Surabaya.`, intent: p, wilayahId: null }
 }
 
+/** Selisih laporan terhadap panel, dihitung di sini (bukan oleh LLM): 15000 vs 12646 -> "+18,6%". */
+export function teksSelisih(harga: number, panel: number): string {
+  const v = Math.round(((harga / panel) - 1) * 1000) / 10
+  return `${v > 0 ? "+" : ""}${nf(v)}%`
+}
+
 const NAMA_PERAN: Record<lapor.Peran, string> = { PENJUAL: "penjual", PEMBELI: "pembeli" }
 
 function ringkasDraf(d: lapor.Draf): string {
@@ -321,7 +327,7 @@ async function laporHarga(k: kontak.Kontak, teks: string, awal?: Extract<Tunda, 
       `Pasar: ${d.pasar}${w ? ` (${labelWilayah(w)})` : ""}`,
       `Beras ${d.jenis}: ${rp(d.harga!)}/kg`,
       `Sebagai: ${NAMA_PERAN[d.peran!]}`,
-      r?.panel ? `Panel harga wilayah ini: ${rp(r.panel)}/kg (${(r.selisih ?? 0) > 0 ? "+" : ""}${nf(r.selisih)}%)` : "",
+      r?.panel ? `Panel harga wilayah ini: ${rp(r.panel)}/kg (${teksSelisih(d.harga!, r.panel)} dari panel)` : "",
       "Status: menunggu dicek petugas",
       "",
       "Laporanmu bantu kami memantau harga beras di wilayah ini.",
@@ -406,6 +412,11 @@ async function pesanBebas(k: kontak.Kontak, teks: string, pilihan: Wilayah | nul
     pantau.llm = { ...pantau.llm, terakhir: Date.now(), ok: true, galat: "", token: r.token }
     console.log(`[llm] kontak=${k.id} token=${r.token} alat=${r.pakaiAlat} hari_ini=${pagar.pemakaianHariIni().token}`)
     const jawaban = pagar.rapikanJawaban(r.jawaban)
+    // LLM tidak bisa menyimpan laporan; jangan biarkan ia mengaku "laporan diterima". Alihkan ke alur lapor yang menyimpan ke DB.
+    if (/laporan(mu|nya)?\s+(sudah\s+)?(di\s*terima|diterima|tercatat|dicatat|tersimpan|disimpan|masuk)/i.test(jawaban)) {
+      console.warn(`[llm] kontak=${k.id} jawaban mengaku laporan diterima; dialihkan ke alur lapor`)
+      return laporHarga(k, teks)
+    }
     if (r.angkaAsing?.length) {
       return { teks: `Maaf, aku belum bisa menjawab itu dengan data yang ada. Coba perintah baku:\n\n${BANTUAN}`, intent: "llm_angka_asing", wilayahId: null }
     }
