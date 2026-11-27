@@ -112,6 +112,12 @@ async def saya(req: Request):
     return JSONResponse(_info_sesi(*sesi))
 
 
+async def hak_tamu(req: Request):
+    """Hak peran Tamu, tanpa login: dibaca bot WhatsApp supaya hak bot = hak Tamu (centang di Akun & peran).
+    Hanya daftar id hak, tanpa data akun."""
+    return JSONResponse({"peran": "tamu", "hak": akun.matriks().get("tamu", [])}, headers={"Cache-Control": "max-age=30"})
+
+
 async def demo(req: Request):
     """Akun demo untuk tombol "Masuk sebagai" (mengisi otomatis nama & sandi). Kosong bila TERAWANG_DEMO_LOGIN=0."""
     if not pengaturan.DEMO_LOGIN:
@@ -540,6 +546,7 @@ routes = [
     Route(f"{API}/saya", saya),
     Route(f"{API}/demo", demo),
     Route(f"{API}/peran", ubah_hak, methods=["PUT"]),
+    Route(f"{API}/hak/tamu", hak_tamu),
     Route(f"{API}/sandi", ganti_sandi, methods=["POST"]),
     Route(f"{API}/akun", daftar_akun),
     Route(f"{API}/akun", buat_akun, methods=["POST"]),
