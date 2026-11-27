@@ -359,3 +359,7 @@ label input{font-weight:400}
 /* ringkasan saran laporan warga: satu-dua kalimat */
 .ringkas-saran{display:flex;gap:10px;align-items:baseline;background:var(--panel-2);border:1px solid var(--rule-2);border-radius:6px;padding:10px 14px;margin:0 0 14px;font-size:13.5px;line-height:1.5;cursor:help}
 .ringkas-saran .label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);flex:none}
+.ringkas-saran .saran-isi b{font-weight:600;color:var(--ink)}
+.ringkas-saran .saran-isi.memuat{color:var(--ink-3);background:linear-gradient(90deg,var(--ink-3) 0%,var(--ink-3) 40%,var(--rule-2) 50%,var(--ink-3) 60%,var(--ink-3) 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:saran-kilau 1.6s linear infinite}
+@keyframes saran-kilau{from{background-position:100% 0}to{background-position:-150% 0}}
+@media (prefers-reduced-motion:reduce){.ringkas-saran .saran-isi.memuat{animation:none;-webkit-text-fill-color:currentColor}}

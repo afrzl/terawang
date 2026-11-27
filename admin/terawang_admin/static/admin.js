@@ -904,16 +904,38 @@ pemuat.laporan = async () => {
       if (cek.length) kalimat.push(`${cek.length} laporan perlu dicek (${sebut(cek)}${rentang(cek)}).`);
       if (wajar.length) kalimat.push(salah.length || cek.length ? `Sisanya ${wajar.length} wajar dan aman diterima.` : `Semua ${wajar.length} laporan wajar dan aman diterima.`);
       rs.title = "Dibandingkan dengan panel harga wilayah, laporan warga lain 30 hari terakhir, HET, dan riwayat pelapor. Wajar bila selisih di bawah 10%, kemungkinan salah bila 25% atau lebih. Hanya saran; keputusan tetap di petugas.";
-      const isiSaran = el("span", {}, kalimat.join(" "));
+      const aturan = kalimat.join(" ");
+      const judulAturan = rs.title;
+      const judulAI = "Disusun AI dari isi laporan yang menunggu dan laporan terakhir. Hanya saran; keputusan tetap di petugas.";
+      // selama menunggu AI tampil placeholder; kalimat aturan hanya dipakai bila AI gagal atau tidak aktif
+      const isiSaran = el("span", { class: "saran-isi" });
+      // saran AI boleh memuat <b>; selain itu dirender sebagai teks biasa (tanpa innerHTML)
+      const tampil = (teks, judul) => {
+        isiSaran.className = "saran-isi";
+        isiSaran.replaceChildren(...String(teks).split(/(<b>.*?<\/b>)/i).filter(Boolean).map((b) => {
+          const m = /^<b>(.*?)<\/b>$/i.exec(b);
+          return m ? el("b", {}, m[1].replace(/<[^>]*>/g, "")) : document.createTextNode(b.replace(/<\/?b>/gi, ""));
+        }));
+        rs.title = judul; rs.removeAttribute("aria-busy");
+      };
+      const kunci = JSON.stringify(tunggu.map((l) => [l.id, l.peran, l.harga]));
+      const simpan = pemuat.laporan.saranAI;
+      if (simpan && simpan.kunci === kunci) tampil(simpan.teks, judulAI);
+      else {
+        isiSaran.className = "saran-isi memuat";
+        isiSaran.textContent = "Menyusun saran…";
+        rs.setAttribute("aria-busy", "true");
+        rs.title = "";
+      }
       rs.replaceChildren(el("span", { class: "label" }, "Saran"), isiSaran);
       rs.hidden = false;
-      // ringkasan dari AI (pola keluhan, HET, angka janggal); kalimat aturan di atas tetap dipakai bila AI gagal
       const giliran = (pemuat.laporan.giliran = (pemuat.laporan.giliran || 0) + 1);
       api("/laporan/saran").then((x) => {
-        if (giliran !== pemuat.laporan.giliran || !x.teks) return;
-        isiSaran.textContent = x.teks;
-        rs.title = "Disusun AI dari isi laporan yang menunggu dan laporan terakhir. Hanya saran; keputusan tetap di petugas.";
-      }).catch(() => {});
+        if (giliran !== pemuat.laporan.giliran) return;
+        if (!x.teks) return tampil(aturan, judulAturan);
+        pemuat.laporan.saranAI = { kunci, teks: x.teks };
+        tampil(x.teks, judulAI);
+      }).catch(() => { if (giliran === pemuat.laporan.giliran) tampil(aturan, judulAturan); });
     } else rs.hidden = true;
     const kosong = { MENUNGGU: "Tidak ada laporan yang menunggu.", VALID: "Belum ada laporan yang diterima.", DITOLAK: "Belum ada laporan yang ditolak.", "": "Belum ada laporan." }[statusLaporan];
     const baris = d.laporan.map((l) => {
