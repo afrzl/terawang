@@ -39,6 +39,8 @@ WARNA = dict(kering="A8865B", genang="2F7FB8", tanam="3E9B4F", tertinggal="E5484
 BAND_S2 = ["B2", "B3", "B4", "B8", "B11"]
 # Cloud Score+ cs_cdf: 0,6 masih meloloskan kabut tipis/tepi awan (bercak abu-kebiruan di citra). 0,75 lebih ketat.
 AMBANG_CS = 0.75
+# Sentinel-1 lewat tiap 6-12 hari: jendela S2 yang sempit (mis. ±1 hari) sering tidak memuat akuisisi radar
+JENDELA_S1_MIN = 6
 
 
 def kotak(pusat):
@@ -99,7 +101,7 @@ def komposit_s2(aoi, tgl):
 
 
 def komposit_s1(aoi, tgl):
-    awal, akhir = rentang(tgl, JENDELA)
+    awal, akhir = rentang(tgl, max(JENDELA, JENDELA_S1_MIN))
     kol = (ee.ImageCollection("COPERNICUS/S1_GRD")
            .filterBounds(aoi)
            .filterDate(awal, akhir)
@@ -286,7 +288,8 @@ def main():
 
     meta = dict(
         folder=folder, lokasi=a.lokasi, pusat=pusat, kotak_km=[LEBAR_KM, TINGGI_KM], bbox=bbox,
-        tanggal_sebelum=a.sebelum, tanggal_sesudah=a.sesudah, jendela_hari=JENDELA, mode_label=a.mode,
+        tanggal_sebelum=a.sebelum, tanggal_sesudah=a.sesudah, jendela_hari=JENDELA,
+        jendela_s1_hari=max(JENDELA, JENDELA_S1_MIN), mode_label=a.mode,
         jumlah_citra=info["jumlah_citra"], tanggal_citra=info["tanggal_citra"], stat=info["stat"],
         sumber="Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label "
                + ("acak (simulasi)" if a.mode == "dummy" else "aturan ambang (belum divalidasi)"))

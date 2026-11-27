@@ -15,35 +15,31 @@
     111.583032,
     -7.569144
   ],
-  "tanggal_sebelum": "2026-08-20",
+  "tanggal_sebelum": "2026-08-02",
   "tanggal_sesudah": "2026-11-13",
-  "jendela_hari": 6,
+  "jendela_hari": 1,
   "mode_label": "aturan",
   "jumlah_citra": {
-    "s1_sebelum": 3,
-    "s1_sesudah": 2,
-    "s2_sebelum": 3,
-    "s2_sesudah": 3
+    "s1_sebelum": 1,
+    "s1_sesudah": 1,
+    "s2_sebelum": 1,
+    "s2_sesudah": 1
   },
   "tanggal_citra": {
     "s2_sebelum": [
-      "2026-08-15",
-      "2026-08-20",
-      "2026-08-25"
+      "2026-08-02"
     ],
     "s2_sesudah": [
-      "2026-11-08",
-      "2026-11-10",
       "2026-11-13"
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 79.49438202247191,
-    "genang_sebelum_pct": 4.49438202247191,
-    "jumlah_petak": 1780,
-    "luas_sawah_ha": 608.1332043635974,
-    "tertanam_sesudah_pct": 84.6067415730337,
-    "tertinggal_pct": 0.05617977528089888
+    "belum_hijau_sebelum_pct": 47.77213761985335,
+    "genang_sebelum_pct": 2.5380710659898478,
+    "jumlah_petak": 1773,
+    "luas_sawah_ha": 605.7916383551435,
+    "tertanam_sesudah_pct": 63.28257191201354,
+    "tertinggal_pct": 1.9740552735476595
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }
