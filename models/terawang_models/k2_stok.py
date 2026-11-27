@@ -34,4 +34,5 @@ def estimasi_stok(akar: str | Path, hari_ini: dt.date, produksi: pd.DataFrame, e
     arus = (F.stack().rename("ton_tahun").rename_axis(["dari", "ke"]).reset_index().query("ton_tahun > 0.5")
             .assign(ton_bulan=lambda d: d.ton_tahun / 12))
     return {"skenario": sk, "rinci": h["R"], "konsumsi": h["C"].rename("konsumsi_ton_bulan"), "hari_ke_defisit": h["hit"],
-            "jangkar": float(h["a_jangkar"]), "parameter": param, "arus": arus}
+            "jangkar": float(h["a_jangkar"]), "parameter": param, "arus": arus,
+            "keluar_provinsi": h["keluar_provinsi"], "keluar_provinsi_2025": h["keluar_provinsi_2025"], "surplus_2025": h["surplus_2025"]}
