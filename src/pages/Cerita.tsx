@@ -182,12 +182,6 @@ export default function Cerita() {
           </div>
           <h1>{isi?.judul ?? "Dari sawah ke pasar"}</h1>
           <p className="story-dek">{isi?.dek ?? "\u00a0"}</p>
-          <p className="story-byline">
-            {isi?.sumber === "openai"
-              ? "Narasi disusun otomatis tiap Senin pagi dari hasil model terbaru, lalu setiap angkanya dicocokkan dengan data. "
-              : "Edisi pekan ini belum terbit, jadi angka di bawah dihitung langsung dari data terbaru. "}
-            Sumber: citra Sentinel-1 dan Sentinel-2, data BPS dan Bulog, serta harga harian SISKAPERBAPO. Semua angka adalah hasil model dan masih punya galat.
-          </p>
           <div className="story-cue-row">
             <a className="story-cue" href="#langkah-1">
               Mulai membaca <ChevronDown size={15} />
