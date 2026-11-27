@@ -144,7 +144,7 @@ export function teksPeringkat(
     `*${judul} di Jawa Timur* (${kapan})`,
     ...items.map((x, i) => `${i + 1}. ${x.wilayah}: ${stok ? `cukup ${nf(x.nilai)} bulan${x.status ? ` (${x.status.toLowerCase()})` : ""}` : `${rp(x.nilai)}/kg`}`),
     "",
-    stok ? "Stok adalah perkiraan model, bukan angka resmi." : "",
+    stok ? "Stok dihitung model neraca TERAWANG." : "",
     `Ketik *${stok ? "STOK" : "HARGA"} <wilayah>* untuk rinciannya.`,
   ].filter((s, i, a) => s !== "" || a[i - 1] !== "").join("\n").replace(/\n\n+/g, "\n\n")
 }
