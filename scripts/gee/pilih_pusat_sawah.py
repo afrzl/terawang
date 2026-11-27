@@ -28,6 +28,7 @@ import time
 import ee
 
 AMBANG_VV = -15.0
+MIN_DARAT = 0.8  # kotak dengan daratan kabupaten < 80% (sisanya laut / wilayah lain) tidak dipilih
 LEBAR_KM, TINGGI_KM = 3.6, 2.1
 SKALA = 100
 GAUL = {"Batu": ["Kota Batu"], "Jember": ["Jember", "Kota Jember"]}
@@ -54,13 +55,12 @@ def sawah_irigasi(aoi, acuan):
           .filter(ee.Filter.eq("instrumentMode", "IW"))
           .filter(ee.Filter.listContains("transmitterReceiverPolarisation", "VV")).select("VV"))
 
-    def bulan(m):
-        a = d.advance(ee.Number(m).subtract(12), "month")
-        b = a.advance(1, "month")
-        vv = s1.filterDate(a, b).median().focalMedian(30, "circle", "meters").rename("vv")
-        return vv.set("m", m)
-
-    vv_min = ee.ImageCollection.fromImages(ee.List.sequence(0, 11).map(bulan)).min()
+    # genangan sawah sering hanya 2-4 pekan, jadi median bulanan bisa menghapusnya; pakai persentil 5 dari
+    # semua citra VV individual (~80 citra/tahun, tiap citra dihaluskan 50 m untuk meredam speckle).
+    # p10 < -16 dB terlalu ketat (Nganjuk/Ngawi ~0% lahan crop lolos); p5 < -15 sedikit lebih longgar dari
+    # metode lama (min median bulanan < -15).
+    vv_min = (s1.map(lambda i: i.focalMedian(50, "circle", "meters"))
+              .reduce(ee.Reducer.percentile([5])).rename("vv"))
     ndvi_max = (s2.map(lambda i: i.updateMask(i.select("cs_cdf").gte(0.6))
                        .normalizedDifference(["B8", "B4"]).rename("ndvi"))
                 .reduce(ee.Reducer.percentile([95])).rename("ndvi"))
@@ -79,14 +79,33 @@ def hitung(nama, acuan, pusat_lama):
     # di luar batas (laut, kabupaten lain) dihitung 0, bukan dibuang; kalau dibuang, titik di pantai yang
     # hanya punya sedikit daratan malah mendapat nilai tinggi dan kotaknya berisi laut.
     sawah = sawah_irigasi(aoi, acuan).clip(aoi).unmask(0)
+    # paint, bukan Image(1).clip(aoi).unmask(0): citra konstan yang di-clip lalu di-unmask kembali bernilai 1 di laut
+    darat = ee.Image(0).paint(ee.FeatureCollection([ee.Feature(aoi)]), 1).rename("darat")
     kernel = ee.Kernel.rectangle(LEBAR_KM * 500, TINGGI_KM * 500, "meters", True)
-    padat = sawah.reduceNeighborhood(ee.Reducer.mean(), kernel).rename("padat")
+    # sel 100 m = rata-rata piksel 30 m di dalamnya (bukan satu piksel sampel), supaya puncak tidak dipilih derau
+    dua = (sawah.addBands(darat).reproject(ee.Projection("EPSG:4326").atScale(30))
+           .reduceResolution(ee.Reducer.mean(), maxPixels=64)
+           .reproject(ee.Projection("EPSG:4326").atScale(SKALA)))
+    k = dua.reduceNeighborhood(ee.Reducer.mean(), kernel)
+    # kotak yang daratannya < MIN_DARAT (banyak laut / wilayah lain) tidak boleh dipilih
+    padat = k.select("sawah_mean").where(k.select("darat_mean").lt(MIN_DARAT), 0).rename("padat")
     top = padat.addBands(ee.Image.pixelLonLat()).reduceRegion(ee.Reducer.max(3), aoi, SKALA, maxPixels=1e10,
                                                                 tileScale=8)
+    top = ee.Dictionary(top).getInfo()
     out = dict(top=top)
+
+    # kotak lama dan kandidat dinilai dengan cara yang sama (rata-rata 30 m di kotak sebenarnya); permukaan
+    # kepadatan 100 m di atas hanya untuk mencari kandidat, angkanya tidak sebanding dengan nilai 30 m.
+    def porsi(pusat):
+        return sawah.addBands(darat).reduceRegion(ee.Reducer.mean(), kotak(pusat), 30, maxPixels=1e9, tileScale=4)
+
+    nilai = {}
     if pusat_lama:
-        out["lama"] = sawah.reduceRegion(ee.Reducer.mean(), kotak(pusat_lama), 30, maxPixels=1e9, tileScale=4)
-    return ee.Dictionary(out).getInfo()
+        nilai["lama"] = porsi(pusat_lama)
+    if top.get("max"):
+        nilai["baru"] = porsi([top["max1"], top["max2"]])
+    out.update(ee.Dictionary(nilai).getInfo() if nilai else {})
+    return out
 
 
 def jarak_km(a, b):
@@ -102,6 +121,8 @@ def main():
     ap.add_argument("--acuan", default="2026-11-25")
     ap.add_argument("--hanya", help="daftar nama dipisah koma")
     ap.add_argument("--min-geser", type=float, default=1.0, help="km; geser lebih kecil dianggap tetap")
+    ap.add_argument("--min-naik", type=float, default=0.02,
+                    help="geser hanya bila porsi sawah kotak baru lebih besar sekurangnya sebanyak ini (0-1)")
     ap.add_argument("--paralel", type=int, default=6)
     a = ap.parse_args()
     ee.Initialize(project=a.project)
@@ -128,14 +149,19 @@ def main():
                 continue
             t = r["top"]
             if not t.get("max"):
-                print(f"  - {w['n']}: tidak ada piksel sawah irigasi, titik tetap", flush=True)
+                print(f"  - {w['n']}: tidak ada kotak sawah irigasi dengan daratan ≥80%, titik tetap", flush=True)
                 continue
             baru = [round(t["max1"], 5), round(t["max2"], 5)]
             lama = w.get("pusat")
-            fr_lama = (r.get("lama") or {}).get("sawah")
+            fr_lama = (r.get("lama") or {}).get("sawah") or 0
+            fr_baru = (r.get("baru") or {}).get("sawah") or 0
+            dr_lama = (r.get("lama") or {}).get("darat") or 0
+            dr_baru = (r.get("baru") or {}).get("darat") or 0
             km = jarak_km(baru, lama) if lama else float("inf")
-            ket = (f"sawah irigasi di kotak lama {100 * (fr_lama or 0):.0f}%, kotak baru {100 * t['max']:.0f}%")
-            if km >= a.min_geser:
+            ket = (f"sawah irigasi kotak lama {100 * fr_lama:.0f}% (darat {100 * dr_lama:.0f}%), "
+                   f"kotak baru {100 * fr_baru:.0f}% (darat {100 * dr_baru:.0f}%)")
+            wajib = bool(lama) and dr_lama < MIN_DARAT  # kotak lama kebanyakan laut / wilayah lain: wajib pindah
+            if not lama or wajib or (km >= a.min_geser and fr_baru >= fr_lama + a.min_naik):
                 w.setdefault("pusat_lama", lama)
                 w["pusat"] = baru
                 geser.append(w["n"])
