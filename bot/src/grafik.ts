@@ -6,7 +6,7 @@ import { Resvg } from "@resvg/resvg-js"
 import { q } from "./db.ts"
 import { hetMedium } from "./data.ts"
 import { nf, rp } from "./format.ts"
-import { labelWilayah, normal, type Wilayah } from "./wilayah.ts"
+import { labelWilayah, levenshtein, normal, type Wilayah } from "./wilayah.ts"
 
 export const POLA_GRAFIK = /\b(grafik|grafiknya|chart|charts|diagram|visualisasi|visualisasinya|kurva|plot)\b/
 
@@ -24,6 +24,13 @@ export function rentangDisebut(teks: string): number | null {
   if (/\b(seminggu|semingu|sminggu|smgg|sepekan|satu minggu|satu pekan|minggu ini|pekan ini)\b/.test(n)) return 7
   if (/\b(setahun|setaun|stahun|staun|sthn|sathun|setahn|setahon|satu tahun|tahun ini|setahunan)\b/.test(n)) return 365
   if (/\b(sebulan|sbln|sebln|sbulan|sebulanan|satu bulan|bulan ini)\b/.test(n)) return 30
+  // salah ketik lain yang mirip: "sethaun", "setahn", "sebuln", "semnggu"
+  for (const kata of n.split(" ")) {
+    if (kata.length < 5 || !kata.startsWith("s")) continue
+    if (levenshtein(kata, "setahun") <= 2) return 365
+    if (levenshtein(kata, "sebulan") <= 2) return 30
+    if (levenshtein(kata, "seminggu") <= 2) return 7
+  }
   return null
 }
 
@@ -184,6 +191,6 @@ export function teksGrafik(d: DataGrafik): string {
     baris.push(`Tertinggi ${rp(maks.v)} (${tglPendek(maks.t)}), terendah ${rp(min.v)} (${tglPendek(min.t)})`)
   }
   if (d.het != null && d.jenis !== "premium") baris.push(`HET beras medium: ${rp(d.het)}/kg`)
-  baris.push("", "Ketik *GRAFIK Malang 3 bulan* untuk wilayah dan rentang lain.")
+  baris.push("", "Ganti rentang dengan membalas _setahun_ atau _3 bulan_, atau ketik *GRAFIK Jember 6 bulan* untuk wilayah lain.")
   return baris.join("\n")
 }
