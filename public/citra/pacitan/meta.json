@@ -2,47 +2,46 @@
   "folder": "pacitan",
   "lokasi": "Pacitan",
   "pusat": [
-    111.10491,
-    -8.22599
+    111.3071,
+    -8.22093
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    111.088572,
-    -8.235486,
-    111.121248,
-    -8.216494
+    111.290763,
+    -8.230426,
+    111.323437,
+    -8.211434
   ],
-  "tanggal_sebelum": "2026-09-19",
-  "tanggal_sesudah": "2026-11-10",
+  "tanggal_sebelum": "2026-08-30",
+  "tanggal_sesudah": "2026-10-21",
   "jendela_hari": 6,
   "mode_label": "aturan",
   "jumlah_citra": {
-    "s1_sebelum": 4,
-    "s1_sesudah": 4,
-    "s2_sebelum": 12,
-    "s2_sesudah": 12
+    "s1_sebelum": 3,
+    "s1_sesudah": 3,
+    "s2_sebelum": 6,
+    "s2_sesudah": 6
   },
   "tanggal_citra": {
     "s2_sebelum": [
-      "2026-09-14",
-      "2026-09-19",
-      "2026-09-24"
+      "2026-08-25",
+      "2026-08-30",
+      "2026-09-04"
     ],
     "s2_sesudah": [
-      "2026-11-08",
-      "2026-11-10",
-      "2026-11-13"
+      "2026-10-19",
+      "2026-10-21"
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 16.738197424892704,
+    "belum_hijau_sebelum_pct": 86.36363636363636,
     "genang_sebelum_pct": 0,
-    "jumlah_petak": 233,
-    "luas_sawah_ha": 78.35097438630366,
-    "tertanam_sesudah_pct": 8.15450643776824,
+    "jumlah_petak": 484,
+    "luas_sawah_ha": 168.14474514598965,
+    "tertanam_sesudah_pct": 4.132231404958678,
     "tertinggal_pct": 0
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"

@@ -2,18 +2,18 @@
   "folder": "mojokerto",
   "lokasi": "Mojokerto",
   "pusat": [
-    112.5494,
-    -7.48847
+    112.53959,
+    -7.48701
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    112.533091,
-    -7.497966,
-    112.565709,
-    -7.478974
+    112.523281,
+    -7.496506,
+    112.555899,
+    -7.477514
   ],
   "tanggal_sebelum": "2026-10-01",
   "tanggal_sesudah": "2026-11-15",
@@ -36,17 +36,16 @@
     "s2_sesudah": [
       "2026-11-10",
       "2026-11-13",
-      "2026-11-15",
-      "2026-11-20"
+      "2026-11-15"
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 47.21189591078067,
-    "genang_sebelum_pct": 0.5204460966542751,
-    "jumlah_petak": 1345,
-    "luas_sawah_ha": 471.00562013247145,
-    "tertanam_sesudah_pct": 6.022304832713755,
-    "tertinggal_pct": 0.22304832713754646
+    "belum_hijau_sebelum_pct": 58.05849408836341,
+    "genang_sebelum_pct": 0.06222775357809583,
+    "jumlah_petak": 1607,
+    "luas_sawah_ha": 555.2539669694091,
+    "tertanam_sesudah_pct": 7.9651524579962665,
+    "tertinggal_pct": 0
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }

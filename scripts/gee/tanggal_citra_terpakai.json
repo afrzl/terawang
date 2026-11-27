@@ -1,11 +1,11 @@
 {
  "pacitan": {
-  "sebelum": "2026-09-19",
-  "sesudah": "2026-11-10",
-  "ndvi_sebelum": 0.398,
-  "ndvi_sesudah": 0.475,
-  "cerah_sebelum": 1,
-  "cerah_sesudah": 1,
+  "sebelum": "2026-08-30",
+  "sesudah": "2026-10-21",
+  "ndvi_sebelum": 0.178,
+  "ndvi_sesudah": 0.166,
+  "cerah_sebelum": 0.99,
+  "cerah_sesudah": 0.81,
   "jarak_hari": 52
  },
  "ponorogo": {
@@ -18,22 +18,22 @@
   "jarak_hari": 110
  },
  "trenggalek": {
-  "sebelum": "2026-07-26",
-  "sesudah": "2026-11-10",
-  "ndvi_sebelum": 0.356,
-  "ndvi_sesudah": 0.322,
-  "cerah_sebelum": 1,
-  "cerah_sesudah": 0.63,
-  "jarak_hari": 107
+  "sebelum": "2026-09-24",
+  "sesudah": "2026-11-13",
+  "ndvi_sebelum": 0.465,
+  "ndvi_sesudah": 0.223,
+  "cerah_sebelum": 0.96,
+  "cerah_sesudah": 0.94,
+  "jarak_hari": 50
  },
  "tulungagung": {
-  "sebelum": "2026-08-02",
-  "sesudah": "2026-11-10",
-  "ndvi_sebelum": 0.275,
-  "ndvi_sesudah": 0.33,
+  "sebelum": "2026-08-20",
+  "sesudah": "2026-11-13",
+  "ndvi_sebelum": 0.279,
+  "ndvi_sesudah": 0.565,
   "cerah_sebelum": 0.99,
   "cerah_sesudah": 1,
-  "jarak_hari": 100
+  "jarak_hari": 85
  },
  "blitar": {
   "sebelum": "2026-08-20",
@@ -45,40 +45,40 @@
   "jarak_hari": 82
  },
  "kediri": {
-  "sebelum": "2026-09-11",
+  "sebelum": "2026-09-24",
   "sesudah": "2026-11-08",
-  "ndvi_sebelum": 0.279,
-  "ndvi_sesudah": 0.268,
-  "cerah_sebelum": 0.97,
+  "ndvi_sebelum": 0.322,
+  "ndvi_sesudah": 0.248,
+  "cerah_sebelum": 1,
   "cerah_sesudah": 1,
-  "jarak_hari": 58
+  "jarak_hari": 45
  },
  "malang": {
-  "sebelum": "2026-09-18",
-  "sesudah": "2026-11-05",
-  "ndvi_sebelum": 0.206,
-  "ndvi_sesudah": 0.213,
-  "cerah_sebelum": 1,
-  "cerah_sesudah": 0.94,
-  "jarak_hari": 48
- },
- "lumajang": {
-  "sebelum": "2026-08-09",
-  "sesudah": "2026-11-20",
-  "ndvi_sebelum": 0.157,
-  "ndvi_sesudah": 0.171,
+  "sebelum": "2026-09-29",
+  "sesudah": "2026-11-15",
+  "ndvi_sebelum": 0.385,
+  "ndvi_sesudah": 0.502,
   "cerah_sebelum": 1,
   "cerah_sesudah": 1,
-  "jarak_hari": 103
+  "jarak_hari": 47
+ },
+ "lumajang": {
+  "sebelum": "2026-08-07",
+  "sesudah": "2026-11-20",
+  "ndvi_sebelum": 0.217,
+  "ndvi_sesudah": 0.592,
+  "cerah_sebelum": 1,
+  "cerah_sesudah": 1,
+  "jarak_hari": 105
  },
  "jember": {
-  "sebelum": "2026-10-01",
-  "sesudah": "2026-11-17",
-  "ndvi_sebelum": 0.108,
-  "ndvi_sesudah": 0.693,
-  "cerah_sebelum": 1,
-  "cerah_sesudah": 0.99,
-  "jarak_hari": 47
+  "sebelum": "2026-08-17",
+  "sesudah": "2026-11-15",
+  "ndvi_sebelum": 0.51,
+  "ndvi_sesudah": 0.332,
+  "cerah_sebelum": 0.91,
+  "cerah_sesudah": 0.96,
+  "jarak_hari": 90
  },
  "banyuwangi": {
   "sebelum": "2026-09-26",
@@ -99,13 +99,13 @@
   "jarak_hari": 50
  },
  "situbondo": {
-  "sebelum": "2026-08-09",
+  "sebelum": "2026-09-11",
   "sesudah": "2026-11-20",
-  "ndvi_sebelum": 0.412,
-  "ndvi_sesudah": 0.545,
-  "cerah_sebelum": 0.95,
+  "ndvi_sebelum": 0.338,
+  "ndvi_sesudah": 0.605,
+  "cerah_sebelum": 1,
   "cerah_sesudah": 1,
-  "jarak_hari": 103
+  "jarak_hari": 70
  },
  "probolinggo": {
   "sebelum": "2026-08-27",
@@ -119,73 +119,73 @@
  "pasuruan": {
   "sebelum": "2026-07-28",
   "sesudah": "2026-11-15",
-  "ndvi_sebelum": 0.588,
-  "ndvi_sesudah": 0.246,
+  "ndvi_sebelum": 0.549,
+  "ndvi_sesudah": 0.264,
   "cerah_sebelum": 1,
-  "cerah_sesudah": 0.99,
+  "cerah_sesudah": 1,
   "jarak_hari": 110
  },
  "sidoarjo": {
-  "sebelum": "2026-10-06",
-  "sesudah": "2026-11-20",
-  "ndvi_sebelum": 0.4,
-  "ndvi_sesudah": 0.19,
+  "sebelum": "2026-10-04",
+  "sesudah": "2026-11-23",
+  "ndvi_sebelum": 0.323,
+  "ndvi_sesudah": 0.26,
   "cerah_sebelum": 1,
-  "cerah_sesudah": 0.92,
-  "jarak_hari": 45
+  "cerah_sesudah": 0.99,
+  "jarak_hari": 50
  },
  "mojokerto": {
   "sebelum": "2026-10-01",
   "sesudah": "2026-11-15",
-  "ndvi_sebelum": 0.363,
-  "ndvi_sesudah": 0.287,
+  "ndvi_sebelum": 0.307,
+  "ndvi_sesudah": 0.256,
   "cerah_sebelum": 1,
-  "cerah_sesudah": 0.86,
+  "cerah_sesudah": 1.0,
   "jarak_hari": 45
  },
  "jombang": {
-  "sebelum": "2026-08-15",
-  "sesudah": "2026-11-23",
-  "ndvi_sebelum": 0.264,
-  "ndvi_sesudah": 0.418,
-  "cerah_sebelum": 0.99,
-  "cerah_sesudah": 1,
-  "jarak_hari": 100
- },
- "nganjuk": {
-  "sebelum": "2026-08-02",
+  "sebelum": "2026-09-11",
   "sesudah": "2026-11-13",
-  "ndvi_sebelum": 0.178,
-  "ndvi_sesudah": 0.432,
+  "ndvi_sebelum": 0.197,
+  "ndvi_sesudah": 0.83,
   "cerah_sebelum": 1,
   "cerah_sesudah": 0.99,
-  "jarak_hari": 103
+  "jarak_hari": 63
+ },
+ "nganjuk": {
+  "sebelum": "2026-09-29",
+  "sesudah": "2026-11-13",
+  "ndvi_sebelum": 0.496,
+  "ndvi_sesudah": 0.496,
+  "cerah_sebelum": 0.99,
+  "cerah_sesudah": 0.85,
+  "jarak_hari": 45
  },
  "madiun": {
-  "sebelum": "2026-07-31",
-  "sesudah": "2026-11-13",
-  "ndvi_sebelum": 0.213,
-  "ndvi_sesudah": 0.252,
-  "cerah_sebelum": 0.98,
-  "cerah_sesudah": 0.84,
-  "jarak_hari": 105
+  "sebelum": "2026-08-20",
+  "sesudah": "2026-11-23",
+  "ndvi_sebelum": 0.228,
+  "ndvi_sesudah": 0.715,
+  "cerah_sebelum": 1,
+  "cerah_sesudah": 0.83,
+  "jarak_hari": 95
  },
  "magetan": {
   "sebelum": "2026-07-31",
-  "sesudah": "2026-11-13",
-  "ndvi_sebelum": 0.232,
-  "ndvi_sesudah": 0.232,
+  "sesudah": "2026-11-10",
+  "ndvi_sebelum": 0.221,
+  "ndvi_sesudah": 0.155,
   "cerah_sebelum": 1,
-  "cerah_sesudah": 0.97,
-  "jarak_hari": 105
+  "cerah_sesudah": 0.81,
+  "jarak_hari": 102
  },
  "ngawi": {
   "sebelum": "2026-08-10",
   "sesudah": "2026-11-23",
-  "ndvi_sebelum": 0.217,
-  "ndvi_sesudah": 0.174,
+  "ndvi_sebelum": 0.225,
+  "ndvi_sesudah": 0.209,
   "cerah_sebelum": 1,
-  "cerah_sesudah": 0.87,
+  "cerah_sesudah": 0.85,
   "jarak_hari": 105
  },
  "bojonegoro": {
@@ -207,40 +207,40 @@
   "jarak_hari": 53
  },
  "lamongan": {
-  "sebelum": "2026-10-09",
-  "sesudah": "2026-11-23",
-  "ndvi_sebelum": 0.17,
-  "ndvi_sesudah": 0.414,
-  "cerah_sebelum": 0.96,
-  "cerah_sesudah": 0.99,
-  "jarak_hari": 45
+  "sebelum": "2026-09-09",
+  "sesudah": "2026-11-08",
+  "ndvi_sebelum": 0.225,
+  "ndvi_sesudah": 0.223,
+  "cerah_sebelum": 1,
+  "cerah_sesudah": 0.94,
+  "jarak_hari": 60
  },
  "gresik": {
-  "sebelum": "2026-09-09",
+  "sebelum": "2026-09-24",
   "sesudah": "2026-11-10",
-  "ndvi_sebelum": 0.154,
-  "ndvi_sesudah": 0.118,
+  "ndvi_sebelum": 0.158,
+  "ndvi_sesudah": 0.114,
   "cerah_sebelum": 1,
-  "cerah_sesudah": 0.9,
-  "jarak_hari": 62
+  "cerah_sesudah": 0.96,
+  "jarak_hari": 47
  },
  "bangkalan": {
-  "sebelum": "2026-09-16",
-  "sesudah": "2026-11-25",
-  "ndvi_sebelum": 0.201,
-  "ndvi_sesudah": 0.252,
-  "cerah_sebelum": 1,
-  "cerah_sesudah": 0.82,
-  "jarak_hari": 70
+  "sebelum": "2026-09-26",
+  "sesudah": "2026-11-13",
+  "ndvi_sebelum": 0.209,
+  "ndvi_sesudah": 0.275,
+  "cerah_sebelum": 0.98,
+  "cerah_sesudah": 0.88,
+  "jarak_hari": 48
  },
  "sampang": {
   "sebelum": "2026-09-26",
-  "sesudah": "2026-11-15",
-  "ndvi_sebelum": 0.166,
-  "ndvi_sesudah": 0.15,
+  "sesudah": "2026-11-10",
+  "ndvi_sebelum": 0.197,
+  "ndvi_sesudah": 0.182,
   "cerah_sebelum": 1,
   "cerah_sesudah": 1,
-  "jarak_hari": 50
+  "jarak_hari": 45
  },
  "pamekasan": {
   "sebelum": "2026-09-26",
@@ -254,83 +254,83 @@
  "sumenep": {
   "sebelum": "2026-10-01",
   "sesudah": "2026-11-17",
-  "ndvi_sebelum": 0.404,
-  "ndvi_sesudah": 0.189,
-  "cerah_sebelum": 0.97,
+  "ndvi_sebelum": 0.326,
+  "ndvi_sesudah": 0.163,
+  "cerah_sebelum": 0.99,
   "cerah_sesudah": 1.0,
   "jarak_hari": 47
  },
  "kota-kediri": {
-  "sebelum": "2026-10-09",
-  "sesudah": "2026-11-23",
-  "ndvi_sebelum": 0.31,
-  "ndvi_sesudah": 0.518,
-  "cerah_sebelum": 0.85,
-  "cerah_sesudah": 0.9,
-  "jarak_hari": 45
+  "sebelum": "2026-09-11",
+  "sesudah": "2026-11-13",
+  "ndvi_sebelum": 0.404,
+  "ndvi_sesudah": 0.385,
+  "cerah_sebelum": 1,
+  "cerah_sesudah": 0.94,
+  "jarak_hari": 63
  },
  "kota-blitar": {
-  "sebelum": "2026-08-20",
+  "sebelum": "2026-08-30",
   "sesudah": "2026-10-21",
-  "ndvi_sebelum": 0.408,
-  "ndvi_sesudah": 0.592,
-  "cerah_sebelum": 0.88,
-  "cerah_sesudah": 1,
-  "jarak_hari": 62
- },
- "kota-malang": {
-  "sebelum": "2026-08-10",
-  "sesudah": "2026-11-15",
-  "ndvi_sebelum": 0.201,
-  "ndvi_sesudah": 0.545,
+  "ndvi_sebelum": 0.369,
+  "ndvi_sesudah": 0.65,
   "cerah_sebelum": 0.99,
   "cerah_sesudah": 1,
-  "jarak_hari": 97
+  "jarak_hari": 52
+ },
+ "kota-malang": {
+  "sebelum": "2026-09-04",
+  "sesudah": "2026-11-15",
+  "ndvi_sebelum": 0.251,
+  "ndvi_sesudah": 0.605,
+  "cerah_sebelum": 0.96,
+  "cerah_sesudah": 1,
+  "jarak_hari": 72
  },
  "kota-probolinggo": {
   "sebelum": "2026-08-17",
-  "sesudah": "2026-11-15",
-  "ndvi_sebelum": 0.322,
-  "ndvi_sesudah": 0.725,
+  "sesudah": "2026-11-17",
+  "ndvi_sebelum": 0.443,
+  "ndvi_sesudah": 0.596,
   "cerah_sebelum": 1.0,
-  "cerah_sesudah": 1,
-  "jarak_hari": 90
+  "cerah_sesudah": 0.98,
+  "jarak_hari": 92
  },
  "kota-pasuruan": {
-  "sebelum": "2026-09-11",
+  "sebelum": "2026-08-22",
   "sesudah": "2026-11-25",
-  "ndvi_sebelum": 0.262,
-  "ndvi_sesudah": 0.327,
-  "cerah_sebelum": 1,
+  "ndvi_sebelum": 0.475,
+  "ndvi_sesudah": 0.433,
+  "cerah_sebelum": 0.8,
   "cerah_sesudah": 1,
-  "jarak_hari": 75
+  "jarak_hari": 95
  },
  "kota-mojokerto": {
-  "sebelum": "2026-07-31",
+  "sebelum": "2026-09-11",
   "sesudah": "2026-11-13",
-  "ndvi_sebelum": 0.353,
-  "ndvi_sesudah": 0.395,
-  "cerah_sebelum": 0.88,
-  "cerah_sesudah": 0.87,
-  "jarak_hari": 105
+  "ndvi_sebelum": 0.408,
+  "ndvi_sesudah": 0.381,
+  "cerah_sebelum": 0.98,
+  "cerah_sesudah": 0.96,
+  "jarak_hari": 63
  },
  "kota-madiun": {
   "sebelum": "2026-08-20",
   "sesudah": "2026-11-13",
-  "ndvi_sebelum": 0.295,
-  "ndvi_sesudah": 0.393,
+  "ndvi_sebelum": 0.244,
+  "ndvi_sesudah": 0.584,
   "cerah_sebelum": 1,
-  "cerah_sesudah": 0.98,
+  "cerah_sesudah": 0.99,
   "jarak_hari": 85
  },
  "kota-surabaya": {
   "sebelum": "2026-09-09",
-  "sesudah": "2026-11-23",
-  "ndvi_sebelum": 0.186,
-  "ndvi_sesudah": 0.176,
+  "sesudah": "2026-11-17",
+  "ndvi_sebelum": 0.229,
+  "ndvi_sesudah": 0.157,
   "cerah_sebelum": 1,
-  "cerah_sesudah": 0.81,
-  "jarak_hari": 75
+  "cerah_sesudah": 0.88,
+  "jarak_hari": 69
  },
  "batu": {
   "sebelum": "2026-09-18",

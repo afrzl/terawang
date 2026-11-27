@@ -2,48 +2,47 @@
   "folder": "sidoarjo",
   "lokasi": "Sidoarjo",
   "pusat": [
-    112.7614,
-    -7.56034
+    112.7498,
+    -7.56157
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    112.745089,
-    -7.569836,
-    112.777711,
-    -7.550844
+    112.733489,
+    -7.571066,
+    112.766111,
+    -7.552074
   ],
-  "tanggal_sebelum": "2026-10-06",
-  "tanggal_sesudah": "2026-11-20",
+  "tanggal_sebelum": "2026-10-04",
+  "tanggal_sesudah": "2026-11-23",
   "jendela_hari": 6,
   "mode_label": "aturan",
   "jumlah_citra": {
     "s1_sebelum": 1,
-    "s1_sesudah": 3,
-    "s2_sebelum": 6,
-    "s2_sesudah": 5
+    "s1_sesudah": 2,
+    "s2_sebelum": 7,
+    "s2_sesudah": 4
   },
   "tanggal_citra": {
     "s2_sebelum": [
       "2026-10-01",
+      "2026-10-04",
       "2026-10-06",
-      "2026-10-08",
-      "2026-10-11"
+      "2026-10-08"
     ],
     "s2_sesudah": [
-      "2026-11-15",
-      "2026-11-17",
-      "2026-11-20"
+      "2026-11-20",
+      "2026-11-23"
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 47.794117647058826,
+    "belum_hijau_sebelum_pct": 45.38766270514997,
     "genang_sebelum_pct": 0,
-    "jumlah_petak": 1496,
-    "luas_sawah_ha": 517.5956287301841,
-    "tertanam_sesudah_pct": 1.9385026737967916,
+    "jumlah_petak": 1767,
+    "luas_sawah_ha": 611.2061040233002,
+    "tertanam_sesudah_pct": 0.5659309564233164,
     "tertinggal_pct": 0
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"

@@ -2,18 +2,18 @@
   "folder": "ngawi",
   "lokasi": "Ngawi",
   "pusat": [
-    111.49028,
-    -7.50195
+    111.48227,
+    -7.49509
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    111.473971,
-    -7.511446,
-    111.506589,
-    -7.492454
+    111.465961,
+    -7.504586,
+    111.498579,
+    -7.485594
   ],
   "tanggal_sebelum": "2026-08-10",
   "tanggal_sesudah": "2026-11-23",
@@ -36,12 +36,12 @@
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 94.58689458689459,
-    "genang_sebelum_pct": 32.30769230769231,
-    "jumlah_petak": 1755,
-    "luas_sawah_ha": 607.115558842305,
-    "tertanam_sesudah_pct": 13.675213675213676,
-    "tertinggal_pct": 26.55270655270655
+    "belum_hijau_sebelum_pct": 92.73127753303964,
+    "genang_sebelum_pct": 24.174008810572687,
+    "jumlah_petak": 1816,
+    "luas_sawah_ha": 631.7094776594881,
+    "tertanam_sesudah_pct": 15.363436123348018,
+    "tertinggal_pct": 22.577092511013216
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }

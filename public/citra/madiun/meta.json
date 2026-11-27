@@ -2,49 +2,46 @@
   "folder": "madiun",
   "lokasi": "Madiun",
   "pusat": [
-    111.51454,
-    -7.56123
+    111.56672,
+    -7.57864
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    111.498229,
-    -7.570726,
-    111.530851,
-    -7.551734
+    111.550408,
+    -7.588136,
+    111.583032,
+    -7.569144
   ],
-  "tanggal_sebelum": "2026-07-31",
-  "tanggal_sesudah": "2026-11-13",
+  "tanggal_sebelum": "2026-08-20",
+  "tanggal_sesudah": "2026-11-23",
   "jendela_hari": 6,
   "mode_label": "aturan",
   "jumlah_citra": {
-    "s1_sebelum": 2,
+    "s1_sebelum": 3,
     "s1_sesudah": 2,
-    "s2_sebelum": 4,
-    "s2_sesudah": 3
+    "s2_sebelum": 3,
+    "s2_sesudah": 1
   },
   "tanggal_citra": {
     "s2_sebelum": [
-      "2026-07-26",
-      "2026-07-31",
-      "2026-08-02",
-      "2026-08-05"
+      "2026-08-15",
+      "2026-08-20",
+      "2026-08-25"
     ],
     "s2_sesudah": [
-      "2026-11-08",
-      "2026-11-10",
-      "2026-11-13"
+      "2026-11-23"
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 89.50209958008398,
-    "genang_sebelum_pct": 4.679064187162568,
-    "jumlah_petak": 1667,
-    "luas_sawah_ha": 574.3162391947518,
-    "tertanam_sesudah_pct": 34.49310137972405,
-    "tertinggal_pct": 4.019196160767846
+    "belum_hijau_sebelum_pct": 82.11060948081264,
+    "genang_sebelum_pct": 13.31828442437923,
+    "jumlah_petak": 1772,
+    "luas_sawah_ha": 608.6859349525814,
+    "tertanam_sesudah_pct": 71.83972911963883,
+    "tertinggal_pct": 4.740406320541761
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }

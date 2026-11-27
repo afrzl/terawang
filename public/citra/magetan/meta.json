@@ -2,21 +2,21 @@
   "folder": "magetan",
   "lokasi": "Magetan",
   "pusat": [
-    111.50196,
-    -7.51452
+    111.49665,
+    -7.52384
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    111.48565,
-    -7.524016,
-    111.51827,
-    -7.505024
+    111.48034,
+    -7.533336,
+    111.51296,
+    -7.514344
   ],
   "tanggal_sebelum": "2026-07-31",
-  "tanggal_sesudah": "2026-11-13",
+  "tanggal_sesudah": "2026-11-10",
   "jendela_hari": 6,
   "mode_label": "aturan",
   "jumlah_citra": {
@@ -39,12 +39,12 @@
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 93.4918648310388,
-    "genang_sebelum_pct": 11.32665832290363,
-    "jumlah_petak": 1598,
-    "luas_sawah_ha": 549.5273219724542,
-    "tertanam_sesudah_pct": 22.40300375469337,
-    "tertinggal_pct": 11.264080100125156
+    "belum_hijau_sebelum_pct": 93.2149651236525,
+    "genang_sebelum_pct": 14.965123652504756,
+    "jumlah_petak": 1577,
+    "luas_sawah_ha": 546.5328569734014,
+    "tertanam_sesudah_pct": 6.911857958148383,
+    "tertinggal_pct": 14.901712111604311
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }

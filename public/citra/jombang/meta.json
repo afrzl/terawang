@@ -2,46 +2,48 @@
   "folder": "jombang",
   "lokasi": "Jombang",
   "pusat": [
-    112.30236,
-    -7.4741
+    112.30333,
+    -7.64332
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    112.286052,
-    -7.483596,
-    112.318668,
-    -7.464604
+    112.287015,
+    -7.652816,
+    112.319645,
+    -7.633824
   ],
-  "tanggal_sebelum": "2026-08-15",
-  "tanggal_sesudah": "2026-11-23",
+  "tanggal_sebelum": "2026-09-11",
+  "tanggal_sesudah": "2026-11-13",
   "jendela_hari": 6,
   "mode_label": "aturan",
   "jumlah_citra": {
     "s1_sebelum": 4,
     "s1_sesudah": 3,
     "s2_sebelum": 3,
-    "s2_sesudah": 1
+    "s2_sesudah": 3
   },
   "tanggal_citra": {
     "s2_sebelum": [
-      "2026-08-10",
-      "2026-08-15",
-      "2026-08-20"
+      "2026-09-09",
+      "2026-09-11",
+      "2026-09-14"
     ],
     "s2_sesudah": [
-      "2026-11-23"
+      "2026-11-08",
+      "2026-11-10",
+      "2026-11-13"
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 64.47298020331729,
-    "genang_sebelum_pct": 19.368646334938468,
-    "jumlah_petak": 1869,
-    "luas_sawah_ha": 654.0939680032163,
-    "tertanam_sesudah_pct": 44.0342429106474,
-    "tertinggal_pct": 4.654895666131622
+    "belum_hijau_sebelum_pct": 85.1024208566108,
+    "genang_sebelum_pct": 14.711359404096836,
+    "jumlah_petak": 1611,
+    "luas_sawah_ha": 557.9828983370908,
+    "tertanam_sesudah_pct": 93.97889509621353,
+    "tertinggal_pct": 0
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }
