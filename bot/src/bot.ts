@@ -29,7 +29,7 @@ const ALIAS: Record<string, Perintah> = {
 
 type Tunda =
   | { jenis: "pilih"; perintah: Perintah; pilihan: Wilayah[]; sampai: number; sisa?: string }
-  | { jenis: "lapor"; sampai: number; draf: lapor.Draf; tanya?: lapor.Isian }
+  | { jenis: "lapor"; sampai: number; draf: lapor.Draf; tanya?: lapor.Isian | "wilayah"; teks?: string; calon?: number[]; usul?: number; wilayahId?: number }
 const tunda = new Map<string, Tunda>()
 // laporan terakhir yang baru disimpan: balasan pendek "pembeli"/"penjual" dalam 10 menit mengoreksi perannya
 const laporTerakhir = new Map<string, { id: number; sampai: number }>()
@@ -272,7 +272,7 @@ function ringkasDraf(d: lapor.Draf): string {
 const TANYA: Record<lapor.Isian, string> = {
   harga: "Harganya berapa per kg? Misalnya _13800_ atau _14 rb_.",
   jenis: "Berasnya *medium* atau *premium*?",
-  pasar: "Di pasar atau toko mana? Misalnya _Pasar Besar Malang_.",
+  pasar: "Di mana tempatnya? Misalnya _Pasar Besar Malang_ atau _Toko Makmur Jember_.",
   peran: "Kamu di sana sebagai *penjual* atau *pembeli*?",
 }
 
@@ -286,16 +286,44 @@ async function laporHarga(k: kontak.Kontak, teks: string, awal?: Extract<Tunda, 
     tunda.delete(k.nomor_wa)
     return { teks: "Oke, laporannya nggak jadi. Kalau mau lapor lagi, ketik aja _lapor_.", intent: "lapor_batal", wilayahId: null }
   }
-  let baru = lapor.uraiLaporan(teks)
+  const daftar = await semuaWilayah()
+  // jawaban atas "itu di kab/kota mana?" / "Blimbing itu di Kota Malang, ya?"
+  if (awal?.tanya === "wilayah") {
+    const calon = (awal.calon ?? []).map((id) => daftar.find((w) => w.id === id)).filter((w): w is Wilayah => Boolean(w))
+    const i = Number(teks.trim()) - 1
+    let pilih: Wilayah | undefined = calon[i] ?? pilihJenis(teks, calon)
+    const usul = awal.usul
+    if (!pilih && usul && lapor.POLA_YA.test(n)) pilih = daftar.find((w) => w.id === usul)
+    if (!pilih) {
+      const c = cocokkan(teks, daftar)
+      const di = c.jenis === "pas" ? c : cariDiKalimat(teks, daftar)
+      if (di.jenis === "pas") pilih = di.wilayah
+      else if (di.jenis === "ambigu") {
+        tunda.set(k.nomor_wa, { ...awal, sampai: Date.now() + 15 * MENIT, calon: di.pilihan.map((w) => w.id), usul: undefined })
+        return { teks: `${di.pilihan.map(labelWilayah).join(" atau ")}? Balas _kab_ atau _kota_ aja.`, intent: "lapor", wilayahId: null }
+      }
+    }
+    if (!pilih) {
+      tunda.set(k.nomor_wa, { ...awal, sampai: Date.now() + 15 * MENIT, usul: undefined })
+      return {
+        teks: lapor.POLA_BUKAN.test(n) ? "Oke, kalau gitu tempatnya di kab/kota mana? Misalnya _Kota Malang_ atau _Kab. Jember_." : "Hmm, aku belum nemu kab/kota itu. Sebut nama kab/kota di Jawa Timur ya, misalnya _Kota Malang_ atau _Kab. Jember_.",
+        intent: "lapor", wilayahId: null,
+      }
+    }
+    awal = { ...awal, wilayahId: pilih.id, tanya: undefined }
+    teks = ""
+  }
+  let baru = teks ? lapor.uraiLaporan(teks) : {}
   // jawaban pendek atas pertanyaan terakhir: "pasar tanjung" / "tanjung" untuk pasar, "jual" untuk peran
-  if (awal?.tanya === "pasar" && !baru.pasar && !baru.harga && n && n.split(" ").length <= 6) baru.pasar = teks.trim().replace(/^(di|dari)\s+/i, "").replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 80)
+  if (awal?.tanya === "pasar" && !baru.pasar && !baru.harga && !baru.peran && !baru.jenis && n && n.split(" ").length <= 6 && !lapor.POLA_YA.test(n) && !lapor.POLA_BUKAN.test(n)) baru.pasar = teks.trim().replace(/^(di|dari)\s+/i, "").replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 80)
   let d: lapor.Draf = { ...(awal?.draf ?? {}), ...baru }
-  if (lapor.kurang(d).length && !awal?.tanya) d = await lapor.lengkapiDenganLLM(teks, d)
-  else if (lapor.kurang(d).length && awal && Object.keys(baru).length === 0) d = await lapor.lengkapiDenganLLM(teks, d)
+  const gabung = `${awal?.teks ?? ""} ${teks}`.trim()
+  if (teks && lapor.kurang(d).length && !awal?.tanya) d = await lapor.lengkapiDenganLLM(teks, d)
+  else if (teks && lapor.kurang(d).length && awal && Object.keys(baru).length === 0) d = await lapor.lengkapiDenganLLM(teks, d)
   const sisa = lapor.kurang(d)
   if (sisa.length) {
     const tanya = sisa[0]
-    tunda.set(k.nomor_wa, { jenis: "lapor", sampai: Date.now() + 15 * MENIT, draf: d, tanya })
+    tunda.set(k.nomor_wa, { jenis: "lapor", sampai: Date.now() + 15 * MENIT, draf: d, tanya, teks: gabung.slice(-600), wilayahId: awal?.wilayahId })
     const ada = ringkasDraf(d)
     if (!ada) {
       const aneh = lapor.adaAngkaAneh(teks)
@@ -316,18 +344,45 @@ async function laporHarga(k: kontak.Kontak, teks: string, awal?: Extract<Tunda, 
     const aneh = tanya === "harga" && lapor.adaAngkaAneh(teks) ? "Harganya sepertinya bukan per kg. " : ""
     return { teks: `${aneh}Oke, aku catat: ${ada}.\n${TANYA[tanya]}`, intent: "lapor", wilayahId: null }
   }
-  const daftar = await semuaWilayah()
-  const c = cariDiKalimat(`${d.pasar} ${awal ? "" : teks}`, daftar)
-  const c2 = c.jenis === "pas" ? c : cariDiKalimat(d.pasar!, daftar)
-  const wilayahId = c2.jenis === "pas" ? c2.wilayah.id : k.wilayah_id
+  // kab/kota pasar harus pasti: dari nama kab/kota di kalimat; kalau hanya kecamatan atau tidak disebut, tanya dulu
+  let wilayahId = awal?.wilayahId
+  if (!wilayahId) {
+    const c = cariDiKalimat(`${d.pasar} ${gabung}`, daftar)
+    if (c.jenis === "pas") wilayahId = c.wilayah.id
+    else {
+      const simpan = (x: Partial<Extract<Tunda, { jenis: "lapor" }>>) =>
+        tunda.set(k.nomor_wa, { jenis: "lapor", sampai: Date.now() + 15 * MENIT, draf: d, tanya: "wilayah", teks: gabung.slice(-600), ...x })
+      const kec = lapor.kecamatanDisebut(`${d.pasar} ${gabung}`, daftar)
+      if (c.jenis === "ambigu") {
+        simpan({ calon: c.pilihan.map((w) => w.id) })
+        return { teks: `Oke, tinggal satu: ${d.pasar} itu di ${c.pilihan.map(labelWilayah).join(" atau ")}? Balas _kab_ atau _kota_ aja.`, intent: "lapor", wilayahId: null }
+      }
+      if (kec && kec.wilayah.length === 1) {
+        simpan({ calon: kec.wilayah.map((w) => w.id), usul: kec.wilayah[0].id })
+        return { teks: `Oke, tinggal satu: Kecamatan ${kec.kecamatan} itu di *${labelWilayah(kec.wilayah[0])}*, ya? Balas _ya_, atau sebut kab/kota-nya.`, intent: "lapor", wilayahId: null }
+      }
+      if (kec) {
+        simpan({ calon: kec.wilayah.map((w) => w.id) })
+        return { teks: `Oke, tinggal satu: Kecamatan ${kec.kecamatan} ada di beberapa tempat:\n${kec.wilayah.map((w, i) => `${i + 1}. ${labelWilayah(w)}`).join("\n")}\nYang mana? Balas angkanya.`, intent: "lapor", wilayahId: null }
+      }
+      const ingat = daftar.find((w) => w.id === k.wilayah_id)
+      simpan({ usul: ingat?.id })
+      return {
+        teks: ingat
+          ? `Oke, tinggal satu: ${d.pasar} itu di *${labelWilayah(ingat)}*, ya? Balas _ya_, atau sebut kab/kota-nya.`
+          : `Oke, tinggal satu: ${d.pasar} itu di kab/kota mana? Misalnya _Kota Malang_ atau _Kab. Jember_.`,
+        intent: "lapor", wilayahId: null,
+      }
+    }
+  }
   const w = daftar.find((x) => x.id === wilayahId)
-  const r = await kontak.simpanLaporan(k.id, wilayahId, `beras_${d.jenis}`, d.pasar!, d.harga!, d.peran!)
+  const r = await kontak.simpanLaporan(k.id, wilayahId, `beras_${d.jenis}`, d.pasar!, d.harga!, d.peran!, gabung)
   tunda.delete(k.nomor_wa)
   if (r?.id) laporTerakhir.set(k.nomor_wa, { id: r.id, sampai: Date.now() + 10 * MENIT })
   return {
     teks: [
       "✓ *Laporan diterima, makasih ya!*",
-      `Pasar: ${d.pasar}${w ? ` (${labelWilayah(w)})` : ""}`,
+      `Tempat: ${d.pasar}${w ? ` (${labelWilayah(w)})` : ""}`,
       `Beras ${d.jenis}: ${rp(d.harga!)}/kg`,
       `Sebagai: ${NAMA_PERAN[d.peran!]}`,
       r?.panel ? `Panel harga wilayah ini: ${rp(r.panel)}/kg (${teksSelisih(d.harga!, r.panel)} dari panel)` : "",
