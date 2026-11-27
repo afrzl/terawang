@@ -142,7 +142,7 @@ function pilihHal(nama, sub) {
   if (s) muatHalamanSumber(s, sub || "riwayat"); else pemuat[nama]?.();
 }
 
-const KODE_SUMBER = { bps: "BPS", bulog: "BLG", harga: "HRG", jarak: "JRK", citra: "SAT" };
+const KODE_SUMBER = { bps: "BPS", bulog: "BLG", harga: "HRG", jarak: "JRK", bapanas: "BPN", citra: "SAT", iklim: "IKL" };
 function gambarMenuSumber() {
   const wadah = $("#menu-sumber");
   wadah.replaceChildren(...daftarSumber.map((s) => {

@@ -117,12 +117,13 @@ def bronze_titik_satelit(context: AssetExecutionContext, repo: Repo, sumber_citr
 
 @asset(group_name=GRUP, kinds={"csv"}, check_specs=_cek("bronze_bapanas"),
        description="Panel Harga Bapanas harian per kab/kota Jatim (API publik): beras medium penggilingan, GKG, GKP, beras SPHP konsumen; "
-                   "bahan peringatan gabungan K3a. Disimpan di TERAWANG_BAPANAS_DIR (bawaan ~/.local/share/terawang/bapanas), "
-                   "cache per tanggal di ~/.cache/terawang-bapanas; gagal unduh -> CSV terakhir atau data/bapanas/panel_harga di repo.")
+                   "bahan peringatan gabungan K3a dan prakiraan GKP. Disimpan di TERAWANG_BAPANAS_DIR (bawaan ~/.local/share/terawang/bapanas), "
+                   "cache per tanggal di ~/.cache/terawang-bapanas; gagal unduh -> unggahan manual/bapanas, CSV terakhir, atau "
+                   "data/bapanas/panel_harga di repo.")
 def bronze_bapanas(context: AssetExecutionContext, repo: Repo) -> MaterializeResult:
-    import os
     import shutil
     import sys
+    import time
 
     import pandas as pd
 
@@ -130,22 +131,31 @@ def bronze_bapanas(context: AssetExecutionContext, repo: Repo) -> MaterializeRes
     folder.mkdir(parents=True, exist_ok=True)
     berkas = [folder / f"kabkota_harian_{n}.csv" for n in BAPANAS_K3]
     galat = None
+    mulai = time.time()
     try:
         repo.jalankan([sys.executable, "scripts/bapanas/ambil_panel_harga.py", "--mulai", "2024-01-01", "--komoditas", "1:5,1:4,1:2,3:109",
                        "--paralel", "1", "--jeda", "1.0", "--segarkan", "7", "--keluar", str(folder)], log=context.log)
     except Exception as e:  # noqa: BLE001
         galat = str(e)[:500]
         context.log.warning(f"unduh Panel Harga Bapanas gagal: {galat}")
-    for b in berkas:  # cadangan: salinan di repo
+    # Unggahan manual hanya dipakai untuk berkas yang tidak ditulis konektor di run ini (konektor gagal).
+    manual = terapkan_manual(repo, "bapanas", folder, mulai if galat is None else None, context.log)
+    asal = {}
+    for b in berkas:  # cadangan terakhir: salinan di repo
         if not b.exists() or b.stat().st_size < 100:
             shutil.copy(repo.path / "data/bapanas/panel_harga" / b.name, b)
+            asal[b.name] = "repo"
+        elif b.name in manual:
+            asal[b.name] = "manual"
+        else:
+            asal[b.name] = "otomatis" if galat is None else "terakhir"
     akhir = {b.stem.replace("kabkota_harian_", ""): str(pd.read_csv(b, usecols=["tanggal"]).tanggal.max()) for b in berkas}
-    lolos = galat is None
-    return MaterializeResult(data_version=DataVersion(checksum_gabungan(berkas)[:16]),
-                             metadata={"folder": str(folder), "tanggal_terakhir": akhir, "otomatis": "berhasil" if lolos else "gagal",
-                                       **({"galat_otomatis": MetadataValue.md(f"```\n{galat}\n```")} if galat else {})},
-                             check_results=[AssetCheckResult(asset_key="bronze_bapanas", check_name="otomatis_berhasil", passed=lolos,
-                                                             severity=AssetCheckSeverity.WARN)])
+    hasil = _hasil(repo, berkas, "bapanas (api)")
+    hasil.metadata["berkas"] = MetadataValue.md("\n".join(f"- `{_tampil(repo, b)}` ({asal[b.name]})" for b in berkas))
+    hasil.metadata["folder"] = str(folder)
+    hasil.metadata["tanggal_terakhir"] = akhir
+    return _status(hasil, {"mode": "api", "otomatis": "berhasil" if galat is None else "gagal", "manual": manual, "galat": galat},
+                   "bronze_bapanas")
 
 
 @asset(group_name=GRUP, kinds={"csv"},
@@ -166,7 +176,8 @@ def bronze_iklim(context: AssetExecutionContext, repo: Repo, sumber_citra: Sumbe
     huj = pd.read_csv(folder / "chirps_jatim_bulanan.csv")[["tahun", "bulan"]].drop_duplicates().iloc[-1]
     paths = [folder / "noaa_oni_bulanan.csv", folder / "chirps_jatim_bulanan.csv"]
     return MaterializeResult(data_version=DataVersion(checksum_gabungan(paths)[:16]),
-                             metadata={"folder": str(folder), "oni_terakhir": f"{int(oni.tahun)}-{int(oni.bulan):02d} ({oni.oni:+.2f})",
+                             metadata={"folder": str(folder), "berkas": MetadataValue.md("\n".join(f"- `{p}`" for p in paths)),
+                                       "oni_terakhir": f"{int(oni.tahun)}-{int(oni.bulan):02d} ({oni.oni:+.2f})",
                                        "hujan_terakhir": f"{int(huj.tahun)}-{int(huj.bulan):02d}"})
 
 
