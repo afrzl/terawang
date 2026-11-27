@@ -10,7 +10,8 @@ Di sini piksel dihitung "sawah irigasi" bila:
      paling tidak satu bulan. Genangan olah tanah/tanam adalah ciri khas sawah; tegalan tidak pernah tergenang,
   3. pernah hijau pekat: NDVI Sentinel-2 bulanan maksimum >= 0,6 (membuang tambak/rawa),
   4. bukan air permanen: JRC Global Surface Water occurrence < 30%.
-Titik pusat = puncak kepadatan sawah irigasi dalam radius 1 km (kotak contoh 3,6 x 2,1 km).
+Titik pusat = puncak kepadatan sawah irigasi dalam radius 1 km (kotak contoh 3,6 x 2,1 km), dicari di daratan
+utama kabupaten saja.
 
 Hasil menimpa kolom "pusat" di src/lib/gee_wilayah.json; titik lama disimpan di "pusat_lama" bila bergeser.
 Kolom lain (luas, fase, profil VH) tidak diubah.
@@ -36,7 +37,11 @@ def batas(nama):
     fc = (ee.FeatureCollection("FAO/GAUL/2015/level2")
           .filter(ee.Filter.eq("ADM1_NAME", "Jawa Timur"))
           .filter(ee.Filter.inList("ADM2_NAME", GAUL.get(nama, [nama]))))
-    return fc.geometry().dissolve(100)
+    geom = fc.geometry().dissolve(100)
+    # daratan utama saja: titik tidak dipindah ke pulau kecil (mis. Kangean di Sumenep)
+    bagian = ee.FeatureCollection(geom.geometries().map(
+        lambda g: ee.Feature(ee.Geometry(g)).set("luas", ee.Geometry(g).area(100))))
+    return bagian.sort("luas", False).first().geometry()
 
 
 def sawah_irigasi(aoi, acuan):
