@@ -3,7 +3,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { tanggapi } from "./bot.ts"
 import { config } from "./config.ts"
 import { pool } from "./db.ts"
-import { kirim, sambilMengetik, sehat, tandaTanganSah, uraiWebhook } from "./gowa.ts"
+import { kirim, nomorBot, sambilMengetik, sehat, tandaTanganSah, uraiWebhook } from "./gowa.ts"
 import { pemakaianHariIni, muatTokenHariIni } from "./pagar.ts"
 import { catatWebhook, pantau } from "./pantau.ts"
 import { q } from "./db.ts"
@@ -68,6 +68,11 @@ function proses(jid: string, nomor: string, nama: string | undefined, teks: stri
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://bot")
   try {
+    // publik (lewat API dasbor): hanya nomor bot yang sedang login, untuk tombol WhatsApp
+    if (req.method === "GET" && url.pathname === "/api/nomor") {
+      return json(res, 200, { nomor: await nomorBot() })
+    }
+
     if (req.method === "GET" && url.pathname === "/health") {
       const [db, wa] = await Promise.all([pool.query("select 1").then(() => true, () => false), sehat()])
       return json(res, db ? 200 : 503, { db, gowa: wa.ok, llm: { aktif: Boolean(config.openai.apiKey), model: config.openai.model, ...pemakaianHariIni() } })
