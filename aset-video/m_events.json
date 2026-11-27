@@ -1,0 +1,42 @@
+[
+ {
+  "frame": 67,
+  "aksi": "klik",
+  "target": "Filter"
+ },
+ {
+  "frame": 93,
+  "aksi": "klik",
+  "target": "Visualisasi"
+ },
+ {
+  "frame": 112,
+  "aksi": "klik",
+  "target": "Peluang melewati HET"
+ },
+ {
+  "frame": 132,
+  "aksi": "klik",
+  "target": "Lihat hasil"
+ },
+ {
+  "frame": 170,
+  "aksi": "klik",
+  "target": "Penggeser pekan (tarik)"
+ },
+ {
+  "frame": 216,
+  "aksi": "klik",
+  "target": "Peta 3D dengan batang"
+ },
+ {
+  "frame": 282,
+  "aksi": "klik",
+  "target": "Putar ke kanan"
+ },
+ {
+  "frame": 312,
+  "aksi": "klik",
+  "target": "Kembali ke seluruh Jawa Timur"
+ }
+]

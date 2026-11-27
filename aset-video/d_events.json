@@ -1,0 +1,37 @@
+[
+ {
+  "frame": 73,
+  "aksi": "klik",
+  "target": "Visualisasi"
+ },
+ {
+  "frame": 92,
+  "aksi": "klik",
+  "target": "Peluang melewati HET"
+ },
+ {
+  "frame": 134,
+  "aksi": "klik",
+  "target": "Penggeser pekan (tarik)"
+ },
+ {
+  "frame": 180,
+  "aksi": "klik",
+  "target": "Peta 3D dengan batang"
+ },
+ {
+  "frame": 246,
+  "aksi": "klik",
+  "target": "Putar ke kanan"
+ },
+ {
+  "frame": 264,
+  "aksi": "klik",
+  "target": "Putar ke kanan"
+ },
+ {
+  "frame": 294,
+  "aksi": "klik",
+  "target": "Kembali ke seluruh Jawa Timur"
+ }
+]

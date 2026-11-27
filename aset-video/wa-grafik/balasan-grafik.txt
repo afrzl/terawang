@@ -1,0 +1,40 @@
+===== $ npm run tanya -- "GRAFIK HARGA LAMONGAN"  (GAMBAR_UJI=/tmp/grafik-harga-lamongan.png)
+
+> terawang-bot@0.1.0 tanya
+> tsx src/cli.ts GRAFIK HARGA LAMONGAN
+
+--- intent=grafik wilayah=63
+📈 *Harga beras Kab. Lamongan*
+29 Okt 2026 – 26 Nov 2026
+
+*Beras medium*: Rp13.000/kg (26 Nov), stabil dari Rp13.000
+Tertinggi Rp13.000 (29 Okt), terendah Rp13.000 (29 Okt)
+*Beras premium*: Rp14.900/kg (26 Nov), stabil dari Rp14.900
+Tertinggi Rp14.900 (29 Okt), terendah Rp14.900 (29 Okt)
+HET beras medium: Rp13.500/kg
+
+Mau versi lain? Balas aja _setahun_, _premium aja_, _stoknya_, atau nama wilayah lain.
+--- gambar 42902 byte -> /tmp/grafik-harga-lamongan.png
+npm notice
+npm notice New major version of npm available! 10.9.9 -> 12.2.3
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.3
+npm notice To update run: npm install -g npm@12.2.3
+npm notice
+exit=0
+===== $ npm run tanya -- "GRAFIK STOK JEMBER"  (GAMBAR_UJI=/tmp/grafik-stok-jember.png)
+
+> terawang-bot@0.1.0 tanya
+> tsx src/cli.ts GRAFIK STOK JEMBER
+
+--- intent=grafik_stok wilayah=48
+📊 *Stok beras Kab. Jember*
+Mei 2026 – Jan 2027
+
+Bulan ini (Nov 2026): *1,2 bln* konsumsi
+Tertinggi 2,4 bln (Agu 2026), terendah 0,2 bln (Jan 2027)
+⚠️ Proyeksi defisit mulai Des 2026
+_Estimasi model, skenario tengah. Stok awal kab/kota adalah asumsi, bukan angka resmi._
+
+Mau lihat yang lain? Balas aja _harganya_, _produksinya_, _setahun_, atau nama wilayah lain.
+--- gambar 64795 byte -> /tmp/grafik-stok-jember.png
+exit=0
