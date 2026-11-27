@@ -1179,3 +1179,10 @@ main.full{flex:1;min-height:0;position:relative}
 .submenu a{display:block;padding:9px 12px;border-radius:7px;color:var(--ink);text-decoration:none;font-size:13.5px;font-weight:550;white-space:nowrap}
 .submenu a:hover{background:var(--panel-2)}
 .submenu a[aria-current="page"]{color:var(--accent);background:var(--panel-2);font-weight:650}
+
+/* Peta rekomendasi SPHP (MapLibre + OpenStreetMap) */
+.peta-sphp{position:relative;width:100%;height:clamp(380px,62vh,640px);background:var(--panel-2)}
+.peta-sphp .sphp-lbl{font-size:12px;padding:2px 7px;border-radius:4px}
+@media (max-width:640px){.peta-sphp{height:340px}.peta-sphp .sphp-lbl{font-size:10px;padding:1px 4px}}
+.sphp-pop .maplibregl-popup-content{font:500 12.5px var(--f-body);color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:7px 10px;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.sphp-pop .maplibregl-popup-tip{display:none}

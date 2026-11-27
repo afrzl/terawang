@@ -11,7 +11,7 @@ import { HET, HET_PREMIUM, HIST, SIAGA_KALI, STATUS, WILAYAH, fcDates, fcHarga, 
 import { dfmt, nf, rp, sum } from "@/lib/format"
 import { useFilter, useWilayah } from "@/lib/filter"
 import { statusHargaAt, type Komoditas } from "@/lib/petaLayers"
-import { CatatanGabungan, KpiPerWilayah, LegendaWilayah, MAKS_PISAH, usePerWilayah } from "@/lib/perWilayah"
+import { CatatanGabungan, KpiPerWilayah, LegendaWilayah, usePerWilayah } from "@/lib/perWilayah"
 import { short } from "@/lib/format"
 
 
@@ -401,10 +401,6 @@ function PanelGkp() {
   return <PanelGkpSatu />
 }
 
-/** Kab/kota terpilih yang tidak punya prakiraan GKP (tidak ada atau terlalu lama tidak ada data Bapanas). */
-const tanpaGkp = (nama: string[]) =>
-  nama.length ? ` Bapanas belum punya harga GKP petani yang cukup baru untuk ${nama.join(", ")}.` : ""
-
 type BarisGkpWil = BarisGkp & { wilayah: string; warna: string }
 
 /** Satu garis GKP per kab/kota terpilih (2-6 wilayah), dengan Jawa Timur sebagai garis pembanding. */
@@ -415,7 +411,6 @@ function PanelGkpWil() {
     const x = g.kabupaten?.find((y) => y.nama === k.n)
     return x ? [{ k, x }] : []
   })
-  const tanpa = wil.filter((k) => !kabs.some((d) => d.k === k)).map((k) => k.n)
   const bulan = g.riwayat.map((r) => r.bulan)
   const n = bulan.length
   const target = g.prakiraan.map((f) => f.bulan_target)
@@ -436,7 +431,6 @@ function PanelGkpWil() {
   const awal = Math.max(0, n - 24)
   const potong = <T,>(a: T[]) => a.slice(awal)
   const nn = n - awal
-  const mape = (h: number) => g.uji_mundur_kab?.[`h${h}`]?.mape
   const baris: BarisGkpWil[] = data.flatMap((d) => d.fc.map((f) => ({ ...f, wilayah: d.k.n, warna: warna(d.k) })))
   const kolom: Column<BarisGkpWil>[] = [
     {
@@ -520,11 +514,6 @@ function PanelGkpWil() {
       </Panel>
       <Panel title="Prakiraan harga GKP per wilayah 1–3 bulan">
         <DataTable rows={baris} columns={kolom} rowKey={(f) => `${f.wilayah}-${f.bulan_target}`} rowName={(f) => `${f.wilayah} ${f.bulan_target}`} pageSize={9} />
-        <p style={{ padding: "12px 16px", margin: 0, fontSize: 12, color: "var(--ink-3)", lineHeight: 1.5 }}>
-          Per kab/kota: rata-rata harga bulan terakhir dan prakiraan Jawa Timur yang disesuaikan dengan selisih harga kab terhadap rata-rata
-          provinsi 3 bulan terakhir. Harga panel Bapanas.{tanpaGkp(tanpa)} MAPE uji mundur seluruh kab/kota:{" "}
-          {[1, 2, 3].map((h) => `${h} bln ${mape(h) != null ? nf(mape(h)!, 1) : "–"}%`).join(", ")}.
-        </p>
       </Panel>
     </div>
   )
@@ -535,7 +524,6 @@ function PanelGkpSatu() {
   const g = GKP!
   const wil = useWilayah()
   const satu = wil.length === 1 ? wil[0].n : null
-  const sebagian = wil.length < WILAYAH.length
   const kab = satu ? g.kabupaten?.find((k) => k.nama === satu) : undefined
   const rw = kab?.riwayat.length ? kab.riwayat.map((r) => ({ ...r, sumber: r.sumber ?? "Bapanas" })) : g.riwayat
   const fc: BarisGkp[] = kab ? kab.prakiraan : g.prakiraan
@@ -545,10 +533,6 @@ function PanelGkpSatu() {
   const lo = Math.min(...rw.map((r) => r.harga), ...fc.map((f) => f.p10), g.hpp_sekarang) - 150
   const hi = Math.max(...rw.map((r) => r.harga), ...fc.map((f) => f.p90)) + 150
   const ujung = fc[fc.length - 1]
-  const uji = kab ? g.uji_mundur_kab : g.uji_mundur
-  const mape = (h: number) => uji?.[`h${h}`]?.mape
-  // Riwayat kab bisa bolong (bulan tanpa data Bapanas): garis disambung antar bulan yang ada.
-  const bulanAcuan = kab ? rw[n - 1].bulan : g.bulan_acuan
   const kolom: Column<BarisGkp>[] = [
     { head: "Bulan", cell: (f) => <b>{labelBulan(tglBulan(f.bulan_target))}</b> },
     { head: "Prakiraan", right: true, num: true, cell: (f) => rp(f.harga_prediksi) },
@@ -607,30 +591,6 @@ function PanelGkpSatu() {
       </Panel>
       <Panel title={`Prakiraan harga GKP ${wilayahLabel} 1–3 bulan`}>
         <DataTable rows={fc} columns={kolom} rowKey={(f) => f.bulan_target} rowName={(f) => f.bulan_target} pageSize={3} />
-        <p style={{ padding: "12px 16px", margin: 0, fontSize: 12, color: "var(--ink-3)", lineHeight: 1.5 }}>
-          {kab?.taksiran ? (
-            <>
-              Prakiraan Jawa Timur yang disesuaikan dengan selisih harga {kab.nama} terhadap rata-rata provinsi. MAPE uji mundur seluruh
-              kab/kota:{" "}
-            </>
-          ) : kab ? (
-            <>
-              Rata-rata harga {kab.nama} bulan terakhir dan prakiraan Jawa Timur yang disesuaikan dengan selisih harga {kab.nama} terhadap
-              rata-rata provinsi 3 bulan terakhir
-              {kab.metode === "rasio_provinsi" && kab.bulan_data_terakhir ? ` (data ${kab.nama} terakhir ${labelBulan(tglBulan(kab.bulan_data_terakhir))}, jadi hanya bagian provinsi)` : ""}.
-              Harga panel Bapanas, data sampai {labelBulan(tglBulan(bulanAcuan))}. MAPE uji mundur seluruh kab/kota:{" "}
-            </>
-          ) : (
-            <>
-              Gabungan rata-rata model naif (harga bulan terakhir) dan SARIMAX dengan HPP gabah dan luas panen padi Jatim. Harga sampai{" "}
-              {labelBulan(tglBulan(g.bulan_acuan))}: BPS sampai Des 2024, sesudahnya panel harga Bapanas.
-              {sebagian ? `${tanpaGkp(satu ? [satu] : wil.length <= MAKS_PISAH ? wil.map((k) => k.n) : [])} Yang tampil angka provinsi${wil.length > MAKS_PISAH ? `; pilih 2–${MAKS_PISAH} wilayah untuk melihat GKP per kab/kota` : ""}.` : ""}{" "}
-              Galat uji mundur 36 bulan
-              (MAPE):{" "}
-            </>
-          )}
-          {[1, 2, 3].map((h) => `${h} bln ${mape(h) != null ? nf(mape(h)!, 1) : "–"}%`).join(", ")}.
-        </p>
       </Panel>
     </div>
   )

@@ -72,7 +72,7 @@ function baseStyle(): StyleSpecification {
 }
 
 /** Titik pusat poligon terluas (daratan utama), agar pulau kecil di lepas pantai tidak menggeser titik ke laut. */
-function pusatDaratan(f: KabCollection["features"][number]): [number, number] {
+export function pusatDaratan(f: KabCollection["features"][number]): [number, number] {
   let terbaik: [number, number] = [0, 0]
   let maks = -1
   for (const poly of f.geometry.coordinates) {
