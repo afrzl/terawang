@@ -40,7 +40,7 @@ let cacheSkema: { waktu: number; isi: unknown } | null = null
 export async function skemaData() {
   if (cacheSkema && Date.now() - cacheSkema.waktu < 3600_000) return cacheSkema.isi
   const r = await pool.query<{ tabel: string; kolom: string }>(
-    `select c.table_schema || '.' || c.table_name as tabel, string_agg(c.column_name || ':' || c.data_type, ', ' order by c.ordinal_position) as kolom
+    `select c.table_schema || '.' || c.table_name as tabel, string_agg(c.column_name, ',' order by c.ordinal_position) as kolom
        from information_schema.columns c
       where c.table_schema in ('ref', 'silver', 'gold', 'bronze', 'app')
         and has_table_privilege('terawang_bot_baca', quote_ident(c.table_schema) || '.' || quote_ident(c.table_name), 'select')

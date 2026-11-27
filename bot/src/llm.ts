@@ -89,7 +89,7 @@ const PROMPT_STATIS = [
   "estimasi produksi dari citra satelit (K1), neraca stok kab/kota (K2), prakiraan harga 2-4 pekan dan rekomendasi penyaluran beras SPHP (K3).",
   "Penggunamu warga, pedagang kecil, dan petugas daerah.",
   "ATURAN WAJIB:",
-  "1. Topik hanya beras/pangan Jawa Timur dan layanan TERAWANG (termasuk SPHP, HET, Bulog, panen, stok, harga). Selain itu tolak sopan dalam satu kalimat.",
+  "1. Topik: beras/padi/pangan Jawa Timur dan layanan TERAWANG, termasuk harga, stok, produksi, luas panen, konsumsi, penduduk, Bulog/pengadaan, SPHP, HET, jarak dan waktu tempuh antarwilayah, logistik distribusi. Selain itu tolak sopan dalam satu kalimat.",
   "   Pertanyaan tentang istilah, sumber data, atau cara kerja TERAWANG WAJIB dijawab dengan memanggil tentang_terawang.",
   "2. Setiap angka (harga, ton, persen, tanggal data) HARUS berasal dari hasil fungsi pada percakapan ini. Boleh menghitung selisih atau persen sederhana dari angka hasil fungsi. Jangan menebak, membuat prakiraan sendiri, atau memakai pengetahuan umummu soal harga.",
   "3. Rangkai jawaban dari fungsi yang cocok (boleh beberapa fungsi sekaligus). Kalau pertanyaannya di luar data yang ada di fungsi, atau fungsi galat, katakan jujur datanya belum tersedia.",
@@ -108,7 +108,10 @@ const PROMPT_STATIS = [
 
 function promptDinamis(wilayahIngat: Wilayah | null, topik?: string): string {
   const hari = new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", weekday: "long", day: "numeric", month: "long", year: "numeric" })
-  return `Hari ini ${hari}.` + (wilayahIngat ? ` Wilayah terakhir pengguna: ${labelWilayah(wilayahIngat)} (pakai bila tidak menyebut wilayah).` : "") +
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }))
+  const th = now.getFullYear()
+  const bln = now.toLocaleDateString("id-ID", { month: "long" })
+  return `Hari ini ${hari}. Tahun ini = ${th}, tahun lalu = ${th - 1}, bulan ini = ${bln} ${th}. Kalau data periode yang diminta tidak ada, tawarkan data periode terakhir yang tersedia dan sebut periodenya.` + (wilayahIngat ? ` Wilayah terakhir pengguna: ${labelWilayah(wilayahIngat)} (pakai bila tidak menyebut wilayah).` : "") +
     (topik && wilayahIngat ? ` Pengguna sedang bertanya lanjutan soal ${topik} beras di ${labelWilayah(wilayahIngat)}; pertanyaan pendek tanpa wilayah/topik merujuk ke situ.` : "")
 }
 
@@ -173,7 +176,7 @@ async function jalankanAlat(nama: string, argumen: string): Promise<{ hasil: unk
 
 const tanpaPenalaran = new Set<string>()
 
-async function panggilOpenAI(pesan: Pesan[], wajibAlat = false) {
+async function panggilOpenAI(pesan: Pesan[], wajibAlat = false, tanpaAlat = false) {
   const body: Record<string, unknown> = {
     model: config.openai.model,
     messages: pesan,
@@ -182,6 +185,7 @@ async function panggilOpenAI(pesan: Pesan[], wajibAlat = false) {
   }
   // pesan yang menyebut wilayah: model wajib mengambil data dulu, jadi angka selalu dari DB
   if (wajibAlat) body.tool_choice = "required"
+  if (tanpaAlat) body.tool_choice = "none"
   if (config.openai.reasoningEffort && !tanpaPenalaran.has(config.openai.model) && /^(gpt-[5-9]|o\d)/.test(config.openai.model)) {
     body.reasoning_effort = config.openai.reasoningEffort
   }
@@ -233,7 +237,9 @@ export async function jawabBebas(
   const hasilAlat: unknown[] = []
   let sudahDitegur = false
   for (let putaran = 0; putaran < 5; putaran++) {
-    const { pesan: m, usage } = await panggilOpenAI(pesan, wajibAlat && putaran === 0)
+    // batas biaya: lewat ~9.000 token atau putaran terakhir, model wajib menjawab dari data yang sudah ada
+    const hemat = token > 9000 || putaran === 4
+    const { pesan: m, usage } = await panggilOpenAI(pesan, wajibAlat && putaran === 0, hemat)
     token += (usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0)
     if (!m.tool_calls?.length) {
       const jawaban = (m.content ?? "").trim()
