@@ -791,7 +791,8 @@ function gambarWa() {
     llm: "Pesan bebas (OpenAI)", llm_cache: "Pesan bebas (cache)", istilah: "Istilah", siaran: "Siaran peringatan" };
   $("#intent-wa").replaceChildren(...(it.length ? it.map((x) => el("div", { class: "br" + (/^(tolak|llm_gagal|galat)/.test(x.intent || "") ? " waspada" : "") },
     el("div", { class: "nm" }, el("div", { class: "id" }, LABEL_INTENT[x.intent] || x.intent || "–")), el("div", { class: "st" }, pillSt(String(x.jumlah), "")),
-    el("div", { class: "wkt" }, relatif(Date.parse(x.terakhir.replace(" ", "T") + "Z") / 1000)))) : [el("p", { class: "kosong" }, "Belum ada balasan 24 jam terakhir.")]));
+    // dibuat_pada disimpan sebagai jam WIB tanpa zona (zona DB Asia/Jakarta)
+    el("div", { class: "wkt" }, relatif(Date.parse(x.terakhir.replace(" ", "T") + "+07:00") / 1000)))) : [el("p", { class: "kosong" }, "Belum ada balasan 24 jam terakhir.")]));
   $("#info-kontak-wa").textContent = b.kontak ? `${b.kontak.n} kontak · ${b.kontak.langganan} berlangganan` : "";
   const tw = $("#titik-wa");
   if (tw) { const bad = langkahWa().some((x) => x.st === "gagal"); tw.className = "titik " + (bad ? "gagal" : stK === "ok" ? "ok" : "waspada"); }
@@ -851,6 +852,7 @@ pemuat.whatsapp = () => { muatWa(); aturIntervalWa(); };
 let statusLaporan = "MENUNGGU";
 let peranLaporan = "";
 const NAMA_PERAN = { PENJUAL: "Penjual", PEMBELI: "Pembeli" };
+const NAMA_SARAN = { WAJAR: ["Wajar", "ok"], CEK: ["Perlu dicek", "waspada"], SALAH: ["Kemungkinan salah", "gagal"] };
 const fmtRp = new Intl.NumberFormat("id-ID");
 const ST_LAPORAN = { MENUNGGU: ["Menunggu", "waspada"], VALID: ["Diterima", "ok"], DITOLAK: ["Ditolak", "gagal"] };
 function tandaiJumlahLaporan(n) {
@@ -878,6 +880,29 @@ pemuat.laporan = async () => {
       kpi(String(j.MENUNGGU), "menunggu diperiksa", j.MENUNGGU ? "warn" : ""),
       kpi(String(j.VALID), "diterima"),
       kpi(String(j.DITOLAK), "ditolak"));
+    // ringkasan saran untuk laporan yang masih menunggu (saran saja; keputusan tetap di petugas)
+    const tunggu = d.laporan.filter((l) => l.status === "MENUNGGU");
+    const rs = $("#ringkas-laporan");
+    if (tunggu.length) {
+      const n = (s) => tunggu.filter((l) => l.saran === s).length;
+      const bagian = [["WAJAR", "wajar, aman diterima"], ["CEK", "perlu dicek dulu"], ["SALAH", "kemungkinan salah"]]
+        .filter(([s]) => n(s)).map(([s, k]) => el("span", { class: "st-" + NAMA_SARAN[s][1] + "-teks" }, el("b", {}, String(n(s))), " " + k));
+      // satu daftar: yang perlu perhatian dulu (kemungkinan salah, lalu perlu dicek) dengan alasannya; yang wajar cukup disebut
+      const urut = { SALAH: 0, CEK: 1, WAJAR: 2 };
+      const perhatian = tunggu.filter((l) => l.saran !== "WAJAR").sort((a, b) => urut[a.saran] - urut[b.saran]);
+      const wajar = tunggu.filter((l) => l.saran === "WAJAR");
+      const nama = (l) => `${l.pasar}${l.wilayah ? " (" + l.wilayah + ")" : ""}, ${(l.komoditas || "").replace(/^Beras\s*/i, "").toLowerCase()} Rp${fmtRp.format(l.harga)}`;
+      rs.replaceChildren(
+        el("div", { class: "judul" }, `Saran sistem untuk ${tunggu.length} laporan yang menunggu`),
+        el("div", { class: "jml" }, ...bagian),
+        ...(perhatian.length ? [el("ul", { class: "daftar-saran" }, ...perhatian.map((l) => {
+          const [t, k] = NAMA_SARAN[l.saran];
+          return el("li", {}, el("span", { class: "pill st-" + k }, t), " ", el("b", {}, nama(l)), el("span", { class: "ket" }, " · " + (l.alasan || []).join("; ")));
+        }))] : []),
+        ...(wajar.length ? [el("div", { class: "wajar" }, el("span", { class: "pill st-ok" }, "Wajar"), " ", wajar.map(nama).join(" · "))] : []),
+        el("div", { class: "ket" }, `Dibandingkan dengan panel harga wilayah, laporan warga lain 30 hari terakhir, HET, dan riwayat pelapor. Wajar bila selisih di bawah 10%, kemungkinan salah bila 25% atau lebih. Ini hanya saran, keputusan tetap di petugas.`));
+      rs.hidden = false;
+    } else rs.hidden = true;
     const kosong = { MENUNGGU: "Tidak ada laporan yang menunggu.", VALID: "Belum ada laporan yang diterima.", DITOLAK: "Belum ada laporan yang ditolak.", "": "Belum ada laporan." }[statusLaporan];
     const baris = d.laporan.map((l) => {
       const [stT, stK] = ST_LAPORAN[l.status] || [l.status, ""];
