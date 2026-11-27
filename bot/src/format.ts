@@ -115,7 +115,12 @@ export const BANTUAN = [
 ].join("\n")
 
 export function teksPilihWilayah(pilihan: { nama: string; jenis: "KABUPATEN" | "KOTA" }[], label: (w: { nama: string; jenis: "KABUPATEN" | "KOTA" }) => string): string {
-  return ["Maksudnya wilayah yang mana? Balas dengan angkanya:", ...pilihan.map((w, i) => `${i + 1}. ${label(w)}`)].join("\n")
+  const kabKota = pilihan.length === 2 && new Set(pilihan.map((w) => w.jenis)).size === 2
+  return [
+    `${pilihan[0].nama.replace(/^(Kabupaten|Kota)\s+/, "")} yang mana nih?`,
+    ...pilihan.map((w, i) => `${i + 1}. ${label(w)}`),
+    kabKota ? "Balas angkanya, atau cukup _kab_ / _kota_." : "Balas angkanya ya.",
+  ].join("\n")
 }
 
 export const tingkatUrut: Record<Tingkat | "WASPADA" | "SIAGA", number> = { AMAN: 0, WASPADA: 1, SIAGA: 2 }
