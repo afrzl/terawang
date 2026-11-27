@@ -31,8 +31,15 @@ export default function Stok() {
   const stT = sum(wil, (k) => covBulan(k, akhir) * k.C * 1000)
   const rows = wil.slice().sort((a, b) => covBulan(a, akhir) - covBulan(b, akhir))
   const mxc = Math.max(1e-6, ...wil.map((k) => covBulan(k, akhir)))
-  // Bulan pertama setelah bulan terpilih yang cakupannya di bawah ambang defisit.
+  // Bulan mulai defisit. Bila bulan terpilih sudah defisit: bulan pertama dari rangkaian defisit yang berlanjut sampai bulan terpilih
+  // (sebelumnya kolom ini hanya mencari SESUDAH bulan terpilih, sehingga wilayah yang sudah defisit, atau bulan terpilih = bulan
+  // terakhir horizon, tampil "—"). Bila belum defisit: bulan pertama sesudahnya yang cakupannya di bawah 0,75.
   const mulaiDefisit = (k: Wilayah) => {
+    if (covBulan(k, akhir) < 0.75) {
+      let i = akhir
+      while (i > 0 && covBulan(k, i - 1) < 0.75) i--
+      return i
+    }
     for (let i = akhir + 1; i < N_BULAN; i++) if (covBulan(k, i) < 0.75) return i
     return -1
   }
@@ -43,7 +50,8 @@ export default function Stok() {
       head: `Stok ${bulanLabel(akhir)}`,
       right: true,
       num: true,
-      cell: (k) => `${nf(covBulan(k, akhir) * k.C * 1000)} ton`,
+      // Stok 0 = neraca K2 sudah di bawah nol (dipotong di API): kebutuhan bulan itu melebihi pasokan yang tercatat di neraca.
+      cell: (k) => (covBulan(k, akhir) <= 0 ? "habis" : `${nf(covBulan(k, akhir) * k.C * 1000)} ton`),
       sort: (k) => covBulan(k, akhir) * k.C,
     },
     { head: "Konsumsi/bln", right: true, num: true, cell: (k) => `${nf(k.C * 1000)} ton`, sort: (k) => k.C },
@@ -71,7 +79,7 @@ export default function Stok() {
       sort: (k) => surplusTon(k, akhir),
     },
     {
-      head: "Defisit",
+      head: "Mulai defisit",
       right: true,
       sort: (k) => (mulaiDefisit(k) === -1 ? 99 : mulaiDefisit(k)),
       cell: (k) => (mulaiDefisit(k) === -1 ? "—" : bulanLabel(mulaiDefisit(k))),
