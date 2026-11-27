@@ -197,7 +197,8 @@ async function grafikDariKalimat(nomor: string, k: kontak.Kontak, teks: string):
 /** Jawaban pilihan "kota", "kab", "kabupatennya", "yang kota" untuk Kab./Kota bernama sama. */
 export function pilihJenis(teks: string, pilihan: Wilayah[]): Wilayah | undefined {
   const n = normal(teks).replace(/\b(yang|yg|itu|aja|saja|nya|dong|ya)\b/g, "").trim()
-  const jenis = /^(kota|kotanya|kot|kt)$/.test(n) ? "KOTA" : /^(kab|kabupaten|kabupatennya|kabnya|kb)$/.test(n) ? "KABUPATEN" : null
+  // toleran salah ketik: "kabupatne", "kabupetan", "kotaa"
+  const jenis = /^(kot[a-z]{0,5}|kt)$/.test(n) ? "KOTA" : /^(kab[a-z]{0,9}|kb)$/.test(n) ? "KABUPATEN" : null
   if (!jenis) return undefined
   const cocok = pilihan.filter((w) => w.jenis === jenis)
   return cocok.length === 1 ? cocok[0] : undefined
@@ -510,7 +511,8 @@ export async function tanggapi(nomor: string, nama: string | undefined, teks: st
     console.error("[bot] galat:", e)
     b = { teks: "Maaf, terjadi gangguan saat mengambil data. Coba lagi sebentar lagi.", intent: "galat", wilayahId: null }
   }
-  if (b.wilayahId && b.topik) konteks.set(k.id, { wilayahId: b.wilayahId, topik: b.topik, sampai: Date.now() + 30 * MENIT })
+  // jawaban bebas (LLM) tanpa topik tetap mencatat wilayahnya, supaya "grafiknya" berikutnya ikut wilayah ini
+  if (b.wilayahId) konteks.set(k.id, { wilayahId: b.wilayahId, topik: b.topik ?? konteks.get(k.id)?.topik ?? "harga", sampai: Date.now() + 30 * MENIT })
   await kontak.catat(k.id, "KELUAR", b.teks, b.intent, b.wilayahId)
   return b
 }
