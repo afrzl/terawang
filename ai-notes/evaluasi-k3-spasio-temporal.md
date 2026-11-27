@@ -109,3 +109,19 @@ Prevalensi naik: 8/13/17/20% (7/14/21/28 hr), 2026 hanya 4/7/9/11%. Prevalensi t
 - **Arah NAIK lemah di 2026** (AUC 0,51–0,62), dan hanya berguna untuk 1–2 pekan. Kenaikan di 2026 jarang dan sebagian tertahan HET.
 - Untuk horizon 3–4 pekan di 2026, model tidak lebih baik daripada peluang historis.
 - Usulan pemakaian (belum dipasang): tampilkan "peluang naik/tetap/turun 1–2 pekan" per kab dari logit. Peringatan kenaikan tetap memakai model WASPADA (lewat HET), yang AUC-nya 0,87–0,90.
+
+## Lanjutan 3: peluang lewat HET langsung dari regresi logistik? (27 Nov 2026 malam)
+
+Skrip `scripts/k3/uji_peluang_het_logit.py`. Backtestnya sama dengan operasional: beras medium, kab yang masih <= HET, kejadian "lewat HET kapan saja dalam h hari", asal sejak 22 Agu 2025.
+
+| h | Prevalensi | Rata peluang EW60 | Rata peluang logit terkalibrasi | Brier skill logit vs EW60 | PR-AUC EW60 / logit / gabungan |
+|---|---|---|---|---|---|
+| 7 | 1,1% | 3,1% | 1,7% | **+6%** | 0,12 / 0,13 / **0,16** |
+| 14 | 1,9% | 5,6% | 3,1% | **+11%** | 0,17 / 0,17 / **0,25** |
+| 21 | 2,6% | 7,9% | 4,4% | **+14%** | 0,19 / 0,18 / **0,26** |
+| 28 | 3,3% | 10,1% | 5,7% | **+17%** | 0,20 / 0,20 / **0,28** |
+
+- **Sebagai angka peluang**, logit tanpa bobot kelas lebih tepat daripada EW60 (Brier +6 s.d. +17%). EW60 melebih-lebihkan peluang sekitar 3 kali, logit sekitar 1,7 kali.
+- Logit berbobot kelas (yang dipakai di gabungan) tidak cocok sebagai angka peluang (Brier −144 s.d. −561%), karena bobot kelas sengaja menaikkan peluang. Logit ini hanya dipakai untuk peringkat.
+- **Sebagai pemeringkat untuk status WASPADA**, gabungan EW60 + logit tetap terbaik (PR-AUC +40% dibanding masing-masing).
+- Usulan (belum dipasang): angka "peluang lewat HET" di dasbor diganti dengan logit terkalibrasi. Status WASPADA tetap dari gabungan.
