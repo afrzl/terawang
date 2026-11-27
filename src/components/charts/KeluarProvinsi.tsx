@@ -7,7 +7,7 @@ const W = 760
 const H = 300
 const M = { l: 52, r: 16, t: 16, b: 30 }
 
-/** Beras keluar Jawa Timur per bulan (ribu ton): batang 2026 sampai bulan terakhir jendela, garis putus-putus 2025. */
+/** Surplus beras Jawa Timur per bulan (ribu ton): batang 2026 sampai bulan terakhir jendela, garis putus-putus 2025. */
 export function KeluarProvinsi({ terpilih }: { terpilih: number }) {
   const { show, hide } = useTooltip()
   if (!KELUAR_PROV) return null
@@ -22,7 +22,7 @@ export function KeluarProvinsi({ terpilih }: { terpilih: number }) {
 
   return (
     <>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Beras keluar Jawa Timur per bulan">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Surplus beras Jawa Timur per bulan">
         <g className="grid">
           {ticks(0, ymax, 5).map((t) => (
             <g key={t}>
@@ -66,7 +66,7 @@ export function KeluarProvinsi({ terpilih }: { terpilih: number }) {
                 <>
                   <b>{bulanLabel(i)}</b>
                   <br />
-                  Keluar <span className="m">{v === null ? "–" : `${nf(v, 1)} rb ton`}</span>
+                  Surplus <span className="m">{v === null ? "–" : `${nf(v, 1)} rb ton`}</span>
                   {pb && i < 12 && (
                     <>
                       <br />
