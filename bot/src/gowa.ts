@@ -62,6 +62,27 @@ export async function sambilMengetik<T>(tujuan: string, kerja: () => Promise<T>)
   }
 }
 
+/** Nomor WA bot yang sedang login di GoWA (untuk tombol WhatsApp di dasbor). null bila tidak ada yang tersambung. */
+let cacheNomor: { waktu: number; nomor: string | null } | null = null
+export async function nomorBot(): Promise<string | null> {
+  if (cacheNomor && Date.now() - cacheNomor.waktu < 60_000) return cacheNomor.nomor
+  let nomor: string | null = null
+  try {
+    const res = await fetch(`${config.gowa.url}/devices`, { headers: header(), signal: AbortSignal.timeout(5_000) })
+    const j = (await res.json()) as { results?: unknown }
+    const daftar = (Array.isArray(j.results) ? j.results : Array.isArray(j) ? j : []) as { id?: string; state?: string; phone_number?: string; jid?: string }[]
+    const dev = daftar.find((d) => d.id === config.gowa.deviceId) ?? (daftar.length === 1 ? daftar[0] : undefined)
+    if (dev && dev.state === "logged_in") {
+      const n = (dev.phone_number || (dev.jid ?? "").split(/[@:]/)[0] || "").replace(/\D/g, "")
+      nomor = n.length >= 9 ? n : null
+    }
+  } catch {
+    nomor = null
+  }
+  cacheNomor = { waktu: Date.now(), nomor }
+  return nomor
+}
+
 export async function sehat(): Promise<{ ok: boolean; detail: string }> {
   try {
     const res = await fetch(`${config.gowa.url}/app/devices`, { headers: header(), signal: AbortSignal.timeout(5_000) })
