@@ -102,7 +102,7 @@ const fmtNilai = (v: number, satuan: "bulan" | "ton") =>
   satuan === "bulan" ? (v < 0.05 ? "habis" : `${nf(v)} bln`) : v >= 10_000 ? `${nf(v / 1000, 0)} rb ton` : `${Math.round(v).toLocaleString("id-ID")} ton`
 const fmtCakupan = (c: number | null | undefined) => (c == null ? "" : c < 0.05 ? "habis" : `cukup ${nf(c)} bln`)
 const fmtSumbu = (v: number, satuan: "bulan" | "ton", rb = v >= 10_000) =>
-  satuan === "bulan" ? nf(v) : rb ? `${nf(v / 1000, Number.isInteger(v / 1000) ? 0 : 1)} rb` : Math.round(v).toLocaleString("id-ID")
+  satuan === "bulan" ? nf(v) : v === 0 ? "0" : rb ? `${nf(v / 1000, Number.isInteger(v / 1000) ? 0 : 1)} rb` : Math.round(v).toLocaleString("id-ID")
 
 export function svgBulanan(d: GrafikBulanan): string {
   const W = 1080, H = 720
@@ -120,6 +120,17 @@ export function svgBulanan(d: GrafikBulanan): string {
   hi = Math.ceil(hi / langkah) * langkah
   const x = (i: number) => kiri + (n <= 1 ? lebar / 2 : (i * lebar) / (n - 1))
   const y = (v: number) => atas + tinggi - ((v - lo) / (hi - lo)) * tinggi
+  // y garis tren pada posisi px (interpolasi linear), untuk menghindari label tertabrak garis
+  const yGaris = (px: number) => {
+    if (n <= 1) return y(d.titik[0]?.nilai ?? 0)
+    const f = Math.min(Math.max(((px - kiri) / lebar) * (n - 1), 0), n - 1), i0 = Math.floor(f), i1 = Math.min(i0 + 1, n - 1)
+    return y(d.titik[i0].nilai) + (y(d.titik[i1].nilai) - y(d.titik[i0].nilai)) * (f - i0)
+  }
+  const rentangGaris = (x0: number, x1: number) => {
+    let a = Infinity, b = -Infinity
+    for (let px = x0; px <= x1; px += 6) { const v = yGaris(px); a = Math.min(a, v); b = Math.max(b, v) }
+    return [a, b] as const
+  }
   const o: string[] = []
   const judul = d.topik === "stok" ? "Stok beras" : "Produksi beras"
   const sub = d.topik === "stok"
@@ -166,7 +177,18 @@ export function svgBulanan(d: GrafikBulanan): string {
   if (garisAman) {
     const yy = y(aman).toFixed(1)
     o.push(`<line x1="${kiri}" y1="${yy}" x2="${W - kanan}" y2="${yy}" stroke="${WARNA.het}" stroke-width="2.5" stroke-dasharray="9 7"/>`)
-    if (d.satuan === "ton") o.push(`<text x="${kiri + 8}" y="${Number(yy) - 8}" font-size="17" fill="${WARNA.het}">${fmtNilai(aman, "ton")}</text>`)
+    if (d.satuan === "ton") {
+      // pilih sisi (kiri/kanan) dan posisi (atas/bawah garis) yang paling jauh dari garis tren
+      const teks = fmtNilai(aman, "ton"), lb = teks.length * 10 + 12, y0 = Number(yy)
+      const calon = [
+        { x: kiri + 8, anchor: "start", x0: kiri, x1: kiri + lb },
+        { x: W - kanan - 8, anchor: "end", x0: W - kanan - lb, x1: W - kanan },
+      ].flatMap((c) => [{ ...c, ty: y0 - 8, a: y0 - 24, b: y0 }, { ...c, ty: y0 + 22, a: y0, b: y0 + 26 }])
+        .map((c) => { const [ga, gb] = rentangGaris(c.x0, c.x1); return { ...c, jarak: gb < c.a ? c.a - gb : ga > c.b ? ga - c.b : -1 } })
+        .sort((p, q) => q.jarak - p.jarak)
+      const c = calon[0]
+      o.push(`<text x="${c.x}" y="${c.ty.toFixed(1)}" font-size="17" text-anchor="${c.anchor}" fill="${WARNA.het}" stroke="${WARNA.latar}" stroke-width="4" paint-order="stroke">${teks}</text>`)
+    }
   }
   o.push(`<path d="${d.titik.map((t, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(t.nilai).toFixed(1)}`).join("")}" fill="none" stroke="${warna}" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round"/>`)
   d.titik.forEach((t, i) => {
@@ -178,7 +200,12 @@ export function svgBulanan(d: GrafikBulanan): string {
     const lbl = fmtNilai(t.nilai, d.satuan) + (cak ? ` · ${cak}` : "")
     // geser label agar tidak terpotong di tepi
     const lx0 = Math.min(Math.max(x(d.iKini), kiri + lbl.length * 6.2), W - kanan - lbl.length * 6.2)
-    const ly = y(t.nilai) - 18 < atas + 40 ? y(t.nilai) + 34 : y(t.nilai) - 18
+    const hw = lbl.length * 6.2 + 6
+    const [ga, gb] = rentangGaris(lx0 - hw, lx0 + hw)
+    const ly = ga - 16 < atas + 40 ? gb + 32 : ga - 16
+    const yt = y(t.nilai), px = x(d.iKini)
+    const [u0, u1] = ly < yt ? [ly + 8, yt - 9] : [yt + 9, ly - 22]
+    if (u1 - u0 > 14) o.push(`<line x1="${px.toFixed(1)}" y1="${u0.toFixed(1)}" x2="${px.toFixed(1)}" y2="${u1.toFixed(1)}" stroke="${warna}" stroke-width="1.5" stroke-dasharray="3 3"/>`)
     o.push(`<text x="${lx0.toFixed(1)}" y="${ly.toFixed(1)}" font-size="21" font-weight="bold" text-anchor="middle" fill="${warna}" stroke="${WARNA.latar}" stroke-width="5" paint-order="stroke">${esc(lbl)}</text>`)
   }
   const sumber = d.topik === "stok" ? "Model neraca stok TERAWANG (K2); stok awal kab/kota adalah asumsi" : "Model estimasi produksi TERAWANG (K1), citra satelit + BPS"
@@ -204,6 +231,10 @@ export function teksBulanan(d: GrafikBulanan): string {
     const def = d.titik.slice(Math.max(d.iKini, 0)).find((t) => t.defisit)
     if (d.aman) baris.push(`Batas aman: ${fmtNilai(d.aman, "ton")} (1 bulan konsumsi)`)
     if (d.wilayahId != null) baris.push(def ? `⚠️ Proyeksi defisit mulai ${namaBulan(def.tahun, def.bulan)}` : "Tidak ada proyeksi defisit di rentang ini")
+    else if (d.aman) {
+      const tipis = d.titik.slice(Math.max(d.iKini, 0)).find((t) => t.nilai < d.aman!)
+      if (tipis) baris.push(`⚠️ Total Jatim diproyeksi di bawah batas aman mulai ${namaBulan(tipis.tahun, tipis.bulan)}`)
+    }
     baris.push("_Estimasi model, skenario tengah. Stok awal kab/kota adalah asumsi, bukan angka resmi._")
   } else {
     baris.push("_Estimasi model K1, bukan angka resmi BPS._")
