@@ -37,7 +37,8 @@ def _akar_diizinkan() -> list[Path]:
     akar = [pengaturan.REPO, pengaturan.RUMAH / ".local/share/terawang", pengaturan.MANUAL_DIR]
     env_path = pengaturan.BERKAS_ENV.get("pipeline")
     env = envfile.baca(env_path) if env_path and env_path.exists() else {}
-    for k in ("TERAWANG_DATA_DIR", "TERAWANG_HARGA_DIR", "TERAWANG_TITIK_DIR", "TERAWANG_K1_DIR", "TERAWANG_MANUAL_DIR"):
+    for k in ("TERAWANG_DATA_DIR", "TERAWANG_HARGA_DIR", "TERAWANG_TITIK_DIR", "TERAWANG_K1_DIR", "TERAWANG_MANUAL_DIR", "TERAWANG_BAPANAS_DIR",
+              "TERAWANG_IKLIM_DIR"):
         if env.get(k):
             akar.append(Path(env[k]).expanduser())
     return [a.resolve() for a in akar]

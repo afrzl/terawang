@@ -54,7 +54,7 @@ dua jendela terakhir diambil ulang) ke `TERAWANG_TITIK_DIR` (default `~/.local/s
 **Lapisan data dan unggahan manual.** Hasil konektor BPS dan Bulog ditulis ke `TERAWANG_DATA_DIR` (default
 `~/.local/share/terawang/data`) dengan struktur yang sama dengan `data/`. Ingest (`api/src/ingest/util.ts`, `lokasi()`) dan
 skrip model Danang (`data_bps()`) membaca berkas `data/...` dari lapisan bila ada di sana, selain itu dari repo.
-Unggahan manual (halaman admin) disimpan di `TERAWANG_MANUAL_DIR/<bps|bulog|harga|jarak>/` (default
+Unggahan manual (halaman admin) disimpan di `TERAWANG_MANUAL_DIR/<bps|bulog|harga|jarak|bapanas>/` (default
 `~/.local/share/terawang/manual`). Nama berkas harus sama dengan berkas repo dan header-nya sama persis; selain itu dilewati
 dengan peringatan. Urutan pakai tiap berkas: hasil otomatis run ini, lalu unggahan manual (dipakai kalau konektor gagal, tidak
 menulis ulang berkas itu, atau mode `manual`), lalu CSV repo. Konektor yang gagal tidak menggagalkan aset: asset check

@@ -179,7 +179,7 @@ def berkas_gkp() -> Path:
                    "-> gkp_prakiraan.json (dibaca API /api/gkp).")
 def k3_prakiraan_gkp(context: AssetExecutionContext, repo: Repo, db: Database, sumber_citra: SumberCitra) -> MaterializeResult:
     hari_ini = sekarang().date()
-    folder = folder_lapisan() / "bapanas"
+    folder = folder_bapanas()  # folder yang sama dengan bronze_bapanas
     # Ambil 45 hari terakhir ke cache (~/.cache/terawang-bapanas); CSV disusun dari seluruh cache. Riwayat lama tetap
     # dari berkas repo bila cache belum punya.
     mulai = (hari_ini - pd.Timedelta(days=45)).isoformat()

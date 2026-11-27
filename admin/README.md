@@ -7,7 +7,7 @@
    `pipeline_citra`) ke antrean; daemon yang menjalankannya. Data dibaca dari GraphQL Dagster (webserver read-only tetap melayani query).
 2. **Sumber data** (satu halaman per sumber: BPS, Bulog, Harga beras, Jarak, Citra satelit): status aset sumber itu, riwayat
    pembaruannya (`GET /admin/api/riwayat?sumber=<id>`), dan unggah manual. Unggah manual adalah fallback saat konektor otomatis gagal. Berkas disimpan di `TERAWANG_MANUAL_DIR/<sumber>/`
-   (`~/.local/share/terawang/manual`, sumber = `bps`, `bulog`, `harga`, `jarak`). Nama berkas harus sama persis dengan berkas acuan di
+   (`~/.local/share/terawang/manual`, sumber = `bps`, `bulog`, `harga`, `jarak`, `bapanas`). Nama berkas harus sama persis dengan berkas acuan di
    `data/` repo dan baris header harus sama; format `.csv`/`.csv.gz` UTF-8. Versi lama dipindah ke `_arsip/<waktu>/`, setiap unggahan
    dicatat di `_log.jsonl`. Aset bronze memakai unggahan bila sumber otomatis gagal atau mode sumber = `manual`.
 3. **Konfigurasi & secret**: mengubah `pipeline/.env` dan `~/terawang-bot/bot/.env`. Secret tidak pernah dikirim utuh ke peramban

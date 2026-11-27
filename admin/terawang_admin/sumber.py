@@ -27,12 +27,19 @@ SUMBER: dict[str, dict] = {
               "acuan": "data/siskaperbapo/harga_beras", "aset": ["bronze_harga"], "env": "TERAWANG_SUMBER_HARGA"},
     "jarak": {"label": "Jarak antar kab/kota", "ket": "Matriks jarak dan waktu tempuh (OSRM).", "acuan": "data/geografi/jarak_kabkota",
               "aset": ["bronze_jarak"], "env": None},
+    "bapanas": {"label": "Panel Harga Bapanas", "ket": "Harga harian per kab/kota: beras medium penggilingan, GKG, GKP petani, beras SPHP.",
+                "acuan": "data/bapanas/panel_harga", "aset": ["bronze_bapanas"], "env": None,
+                # hanya berkas yang dibaca pipeline (K3a dan prakiraan GKP); berkas lain di folder acuan tidak bisa diunggah
+                "hanya": ["kabkota_harian_beras_medium_penggilingan.csv", "kabkota_harian_gkg_penggilingan.csv",
+                          "kabkota_harian_gkp_petani.csv", "kabkota_harian_beras_sphp_konsumen.csv"]},
 }
 ASET_KE_SUMBER = {a: s for s, info in SUMBER.items() for a in info["aset"]}
 # Sumber tanpa unggah manual, tetap punya halaman sendiri di admin (riwayat + status).
 SUMBER_LAIN: dict[str, dict] = {
     "citra": {"label": "Citra satelit", "ket": "Sentinel-1/2 dari Google Earth Engine: olahan per wilayah dan deret titik sawah.",
               "aset": ["bronze_citra", "bronze_titik_satelit"], "env": "TERAWANG_SUMBER_CITRA"},
+    "iklim": {"label": "Iklim", "ket": "ONI bulanan (NOAA) dan hujan bulanan CHIRPS per kab/kota, untuk tahun analog K1.",
+              "aset": ["bronze_iklim"], "env": None},
 }
 
 
@@ -63,10 +70,11 @@ def _pisah(baris: str) -> list[str]:
 def acuan(sumber: str) -> dict[str, dict]:
     """Berkas acuan di repo: nama -> {path relatif, header}."""
     akar = pengaturan.REPO / SUMBER[sumber]["acuan"]
+    hanya = SUMBER[sumber].get("hanya")
     hasil = {}
     if akar.exists():
         for p in sorted(akar.rglob("*")):
-            if p.is_file() and p.name.endswith(EKSTENSI):
+            if p.is_file() and p.name.endswith(EKSTENSI) and (hanya is None or p.name in hanya):
                 hasil[p.name] = {"path": str(p.relative_to(pengaturan.REPO)), "header": _header(p)}
     return hasil
 

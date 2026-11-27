@@ -84,7 +84,8 @@ class Database(ConfigurableResource):
 
 
 # ---------------------------------------------------------------- lapisan data dan unggahan manual
-REPO_DIR = {"bps": "data/bps", "bulog": "data/bulog", "jarak": "data/geografi/jarak_kabkota", "harga": "data/siskaperbapo/harga_beras"}
+REPO_DIR = {"bps": "data/bps", "bulog": "data/bulog", "jarak": "data/geografi/jarak_kabkota", "harga": "data/siskaperbapo/harga_beras",
+            "bapanas": "data/bapanas/panel_harga"}
 EKSTENSI = (".csv", ".csv.gz")
 
 
