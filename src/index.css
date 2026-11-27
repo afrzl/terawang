@@ -895,7 +895,27 @@ main.full{flex:1;min-height:0;position:relative}
 .sphp-lbl{text-align:center}
 .sphp-sub{font-weight:500;font-size:11.5px;color:var(--ink-2)}
 /* akun & konten terkunci per peran */
-.akun-grup{display:inline-flex;gap:6px;align-items:center}
+.akun{position:relative}
+.akun-btn{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 8px 0 3px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);color:#fff;font:inherit;font-size:13px;font-weight:650;cursor:pointer;max-width:180px;transition:background .15s}
+.akun-btn:hover,.akun-btn.on{background:rgba(255,255,255,.2)}
+.akun-btn:focus-visible{outline:2px solid #B9E39A;outline-offset:2px}
+.akun-nama{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.akun-car{flex:none;opacity:.8;transition:transform .15s}
+.akun-btn.on .akun-car{transform:rotate(180deg)}
+.akun-av{flex:none;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#B9E39A;color:#163E66;font-size:12px;font-weight:800;line-height:1}
+.akun-av.besar{width:36px;height:36px;font-size:16px}
+.akun-pop{position:absolute;right:0;top:calc(100% + 8px);z-index:40;width:min(240px,calc(100vw - 32px));padding:6px;background:var(--panel);color:var(--ink);border:1px solid var(--rule);border-radius:12px;box-shadow:0 18px 40px -12px rgba(0,0,0,.35);animation:pop-in .14s ease-out;transform-origin:top right;text-align:left}
+.akun-kepala{display:flex;align-items:center;gap:10px;padding:8px 8px 10px;margin-bottom:4px;border-bottom:1px solid var(--rule-2)}
+.akun-kepala > div{display:grid;gap:3px;min-width:0}
+.akun-kepala b{font-size:14px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.akun-peran{display:inline-flex;align-items:center;gap:4px;justify-self:start;padding:2px 8px;border-radius:999px;background:var(--panel-2);border:1px solid var(--rule-2);font-size:11.5px;font-weight:600;color:var(--ink-2)}
+.akun-item{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--ink);font:inherit;font-size:13.5px;text-decoration:none;cursor:pointer;text-align:left}
+.akun-item svg{color:var(--ink-3)}
+.akun-item:hover,.akun-item:focus-visible{background:var(--panel-2);outline:none}
+.akun-item:focus-visible{box-shadow:inset 0 0 0 2px var(--rule)}
+.akun-item.keluar{color:var(--crit)}
+.akun-item.keluar svg{color:currentColor}
+@media (max-width:420px){.akun-nama{max-width:84px}.akun-btn{gap:5px}}
 .chip-akun{cursor:pointer;text-decoration:none;font:inherit;font-size:12.5px}
 .chip-akun:hover{background:rgba(255,255,255,.2)}
 .terkunci{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:18px;margin:12px;border:1px dashed var(--rule);border-radius:0;background:var(--panel-2);color:var(--ink-2)}
@@ -966,3 +986,8 @@ main.full{flex:1;min-height:0;position:relative}
 @media print{.wa-fab{display:none}}
 .nilai-lbl.tiga{padding:1px 6px;font-size:10px;background:rgba(12,22,18,.6)}
 .nilai-lbl.tiga span{opacity:1;font-size:10px;font-weight:600}
+/* menu akun terbuka: bilah atas di atas panel filter (z 15) */
+.kop:has(.akun-pop){z-index:30}
+@media (max-width:899px){.kop .wrap{column-gap:12px}}
+@media (max-width:440px){.brand{gap:9px}.brand .logo{width:34px;height:34px;border-radius:10px}.brand .logo svg{width:24px;height:24px}.brand h1{font-size:25px}.kop .meta{gap:6px}}
+@media (max-width:374px){.akun-nama{display:none}.akun-btn{padding-right:6px}}
