@@ -848,6 +848,8 @@ pemuat.whatsapp = () => { muatWa(); aturIntervalWa(); };
 
 // ---------- laporan harga warga ----------
 let statusLaporan = "MENUNGGU";
+let peranLaporan = "";
+const NAMA_PERAN = { PENJUAL: "Penjual", PEMBELI: "Pembeli" };
 const fmtRp = new Intl.NumberFormat("id-ID");
 const ST_LAPORAN = { MENUNGGU: ["Menunggu", "waspada"], VALID: ["Diterima", "ok"], DITOLAK: ["Ditolak", "gagal"] };
 function tandaiJumlahLaporan(n) {
@@ -864,7 +866,10 @@ async function aksiLaporan(tombol, id, aksi) {
 }
 pemuat.laporan = async () => {
   try {
-    const d = await api("/laporan" + (statusLaporan ? "?status=" + statusLaporan : ""));
+    const qs = new URLSearchParams();
+    if (statusLaporan) qs.set("status", statusLaporan);
+    if (peranLaporan) qs.set("peran", peranLaporan);
+    const d = await api("/laporan" + (qs.size ? "?" + qs : ""));
     const j = d.jumlah;
     tandaiJumlahLaporan(j.MENUNGGU);
     const kpi = (v, k, kelas = "") => el("div", { class: "kpi " + kelas }, el("div", { class: "v" }, v), el("div", { class: "k" }, k));
@@ -884,10 +889,11 @@ pemuat.laporan = async () => {
         el("td", { class: "waktu" }, waktu(l.waktu)), el("td", {}, l.wilayah || "–"), el("td", {}, l.pasar),
         el("td", {}, (l.komoditas || "").replace(/^Beras\s*/i, "")), el("td", { class: "id" }, "Rp" + fmtRp.format(l.harga)),
         el("td", { class: "id", title: jauh ? "Selisih dari panel harga 25% atau lebih" : "" }, selisih),
+        el("td", {}, l.peran ? el("span", { class: "pill peran-" + l.peran.toLowerCase() }, NAMA_PERAN[l.peran]) : el("span", { class: "ket", title: "Laporan sebelum ada pilihan penjual/pembeli" }, "–")),
         el("td", { class: "ket", title: `${l.laporanPelapor} laporan dari nomor ini` }, `${l.pelapor} · ${l.laporanPelapor} laporan`),
         el("td", {}, el("span", { class: "pill st-" + stK }, stT)), el("td", { class: "aksi" }, ...aksi));
     });
-    $("#tabel-laporan tbody").replaceChildren(...(baris.length ? baris : [el("tr", {}, el("td", { colspan: "9", class: "ket" }, kosong))]));
+    $("#tabel-laporan tbody").replaceChildren(...(baris.length ? baris : [el("tr", {}, el("td", { colspan: "10", class: "ket" }, kosong))]));
     labeli($("#tabel-laporan"));
   } catch (e) { toast(e.message, true); }
 };
@@ -954,6 +960,7 @@ pemuat.jejak = async () => {
 document.addEventListener("DOMContentLoaded", async () => {
   document.querySelectorAll("#menu a[data-hal]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); pilihHal(a.dataset.hal); }));
   document.querySelectorAll("#seg-laporan button").forEach((b) => b.addEventListener("click", (e) => { pilihSeg(e); statusLaporan = b.dataset.status; pemuat.laporan(); }));
+  document.querySelectorAll("#seg-peran button").forEach((b) => b.addEventListener("click", (e) => { pilihSeg(e); peranLaporan = b.dataset.peran; pemuat.laporan(); }));
   $("#segarkan-laporan").addEventListener("click", () => pemuat.laporan());
   document.querySelectorAll("#sub-tab-sumber button").forEach((b) => b.addEventListener("click", () => pilihSub(b.dataset.sub)));
   for (const id of ["#jumlah-baris", "#urut-baris"]) $(id).addEventListener("change", () => { if (pratinjauAktif != null) bukaPratinjau(pratinjauAktif, false); });
