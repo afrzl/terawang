@@ -145,9 +145,8 @@ label input{font-weight:400}
 .kpi .v small{font-family:var(--f-body);font-size:13px;font-weight:500;color:var(--ink-3);font-stretch:100%}
 .kpi .k{font-size:12px;color:var(--ink-2)}
 .kpi .t{font-size:11.5px;color:var(--ink-3);margin-top:2px}
-.kpi.crit{box-shadow:inset 0 3px 0 var(--crit)}
 .kpi.crit .v{color:var(--crit)}
-.kpi.warn{box-shadow:inset 0 3px 0 var(--warn)}
+.kpi.warn .v{color:var(--warn)}
 .kpi .nama{font-family:var(--f-mono);font-size:12px;color:var(--ink-2);display:flex;justify-content:space-between;gap:8px;align-items:center}
 .kpi .aksi{margin-top:8px}
 @media (max-width:640px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi+.kpi{border-left:0}.kpi:nth-child(even){border-left:1px solid var(--rule-2)}.kpi:nth-child(n+3){border-top:1px solid var(--rule-2)}
@@ -159,12 +158,12 @@ label input{font-weight:400}
 .st-jalan{background:var(--accent-soft);color:var(--accent)}
 .peran-penjual{background:var(--accent-soft);color:var(--accent)} .peran-pembeli{background:var(--panel-2);color:var(--ink)}
 
-/* peringatan: blok bergaris kiri seperti .rec dasbor */
+/* peringatan: kotak bernada lembut, garis tipis di semua sisi */
 .peringatan{display:flex;flex-direction:column;gap:6px}
 .peringatan:empty{display:none}
-.alert{background:var(--panel);border:1px solid var(--rule);border-left:3px solid var(--crit);padding:9px 14px;font-size:13px}
-.alert.warn{border-left-color:var(--warn)}
-.alert.info{border-left-color:var(--accent);background:var(--accent-soft);border-color:transparent;border-left-color:var(--accent)}
+.alert{background:var(--crit-bg);border:1px solid color-mix(in srgb,var(--crit) 28%,transparent);border-radius:6px;padding:9px 14px;font-size:13px}
+.alert.warn{background:var(--warn-bg);border-color:color-mix(in srgb,var(--warn) 30%,transparent)}
+.alert.info{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 22%,transparent)}
 .alert b{font-family:var(--f-mono);font-weight:500;font-size:12.5px}
 .alert .tautan{white-space:nowrap}
 
@@ -175,8 +174,9 @@ label input{font-weight:400}
 .br:last-child{border-bottom:0}
 .br.klik{cursor:pointer}
 .br.klik:hover{background:var(--panel-2)}
-.br.gagal{box-shadow:inset 3px 0 0 var(--crit)}
-.br.waspada{box-shadow:inset 3px 0 0 var(--warn)}
+.br.gagal{background:color-mix(in srgb,var(--crit-bg) 60%,transparent)}
+.br.waspada{background:color-mix(in srgb,var(--warn-bg) 60%,transparent)}
+.br.gagal.klik:hover{background:var(--crit-bg)}.br.waspada.klik:hover{background:var(--warn-bg)}
 .br.dipilih{background:var(--accent-soft)}
 .br .nm{grid-area:nama;min-width:0}
 .br .nm .id{font-family:var(--f-mono);font-size:12.5px;font-weight:500;overflow-wrap:anywhere}
@@ -233,7 +233,7 @@ label input{font-weight:400}
 
 /* unggah */
 .berkas{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;padding:12px 16px;border-top:1px solid var(--rule-2);align-items:center}
-.berkas.terisi{box-shadow:inset 3px 0 0 var(--ok)}
+.berkas.terisi{background:color-mix(in srgb,var(--ok-bg) 70%,transparent)}
 .berkas .id{font-family:var(--f-mono);font-size:12.5px;font-weight:500;overflow-wrap:anywhere}
 .berkas .kol{font-family:var(--f-mono);font-size:11px;color:var(--ink-3);margin-top:3px;overflow-wrap:anywhere}
 .berkas .status-unggah{font-size:12px;color:var(--ok);margin-top:3px}
@@ -267,8 +267,8 @@ label input{font-weight:400}
 .tabel th{font-weight:600;text-align:left;font-size:11.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;padding:8px 16px;border-bottom:1px solid var(--rule);white-space:nowrap}
 .tabel td{padding:8px 16px;border-bottom:1px solid var(--rule-2);vertical-align:middle}
 .tabel tr:last-child td{border-bottom:0}
-.tabel tr.gagal td:first-child{box-shadow:inset 3px 0 0 var(--crit)}
-.tabel tr.waspada td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
+.tabel tr.gagal td{background:color-mix(in srgb,var(--crit-bg) 60%,transparent)}
+.tabel tr.waspada td{background:color-mix(in srgb,var(--warn-bg) 60%,transparent)}
 .tabel .id{font-family:var(--f-mono);font-size:12.5px;font-weight:500}
 .tabel .waktu{font-family:var(--f-mono);font-size:12px;color:var(--ink-2);white-space:nowrap}
 .tabel .ket{color:var(--ink-3);font-size:12px;overflow-wrap:anywhere}
@@ -276,8 +276,8 @@ label input{font-weight:400}
   .tabel thead{display:none}
   .tabel,.tabel tbody,.tabel tr{display:block}
   .tabel tr{padding:10px 16px;border-bottom:1px solid var(--rule-2)}
-  .tabel tr.gagal{box-shadow:inset 3px 0 0 var(--crit)}
-  .tabel tr.gagal td:first-child,.tabel tr.waspada td:first-child{box-shadow:none}
+  .tabel tr.gagal{background:color-mix(in srgb,var(--crit-bg) 60%,transparent)}.tabel tr.waspada{background:color-mix(in srgb,var(--warn-bg) 60%,transparent)}
+  .tabel tr.gagal td,.tabel tr.waspada td{background:none}
   .tabel td{display:block;padding:1px 0;border:0}
   .tabel td:empty{display:none}
   .tabel td[data-label]:not(:first-child)::before{content:attr(data-label) " ";font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-right:6px}
@@ -326,7 +326,6 @@ label input{font-weight:400}
 .grid-data .br{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nama st" "wkt wkt"}
 .grid-data .br .wkt{text-align:left;display:flex;gap:10px}
 .grid-data .br .wkt span{display:inline}
-.grid-data .br.dipilih{box-shadow:inset 3px 0 0 var(--accent)}
 #panel-pratinjau{position:sticky;top:16px}
 @media (max-width:1080px){.grid-data{grid-template-columns:minmax(0,1fr)}#panel-pratinjau{position:static}}
 
@@ -345,7 +344,7 @@ label input{font-weight:400}
 .qr-wa ol{margin:0;padding-left:18px;font-size:13px;color:var(--ink-2);display:flex;flex-direction:column;gap:4px}
 .qr-wa .hitung{font-family:var(--f-mono);font-size:12px;color:var(--ink-3);margin-top:8px}
 .kode-pair{font-family:var(--f-mono);font-size:28px;font-weight:600;letter-spacing:.12em;padding:8px 14px;background:var(--panel-2);border:1px solid var(--rule);display:inline-block}
-.hasil-wa{margin:0 16px 14px;padding:10px 14px;background:var(--panel-2);border-left:3px solid var(--accent);font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+.hasil-wa{margin:0 16px 14px;padding:10px 14px;background:var(--panel-2);border:1px solid var(--rule-2);border-radius:6px;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
 .hasil-wa .meta{display:block;font-family:var(--f-mono);font-size:11.5px;color:var(--ink-3);margin-bottom:6px;white-space:normal}
 #form-uji-wa{padding:12px 16px;border-top:1px solid var(--rule-2)}
 #form-uji-wa input{flex:1}
