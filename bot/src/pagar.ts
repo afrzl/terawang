@@ -25,7 +25,7 @@ const KATA_TOPIK = [
   "sphp", "bulog", "rpk", "operasi pasar", "pasar", "het", "hap", "panen", "tanam", "sawah", "petani", "penggilingan",
   "defisit", "surplus", "langka", "kurang", "cukup", "aman", "waspada", "siaga", "peringatan", "prediksi", "prakiraan",
   "ramalan", "minggu depan", "bulan depan", "pekan", "medium", "premium", "kg", "kilo", "satelit", "citra", "produksi",
-  "inflasi", "terawang", "jatim", "jawa timur", "kabupaten", "kota", "wilayah", "lapor", "langganan", "data", "sumber",
+  "inflasi", "jarak", "km", "tempuh", "logistik", "distribusi", "pengadaan", "serapan", "luas", "hektar", "gkg", "gkp", "konsumsi", "penduduk", "terawang", "jatim", "jawa timur", "kabupaten", "kota", "wilayah", "lapor", "langganan", "data", "sumber",
 ]
 
 export function cekMasukan(teks: string, sebutWilayah: boolean): Tolak | null {
