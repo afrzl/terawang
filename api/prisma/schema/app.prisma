@@ -493,6 +493,7 @@ model LaporanHargaWarga {
   selisih_panel_pct Float? // dibanding harga Panel/SISKAPERBAPO terkini wilayah itu
   status            StatusLaporan @default(MENUNGGU)
   peran_pelapor     PeranPelapor? // penjual (pedagang) atau pembeli; laporan lama kosong
+  pesan_laporan     String? // pesan asli warga (gabungan jawaban), untuk petugas & ringkasan saran
   dibuat_pada       DateTime      @default(now())
 
   kontak    KontakWarga @relation(fields: [kontak_id], references: [id])

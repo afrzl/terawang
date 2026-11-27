@@ -904,8 +904,16 @@ pemuat.laporan = async () => {
       if (cek.length) kalimat.push(`${cek.length} laporan perlu dicek (${sebut(cek)}${rentang(cek)}).`);
       if (wajar.length) kalimat.push(salah.length || cek.length ? `Sisanya ${wajar.length} wajar dan aman diterima.` : `Semua ${wajar.length} laporan wajar dan aman diterima.`);
       rs.title = "Dibandingkan dengan panel harga wilayah, laporan warga lain 30 hari terakhir, HET, dan riwayat pelapor. Wajar bila selisih di bawah 10%, kemungkinan salah bila 25% atau lebih. Hanya saran; keputusan tetap di petugas.";
-      rs.replaceChildren(el("span", { class: "label" }, "Saran"), el("span", {}, kalimat.join(" ")));
+      const isiSaran = el("span", {}, kalimat.join(" "));
+      rs.replaceChildren(el("span", { class: "label" }, "Saran"), isiSaran);
       rs.hidden = false;
+      // ringkasan dari AI (pola keluhan, HET, angka janggal); kalimat aturan di atas tetap dipakai bila AI gagal
+      const giliran = (pemuat.laporan.giliran = (pemuat.laporan.giliran || 0) + 1);
+      api("/laporan/saran").then((x) => {
+        if (giliran !== pemuat.laporan.giliran || !x.teks) return;
+        isiSaran.textContent = x.teks;
+        rs.title = "Disusun AI dari isi laporan yang menunggu dan laporan terakhir. Hanya saran; keputusan tetap di petugas.";
+      }).catch(() => {});
     } else rs.hidden = true;
     const kosong = { MENUNGGU: "Tidak ada laporan yang menunggu.", VALID: "Belum ada laporan yang diterima.", DITOLAK: "Belum ada laporan yang ditolak.", "": "Belum ada laporan." }[statusLaporan];
     const baris = d.laporan.map((l) => {
@@ -916,7 +924,7 @@ pemuat.laporan = async () => {
       const tombol = (teks, aksi, kelas = "") => el("button", { class: "tombol kecil " + kelas, type: "button", onclick: (e) => aksiLaporan(e.currentTarget, l.id, aksi) }, teks);
       const aksi = l.status === "MENUNGGU" ? [tombol("Terima", "terima", "utama"), tombol("Tolak", "tolak", "bahaya")] : [tombol("Batalkan", "kembalikan")];
       return el("tr", { class: jauh && l.status === "MENUNGGU" ? "waspada" : "" },
-        el("td", { class: "waktu" }, waktu(l.waktu)), el("td", {}, l.wilayah || "–"), el("td", {}, l.pasar),
+        el("td", { class: "waktu" }, waktu(l.waktu)), el("td", {}, l.wilayah || "–"), el("td", l.pesan ? { title: "Pesan warga: " + l.pesan } : {}, l.pasar),
         el("td", {}, (l.komoditas || "").replace(/^Beras\s*/i, "")), el("td", { class: "id" }, "Rp" + fmtRp.format(l.harga)),
         el("td", { class: "id", title: jauh ? "Selisih dari panel harga 25% atau lebih" : "" }, selisih),
         el("td", {}, l.peran ? el("span", { class: "pill peran-" + l.peran.toLowerCase() }, NAMA_PERAN[l.peran]) : el("span", { class: "ket", title: "Laporan sebelum ada pilihan penjual/pembeli" }, "–")),
