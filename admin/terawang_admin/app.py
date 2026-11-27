@@ -32,8 +32,11 @@ def galat(pesan: str, kode: int = 400) -> JSONResponse:
     return JSONResponse({"galat": pesan}, status_code=kode)
 
 
-def perlu_login(hak: str | None = None):
-    """Wajib login; kalau `hak` diisi, peran pengguna harus punya hak itu (lihat akun.HAK)."""
+def perlu_login(hak: str | None = None, demo_boleh_tulis: bool | None = None):
+    """Wajib login; kalau `hak` diisi, peran pengguna harus punya hak itu (matriks akun.matriks()).
+    Akun demo tidak boleh menulis di bagian akun.HAK_TULIS_TERLARANG_DEMO kecuali `demo_boleh_tulis`."""
+    if demo_boleh_tulis is None:
+        demo_boleh_tulis = hak not in akun.HAK_TULIS_TERLARANG_DEMO
     def hias(fn):
         @functools.wraps(fn)
         async def bungkus(req: Request):
@@ -45,6 +48,8 @@ def perlu_login(hak: str | None = None):
             req.state.pengguna, req.state.peran = sesi
             if hak and not akun.boleh(req.state.peran, hak):
                 return galat("Peran akun ini tidak punya akses ke bagian ini.", 403)
+            if not demo_boleh_tulis and req.method not in ("GET", "HEAD") and akun.adalah_demo(req.state.pengguna):
+                return galat("Akun demo hanya bisa melihat bagian ini.", 403)
             try:
                 return await fn(req)
             except dagster.GalatDagster as e:
@@ -58,7 +63,8 @@ def perlu_login(hak: str | None = None):
 
 
 def _info_sesi(nama: str, peran: str) -> dict:
-    return {"pengguna": nama, "peran": peran, "labelPeran": akun.LABEL_PERAN.get(peran, peran), "hak": akun.hak_peran(peran)}
+    return {"pengguna": nama, "peran": peran, "labelPeran": akun.LABEL_PERAN.get(peran, peran), "hak": akun.hak_peran(peran),
+            "demo": akun.adalah_demo(nama)}
 
 
 # ---------- akun ----------
@@ -68,7 +74,7 @@ async def masuk(req: Request):
     if req.headers.get(HEADER_CSRF) != "1":
         return galat("Permintaan ditolak (header CSRF).", 403)
     if not akun.ada_akun():
-        return galat("Belum ada akun. Jalankan `python -m terawang_admin.sandi NAMA` di server.", 503)
+        return galat("Belum ada akun. Jalankan `python -m terawang_admin.seeder` di server.", 503)
     sisa = akun.terkunci(ip)
     if sisa:
         return galat(f"Terlalu banyak percobaan gagal. Coba lagi {sisa // 60 + 1} menit lagi.", 429)
@@ -99,11 +105,18 @@ async def keluar(req: Request):
 
 
 async def saya(req: Request):
-    """Dipakai dasbor dan halaman admin. Tanpa login = guest (200, bukan 401, supaya dasbor publik tidak mencatat galat)."""
+    """Dipakai dasbor dan halaman admin. Tanpa login: pengguna null tanpa hak (200, bukan 401; dasbor lalu membuka halaman masuk)."""
     sesi = akun.periksa_token(req.cookies.get(akun.NAMA_COOKIE))
     if not sesi:
-        return JSONResponse({"pengguna": None, "peran": "guest", "labelPeran": "Guest", "hak": []})
+        return JSONResponse({"pengguna": None, "peran": None, "labelPeran": "Belum masuk", "hak": []})
     return JSONResponse(_info_sesi(*sesi))
+
+
+async def demo(req: Request):
+    """Akun demo untuk tombol "Masuk sebagai" (mengisi otomatis nama & sandi). Kosong bila TERAWANG_DEMO_LOGIN=0."""
+    if not pengaturan.DEMO_LOGIN:
+        return JSONResponse({"akun": []})
+    return JSONResponse({"akun": await run_in_threadpool(akun.akun_demo)})
 
 
 @perlu_login()
@@ -120,8 +133,21 @@ async def ganti_sandi(req: Request):
 
 @perlu_login("akun")
 async def daftar_akun(req: Request):
-    return JSONResponse({"akun": await run_in_threadpool(akun.daftar), "peran": [{"id": p, "label": akun.LABEL_PERAN[p],
-                         "hak": akun.hak_peran(p)} for p in akun.PERAN]})
+    m = await run_in_threadpool(akun.matriks)
+    return JSONResponse({"akun": await run_in_threadpool(akun.daftar),
+                         "peran": [{"id": p, "label": akun.LABEL_PERAN[p], "hak": m[p], "penuh": p == akun.PERAN_PENUH} for p in akun.PERAN],
+                         "fitur": [{"id": i, "label": l, "grup": g} for i, l, g in akun.FITUR]})
+
+
+@perlu_login("akun", demo_boleh_tulis=True)
+async def ubah_hak(req: Request):
+    """Centang/hapus centang satu hak untuk satu peran. Berlaku langsung untuk semua sesi peran itu."""
+    d = await req.json()
+    peran, hak, aktif = str(d.get("peran", "")), str(d.get("hak", "")), bool(d.get("aktif"))
+    hasil = await run_in_threadpool(akun.atur_hak, peran, hak, aktif)
+    jejak.catat("ubah_hak", req.state.pengguna, ip_klien(req), peran=peran, hak=hak, aktif=aktif)
+    label = dict((i, l) for i, l, _ in akun.FITUR)[hak]
+    return JSONResponse({"pesan": f"{label} {'diberikan ke' if aktif else 'dicabut dari'} {akun.LABEL_PERAN[peran]}.", "hak": hasil})
 
 
 @perlu_login("akun")
@@ -400,14 +426,16 @@ async def lihat_jejak(req: Request):
 
 # ---------- WhatsApp (GoWA + bot) ----------
 
-@perlu_login("pipeline")
+@perlu_login("whatsapp")
 async def wa_status(req: Request):
     return JSONResponse(await run_in_threadpool(whatsapp.status))
 
 
-@perlu_login("konfigurasi")
+@perlu_login("whatsapp", demo_boleh_tulis=True)
 async def wa_aksi(req: Request):
     aksi = req.path_params["aksi"]
+    if aksi != "uji" and akun.adalah_demo(req.state.pengguna):
+        return galat("Akun demo hanya bisa melihat status dan menguji bot.", 403)
     try:
         data = await req.json()
     except ValueError:
@@ -510,6 +538,8 @@ routes = [
     Route(f"{API}/masuk", masuk, methods=["POST"]),
     Route(f"{API}/keluar", keluar, methods=["POST"]),
     Route(f"{API}/saya", saya),
+    Route(f"{API}/demo", demo),
+    Route(f"{API}/peran", ubah_hak, methods=["PUT"]),
     Route(f"{API}/sandi", ganti_sandi, methods=["POST"]),
     Route(f"{API}/akun", daftar_akun),
     Route(f"{API}/akun", buat_akun, methods=["POST"]),

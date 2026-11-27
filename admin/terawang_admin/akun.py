@@ -5,11 +5,12 @@ Berkas akun (pengaturan.BERKAS_AKUN, mode 600):
 `versi` per pengguna naik setiap sandi/peran diganti atau akun dinonaktifkan, sehingga sesi lama pengguna itu tidak berlaku lagi.
 Format lama (satu akun: {"pengguna": "admin", "hash", "rahasia", "versi"}) dibaca sebagai superadmin.
 
-Peran:
-  guest       tanpa login: dasbor umum
-  perusahaan  dasbor lengkap termasuk SPHP, tanpa admin (hilirisasi)
-  dinas       dasbor lengkap termasuk SPHP + admin: pantau pipeline, unggah manual, jalankan job
-  superadmin  semua + konfigurasi/secret, kelola akun, jejak admin
+Peran (hak tiap peran bisa dicentang di halaman Akun & peran, disimpan di pengaturan.BERKAS_PERAN):
+  tamu        dasbor tanpa estimasi/prakiraan: peta ringkasan, produksi, stok, arus beras, laporan pekanan
+  perusahaan  dasbor lengkap termasuk harga, SPHP, dan estimasi (hilirisasi)
+  dinas       dasbor lengkap + admin: pantau pipeline, unggah manual, jalankan job, validasi laporan (dinas/Bulog)
+  superadmin  semua hak, selalu (tidak bisa dikurangi supaya tidak terkunci)
+Isi awal matriks dan akun demo: `python -m terawang_admin.seeder`.
 """
 from __future__ import annotations
 
@@ -32,32 +33,95 @@ BATAS_GAGAL = 5
 JENDELA_GAGAL = 15 * 60
 NAMA_SAH = re.compile(r"^[a-z0-9][a-z0-9._-]{2,39}$")
 
-PERAN = ("perusahaan", "dinas", "superadmin")
-LABEL_PERAN = {"perusahaan": "Perusahaan (hilirisasi)", "dinas": "Dinas", "superadmin": "Superadmin"}
-HAK: dict[str, set[str]] = {
-    # dasbor
-    "dasbor_sphp": {"perusahaan", "dinas", "superadmin"},
-    # admin
-    "pipeline": {"dinas", "superadmin"},
-    "jalankan": {"dinas", "superadmin"},
-    "unggah": {"dinas", "superadmin"},
-    "laporan": {"dinas", "superadmin"},
-    "konfigurasi": {"superadmin"},
-    "akun": {"superadmin"},
-    "jejak": {"superadmin"},
+PERAN = ("tamu", "perusahaan", "dinas", "superadmin")
+LABEL_PERAN = {"tamu": "Tamu", "perusahaan": "Perusahaan (hilirisasi)", "dinas": "Dinas / Bulog", "superadmin": "Admin"}
+PERAN_PENUH = "superadmin"  # selalu punya semua hak
+
+# Fitur yang bisa dicentang per peran: (id hak, label, grup)
+FITUR: list[tuple[str, str, str]] = [
+    ("dasbor_ringkasan", "Peta ringkasan", "Dasbor"),
+    ("dasbor_produksi", "Produksi", "Dasbor"),
+    ("dasbor_stok", "Stok", "Dasbor"),
+    ("dasbor_arus", "Arus beras", "Dasbor"),
+    ("dasbor_cerita", "Laporan pekanan", "Dasbor"),
+    ("dasbor_harga", "Harga", "Dasbor"),
+    ("dasbor_sphp", "Rekomendasi SPHP", "Dasbor"),
+    ("dasbor_estimasi", "Estimasi & prakiraan", "Dasbor"),
+    ("dasbor_whatsapp", "Simulasi bot WhatsApp", "Dasbor"),
+    ("pipeline", "Pantau pipeline & sumber data", "Admin"),
+    ("unggah", "Unggah data manual", "Admin"),
+    ("jalankan", "Jalankan job", "Admin"),
+    ("laporan", "Validasi laporan warga", "Admin"),
+    ("whatsapp", "Bot WhatsApp", "Admin"),
+    ("konfigurasi", "Konfigurasi & secret", "Admin"),
+    ("akun", "Kelola akun & peran", "Admin"),
+    ("jejak", "Jejak admin", "Admin"),
+]
+SEMUA_HAK = [f[0] for f in FITUR]
+_DASBOR_UMUM = ["dasbor_ringkasan", "dasbor_produksi", "dasbor_stok", "dasbor_arus", "dasbor_cerita"]
+_DASBOR_LENGKAP = _DASBOR_UMUM + ["dasbor_harga", "dasbor_sphp", "dasbor_estimasi", "dasbor_whatsapp"]
+# Isi awal matriks (seeder). Tamu: hanya data yang sudah terjadi, tanpa estimasi/prakiraan.
+HAK_BAWAAN: dict[str, list[str]] = {
+    "tamu": list(_DASBOR_UMUM),
+    "perusahaan": list(_DASBOR_LENGKAP),
+    "dinas": _DASBOR_LENGKAP + ["pipeline", "unggah", "jalankan", "laporan"],
+    "superadmin": list(SEMUA_HAK),
 }
+# Akun demo (tombol "Masuk sebagai" di halaman masuk). Akun demo tidak bisa mengubah hal yang menyangkut akun,
+# secret, atau nomor WhatsApp, supaya demo untuk juri tidak bisa mengunci atau merusak sistem.
+AKUN_DEMO: dict[str, str] = {"tamu": "tamu.demo", "perusahaan": "perusahaan.demo", "dinas": "dinas.demo", "superadmin": "admin.demo"}
+HAK_TULIS_TERLARANG_DEMO = {"akun", "konfigurasi", "whatsapp"}
 
 _kunci = threading.Lock()
 _kunci_berkas = threading.Lock()
 _gagal: dict[str, deque] = defaultdict(deque)
 
 
+def _baca_matriks() -> dict[str, list[str]]:
+    try:
+        data = json.loads(pengaturan.BERKAS_PERAN.read_text())
+        if isinstance(data, dict):
+            return {p: [h for h in data.get(p, []) if h in SEMUA_HAK] for p in PERAN}
+    except (OSError, ValueError):
+        pass
+    return {p: list(h) for p, h in HAK_BAWAAN.items()}
+
+
+def matriks() -> dict[str, list[str]]:
+    m = _baca_matriks()
+    m[PERAN_PENUH] = list(SEMUA_HAK)
+    return m
+
+
+def tulis_matriks(m: dict[str, list[str]]) -> None:
+    pengaturan.BERKAS_PERAN.parent.mkdir(parents=True, exist_ok=True)
+    tmp = pengaturan.BERKAS_PERAN.with_suffix(".tmp")
+    tmp.write_text(json.dumps({p: [h for h in SEMUA_HAK if h in m.get(p, [])] for p in PERAN}, indent=1))
+    os.replace(tmp, pengaturan.BERKAS_PERAN)
+
+
+def atur_hak(peran: str, hak: str, aktif: bool) -> list[str]:
+    if peran not in PERAN:
+        raise GalatAkun("Peran tidak dikenal.")
+    if hak not in SEMUA_HAK:
+        raise GalatAkun("Hak tidak dikenal.")
+    if peran == PERAN_PENUH:
+        raise GalatAkun("Peran Admin selalu punya semua hak.")
+    with _kunci_berkas:
+        m = _baca_matriks()
+        hs = set(m.get(peran, []))
+        (hs.add if aktif else hs.discard)(hak)
+        m[peran] = [h for h in SEMUA_HAK if h in hs]
+        tulis_matriks(m)
+        return m[peran]
+
+
 def hak_peran(peran: str) -> list[str]:
-    return sorted(h for h, p in HAK.items() if peran in p)
+    return list(matriks().get(peran, []))
 
 
 def boleh(peran: str | None, hak: str) -> bool:
-    return bool(peran) and peran in HAK.get(hak, set())
+    return bool(peran) and hak in matriks().get(peran, [])
 
 
 # ---------- sandi ----------
@@ -119,14 +183,32 @@ def ada_akun() -> bool:
 
 def daftar() -> list[dict]:
     return [{"nama": n, "peran": a["peran"], "aktif": a.get("aktif", True), "dibuat": a.get("dibuat"),
-             "terakhirMasuk": a.get("terakhir_masuk")} for n, a in sorted(_baca()["pengguna"].items())]
+             "terakhirMasuk": a.get("terakhir_masuk"), "demo": bool(a.get("demo"))} for n, a in sorted(_baca()["pengguna"].items())]
+
+
+def adalah_demo(nama: str | None) -> bool:
+    return bool(nama) and bool(_baca()["pengguna"].get(nama, {}).get("demo"))
+
+
+def akun_demo() -> list[dict]:
+    """Kredensial akun demo untuk tombol "Masuk sebagai" (urut sesuai PERAN). Hanya akun demo yang aktif dan sandinya
+    masih sandi demo (kalau superadmin mengatur ulang sandinya, akun itu hilang dari daftar)."""
+    semua = _baca()["pengguna"]
+    hasil = []
+    for peran in PERAN:
+        for n, a in sorted(semua.items()):
+            if a.get("demo") and a.get("demo_sandi") and a.get("aktif", True) and a["peran"] == peran:
+                hasil.append({"peran": peran, "label": LABEL_PERAN[peran], "pengguna": n, "sandi": a["demo_sandi"]})
+                break
+    return hasil
 
 
 class GalatAkun(ValueError):
     pass
 
 
-def simpan(nama: str, *, sandi: str | None = None, peran: str | None = None, aktif: bool | None = None, baru: bool = False) -> None:
+def simpan(nama: str, *, sandi: str | None = None, peran: str | None = None, aktif: bool | None = None, baru: bool = False,
+           demo: bool = False) -> None:
     """Buat atau ubah akun. Mengubah sandi/peran/aktif menaikkan versi (sesi lama pengguna itu keluar)."""
     nama = nama.strip().lower()
     with _kunci_berkas:
@@ -153,6 +235,10 @@ def simpan(nama: str, *, sandi: str | None = None, peran: str | None = None, akt
             if salah:
                 raise GalatAkun(salah)
             a["hash"] = hash_sandi(sandi)
+            if demo:
+                a["demo"], a["demo_sandi"] = True, sandi
+            else:
+                a.pop("demo_sandi", None)
         if aktif is not None:
             a["aktif"] = bool(aktif)
         # jangan sampai tidak ada superadmin aktif
@@ -254,6 +340,8 @@ def login(nama: str, sandi: str) -> tuple[str, str] | None:
 
 def ganti_sandi_sendiri(nama: str, lama: str, baru: str) -> None:
     a = _baca()["pengguna"].get(nama)
+    if a and a.get("demo"):
+        raise GalatAkun("Sandi akun demo tidak bisa diganti.")
     if not a or not cocok_sandi(lama, a["hash"]):
         raise GalatAkun("Sandi lama salah.")
     simpan(nama, sandi=baru)
