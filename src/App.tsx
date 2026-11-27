@@ -7,7 +7,6 @@ import { SesiProvider } from "@/lib/sesi"
 import { ThemeProvider } from "@/lib/theme"
 import { TooltipProvider } from "@/lib/tooltip"
 import Ringkasan from "@/pages/Ringkasan"
-import RingkasanLama from "@/pages/RingkasanLama"
 import Produksi from "@/pages/Produksi"
 import Stok from "@/pages/Stok"
 import ArusBeras from "@/pages/ArusBeras"
@@ -27,7 +26,8 @@ export default function App() {
             <Routes>
               <Route element={<AppShell />}>
                 <Route path="/" element={<Ringkasan />} />
-                <Route path="/ringkasan" element={<RingkasanLama />} />
+                {/* /ringkasan versi lama memakai riwayat stok simulasi; dialihkan ke Peta Ringkasan */}
+                <Route path="/ringkasan" element={<Navigate to="/" replace />} />
                 <Route path="/produksi" element={<Produksi />} />
                 <Route path="/stok" element={<Stok />} />
                 <Route path="/arus" element={<ArusBeras />} />

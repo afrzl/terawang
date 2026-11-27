@@ -16,7 +16,7 @@ const kelas = (het: number): [number, string, string][] => [
 
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 
-/** Heatmap harga beras: 38 wilayah × 26 pekan riwayat + 4 pekan prakiraan. Premium: selisih tetap dari medium (DUMMY). */
+/** Heatmap harga beras: 38 wilayah × 26 pekan riwayat + 4 pekan prakiraan. Premium: seri K3a premium (selisih tetap dari medium hanya bila API mati). */
 export function PriceHeatmap({ kom }: { kom: "medium" | "premium" }) {
   const wil = useWilayah()
   const { sel, select } = useSelection()

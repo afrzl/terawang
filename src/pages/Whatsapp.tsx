@@ -17,20 +17,14 @@ const COMMANDS: [string, string][] = [
   ["LANGGANAN", "Peringatan otomatis saat status harga wilayah berubah menjadi Waspada atau Siaga."],
 ]
 
-/** Jumlah pelanggan siaran (simulasi), dihitung sekali per wilayah. */
-const SUBSCRIBERS: Record<string, number> = Object.fromEntries(
-  WILAYAH.filter((q) => q.hs !== "aman").map((q) => [q.n, Math.round(q.pop * 1.6 * (0.5 + q.R() * 0.5))]),
-)
-
 const broadcastColumns: Column<Wilayah>[] = [
   { head: "Wilayah", cell: (q) => <b>{q.n}</b>, sort: (q) => q.n },
   { head: "Status", cell: (q) => <HargaPill s={q.hs} />, sort: (q) => ({ aman: 0, waspada: 1, siaga: 2 })[q.hs] * 1e5 + q.p4 },
-  { head: "Pelanggan", right: true, num: true, cell: (q) => nf(SUBSCRIBERS[q.n] ?? 0), sort: (q) => SUBSCRIBERS[q.n] ?? 0 },
   {
     head: "Isi siaran",
     sort: (q) => q.p4,
     style: { whiteSpace: "normal", minWidth: 240 },
-    cell: (q) => `Harga beras diperkirakan ${rp(q.p4)}/kg dalam 4 pekan. Beras SPHP tersedia di pasar dan RPK terdekat.`,
+    cell: (q) => `Harga beras medium diperkirakan ${rp(q.p4)}/kg dalam 28 hari. Beras SPHP tersedia di pasar dan RPK terdekat.`,
   },
 ]
 

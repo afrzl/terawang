@@ -142,12 +142,8 @@ export default function Ringkasan() {
   )
 }
 
-/** Pola bulanan panen Jatim dari prakiraan K1 (luas panen Nov 79, Des 66, Jan 55 ribu ha), dipakai membagi total Nov–Jan per kabupaten. */
-const POLA_PANEN = [
-  { i: BULAN_KINI, w: 79 / 200 },
-  { i: BULAN_KINI + 1, w: 66 / 200 },
-  { i: BULAN_KINI + 2, w: 55 / 200 },
-]
+/** Bulan berjalan dan dua bulan sesudahnya; produksi tiap bulan dari K1 (produksiBeras). */
+const POLA_PANEN = [{ i: BULAN_KINI }, { i: BULAN_KINI + 1 }, { i: BULAN_KINI + 2 }]
 
 const G_MAX = 4
 
@@ -218,7 +214,7 @@ function KabCard({ onBack }: { onBack: () => void }) {
   const tinjau = !fl.length && out.length > 0 && rawan
   const peran = fl.length ? "Penerima" : tinjau ? "Tinjau" : out.length ? "Pemasok" : k.hs !== "aman" ? "Pantau" : "Terkendali"
   const kondisi: string[] = []
-  if (k.hs !== "aman") kondisi.push(`harga medium diprakirakan ${rp(k.p4)}/kg pada +4 pekan (HET ${rp(HET)})`)
+  if (k.hs !== "aman") kondisi.push(`harga medium diprakirakan ${rp(k.p4)}/kg pada +28 hari (HET ${rp(HET)})`)
   if (k.ss === "defisit" || k.ss === "tipis") kondisi.push(`cakupan stok ${nf(k.cov, 2)} bulan konsumsi akhir ${bulanLabel(BULAN_KINI)} (${k.ss})`)
   const totalTon = sum(rute, (f) => f.ton)
   const urut = rute.slice().sort((x, y) => y.ton - x.ton)
@@ -261,7 +257,7 @@ function KabCard({ onBack }: { onBack: () => void }) {
             })}
           </div>
           <div className="kv">
-            <span>Total Nov–Jan</span>
+            <span>Total {bulanLabel(BULAN_KINI).split(" ")[0]}–{bulanLabel(BULAN_KINI + 2).split(" ")[0]}</span>
             <b>{nf(POLA_PANEN.reduce((a, m) => a + produksiBeras(k, m.i), 0), 0)} ton</b>
             <span>YoY</span>
             <b className={yoyRentang(k, BULAN_KINI, BULAN_KINI + 2) < 0 ? "delta-dn" : "delta-up"}>{nf(yoyRentang(k, BULAN_KINI, BULAN_KINI + 2) * 100, 1)}%</b>
@@ -374,6 +370,12 @@ function KabCard({ onBack }: { onBack: () => void }) {
             <>Kondisi terkendali. Tidak ada intervensi yang disarankan pekan ini.</>
           )}
         </p>
+        {rute.length > 0 && (
+          <p className="rek-p rek-asumsi">
+            Volume dari model K3b (stok K2, peluang harga di atas HET, jarak jalan). Asumsi: stok Bulog 2026 = stok akhir Okt 2025, anggaran rilis 15%
+            dibagi menurut porsi pengadaan 2025 tiap cabang, lokasi cabang dipetakan ke kab/kota.
+          </p>
+        )}
         {rute.length > 1 && (
           <div className="rek-chips">
             {urut.slice(0, 4).map((f) => (
