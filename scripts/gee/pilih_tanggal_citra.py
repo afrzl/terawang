@@ -39,32 +39,49 @@ def deret(pusat, mulai, akhir):
            .linkCollection(cs, ["cs_cdf"]))
 
     def f(img):
-        cerah = img.select("cs_cdf").gte(0.6)
+        cerah = img.select("cs_cdf").gte(0.75)
         ndvi = img.normalizedDifference(["B8", "B4"]).updateMask(cerah.And(sawah))
         c = cerah.reduceRegion(ee.Reducer.mean(), aoi, 20, maxPixels=1e8).get("cs_cdf")
         n = ndvi.reduceRegion(ee.Reducer.median(), aoi, 20, maxPixels=1e8).get("nd")
-        return ee.Feature(None, dict(t=img.date().format("YYYY-MM-dd"), c=c, n=n))
-    rows = kol.map(f).filter(ee.Filter.notNull(["c", "n"])).reduceColumns(
-        ee.Reducer.toList(3), ["t", "c", "n"]).get("list").getInfo()
+        # kabut tipis lolos dari Cloud Score+ tapi menaikkan pantulan biru (B2); dipakai sebagai skor kabut
+        b = (img.select("B2").divide(10000).updateMask(cerah)
+             .reduceRegion(ee.Reducer.median(), aoi, 20, maxPixels=1e8).get("B2"))
+        return ee.Feature(None, dict(t=img.date().format("YYYY-MM-dd"), c=c, n=n, b=b))
+    rows = kol.map(f).filter(ee.Filter.notNull(["c", "n", "b"])).reduceColumns(
+        ee.Reducer.toList(4), ["t", "c", "n", "b"]).get("list").getInfo()
     # satu tanggal bisa punya beberapa tile: ambil yang paling cerah
     per = {}
-    for t, c, n in rows:
+    for t, c, n, b in rows:
         if t not in per or c > per[t][0]:
-            per[t] = (c, n)
-    return sorted((t, c, n) for t, (c, n) in per.items())
+            per[t] = (c, n, b)
+    return sorted((t, c, n, b) for t, (c, n, b) in per.items())
+
+
+def tanpa_kabut(rows, toleransi=0.012):
+    """Buang akuisisi berkabut: B2 median lebih tinggi dari acuan cerah (persentil 20 akuisisi kotak ini) + toleransi."""
+    bs = sorted(r[3] for r in rows if r[1] >= 0.5)
+    if not bs:
+        return rows
+    acuan = bs[int(0.2 * (len(bs) - 1))]
+    return [r for r in rows if r[3] <= acuan + toleransi]
 
 
 def pilih(rows, hari_ini, min_jarak, maks_jarak):
+    """Utamakan akuisisi tanpa kabut; kalau tidak ada pasangan, pakai semua akuisisi cerah."""
+    return _pilih(tanpa_kabut(rows), hari_ini, min_jarak, maks_jarak) or _pilih(rows, hari_ini, min_jarak, maks_jarak)
+
+
+def _pilih(rows, hari_ini, min_jarak, maks_jarak):
     d = lambda s: date.fromisoformat(s)
     terbaru = None
-    for ambang in (0.8, 0.6, 0.4):
+    for ambang in (0.95, 0.85, 0.7, 0.5):
         kand = [r for r in rows if r[1] >= ambang and (hari_ini - d(r[0])).days <= 40]
         if kand:
             terbaru = kand[-1]
             break
     if not terbaru:
         return None
-    for ambang in (0.8, 0.6, 0.4):
+    for ambang in (0.95, 0.85, 0.7, 0.5):
         kand = [r for r in rows if r[1] >= ambang and min_jarak <= (d(terbaru[0]) - d(r[0])).days <= maks_jarak]
         if kand:
             awal = min(kand, key=lambda r: r[2])

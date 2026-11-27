@@ -37,6 +37,10 @@ UKURAN_PETAK_PX = 6
 LEBAR_PNG = 1440
 WARNA = dict(kering="A8865B", genang="2F7FB8", tanam="3E9B4F", tertinggal="E5484D")
 BAND_S2 = ["B2", "B3", "B4", "B8", "B11"]
+# Cloud Score+ cs_cdf: 0,6 masih meloloskan kabut tipis/tepi awan (bercak abu-kebiruan di citra). 0,75 lebih ketat.
+AMBANG_CS = 0.75
+# Sentinel-1 lewat tiap 6-12 hari: jendela S2 yang sempit (mis. ±1 hari) sering tidak memuat akuisisi radar
+JENDELA_S1_MIN = 6
 
 
 def kotak(pusat):
@@ -63,22 +67,22 @@ def koleksi_s2(aoi, tgl, hari, bersih):
            .linkCollection(cs, ["cs_cdf"]))
 
     def f(img):
-        s = img.select(BAND_S2).divide(10000)
+        s = img.select(BAND_S2).divide(10000).addBands(img.select("cs_cdf"))
         if bersih:
-            s = s.updateMask(img.select("cs_cdf").gte(0.6))
+            s = s.updateMask(img.select("cs_cdf").gte(AMBANG_CS))
         return s.copyProperties(img, ["system:time_start"])
     return kol.map(f)
 
 
 def tanggal_cerah(aoi, tgl, hari, min_cerah=0.3):
-    """Tanggal akuisisi S2 di jendela yang kotaknya cukup cerah (Cloud Score+ >= 0.6), untuk label yang jujur."""
+    """Tanggal akuisisi S2 di jendela yang kotaknya cukup cerah (Cloud Score+ >= AMBANG_CS), untuk label yang jujur."""
     cs = ee.ImageCollection("GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED")
     awal, akhir = rentang(tgl, hari)
     kol = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED").filterBounds(aoi).filterDate(awal, akhir)
            .linkCollection(cs, ["cs_cdf"]))
 
     def f(img):
-        c = img.select("cs_cdf").gte(0.6).reduceRegion(ee.Reducer.mean(), aoi, 20, maxPixels=1e8).get("cs_cdf")
+        c = img.select("cs_cdf").gte(AMBANG_CS).reduceRegion(ee.Reducer.mean(), aoi, 20, maxPixels=1e8).get("cs_cdf")
         return ee.Feature(None, dict(t=img.date().format("YYYY-MM-dd"), c=c))
     fc = kol.map(f).filter(ee.Filter.gte("c", min_cerah))
     return fc.aggregate_array("t").distinct().sort()
@@ -88,13 +92,16 @@ def komposit_s2(aoi, tgl):
     sempit = koleksi_s2(aoi, tgl, JENDELA, True)
     lebar = koleksi_s2(aoi, tgl, 30, True)
     mentah = koleksi_s2(aoi, tgl, 30, False)
-    analisis = sempit.median()
-    tampil = analisis.unmask(lebar.median()).unmask(mentah.median())
+    # Per piksel ambil pengamatan paling cerah (qualityMosaic), bukan median: median mencampur citra berkabut tipis
+    # dengan citra cerah sehingga muncul bercak abu-kebiruan bertepi kotak.
+    analisis = sempit.qualityMosaic("cs_cdf").select(BAND_S2)
+    tampil = (analisis.unmask(lebar.qualityMosaic("cs_cdf").select(BAND_S2))
+              .unmask(mentah.qualityMosaic("cs_cdf").select(BAND_S2)))
     return analisis, tampil, sempit.size()
 
 
 def komposit_s1(aoi, tgl):
-    awal, akhir = rentang(tgl, JENDELA)
+    awal, akhir = rentang(tgl, max(JENDELA, JENDELA_S1_MIN))
     kol = (ee.ImageCollection("COPERNICUS/S1_GRD")
            .filterBounds(aoi)
            .filterDate(awal, akhir)
@@ -281,7 +288,8 @@ def main():
 
     meta = dict(
         folder=folder, lokasi=a.lokasi, pusat=pusat, kotak_km=[LEBAR_KM, TINGGI_KM], bbox=bbox,
-        tanggal_sebelum=a.sebelum, tanggal_sesudah=a.sesudah, jendela_hari=JENDELA, mode_label=a.mode,
+        tanggal_sebelum=a.sebelum, tanggal_sesudah=a.sesudah, jendela_hari=JENDELA,
+        jendela_s1_hari=max(JENDELA, JENDELA_S1_MIN), mode_label=a.mode,
         jumlah_citra=info["jumlah_citra"], tanggal_citra=info["tanggal_citra"], stat=info["stat"],
         sumber="Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label "
                + ("acak (simulasi)" if a.mode == "dummy" else "aturan ambang (belum divalidasi)"))

@@ -15,38 +15,32 @@
     112.624159,
     -7.214304
   ],
-  "tanggal_sebelum": "2026-09-09",
-  "tanggal_sesudah": "2026-11-17",
-  "jendela_hari": 6,
+  "tanggal_sebelum": "2026-09-14",
+  "tanggal_sesudah": "2026-10-24",
+  "jendela_hari": 1,
+  "jendela_s1_hari": 6,
   "mode_label": "aturan",
   "jumlah_citra": {
-    "s1_sebelum": 3,
+    "s1_sebelum": 2,
     "s1_sesudah": 2,
-    "s2_sebelum": 6,
-    "s2_sesudah": 6
+    "s2_sebelum": 1,
+    "s2_sesudah": 1
   },
   "tanggal_citra": {
     "s2_sebelum": [
-      "2026-09-04",
-      "2026-09-06",
-      "2026-09-09",
-      "2026-09-11",
       "2026-09-14"
     ],
     "s2_sesudah": [
-      "2026-11-13",
-      "2026-11-15",
-      "2026-11-17",
-      "2026-11-23"
+      "2026-10-24"
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 60.972017673048605,
-    "genang_sebelum_pct": 7.952871870397643,
-    "jumlah_petak": 679,
-    "luas_sawah_ha": 225.36496368549592,
-    "tertanam_sesudah_pct": 1.3254786450662739,
-    "tertinggal_pct": 7.952871870397643
+    "belum_hijau_sebelum_pct": 50.22026431718062,
+    "genang_sebelum_pct": 5.139500734214391,
+    "jumlah_petak": 681,
+    "luas_sawah_ha": 226.94174607604475,
+    "tertanam_sesudah_pct": 1.6152716593245229,
+    "tertinggal_pct": 5.139500734214391
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }
