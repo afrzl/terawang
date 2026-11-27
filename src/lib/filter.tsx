@@ -45,6 +45,7 @@ const RUTE: Record<string, Tersedia> = {
   "/stok": { waktu: true, wilayah: true, hs: false, ss: true },
   "/arus": { waktu: true, wilayah: true, hs: false, ss: true },
   "/harga": { waktu: true, wilayah: true, hs: true, ss: false, jenis: true },
+  "/sphp": { waktu: true, wilayah: true, hs: false, ss: true },
 }
 const TIDAK: Tersedia = { waktu: false, wilayah: false, hs: false, ss: false }
 
