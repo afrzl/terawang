@@ -36,9 +36,28 @@ export function AppShell() {
     window.scrollTo(0, 0)
   }, [pathname])
 
+  // Tinggi kop disimpan di --kop-h agar bilah filter di HP bisa menempel tepat di bawahnya.
+  const kopRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const el = kopRef.current
+    if (!el || typeof ResizeObserver === "undefined") return
+    const ro = new ResizeObserver(() => document.documentElement.style.setProperty("--kop-h", `${el.offsetHeight}px`))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // Menu yang aktif digeser masuk layar bila deretan menu lebih lebar dari layar (HP, tablet).
+  const tabsRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const nav = tabsRef.current
+    const a = nav?.querySelector<HTMLElement>('a[aria-current="page"]')
+    if (!nav || !a || nav.scrollWidth <= nav.clientWidth) return
+    nav.scrollTo({ left: a.offsetLeft - (nav.clientWidth - a.offsetWidth) / 2, behavior: "smooth" })
+  }, [pathname])
+
   return (
     <div className="shell">
-      <header className="kop">
+      <header className="kop" ref={kopRef}>
         <div className="wrap">
           <div className="brand">
             <div className="logo">
@@ -48,7 +67,7 @@ export function AppShell() {
               TERA<span>WANG</span>
             </h1>
           </div>
-          <nav className="tabs" aria-label="Bagian dasbor">
+          <nav className="tabs" aria-label="Bagian dasbor" ref={tabsRef}>
             {navItems.map((it) => (
               <NavLink key={it.to} to={it.to} end>
                 {it.label}

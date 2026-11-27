@@ -1,4 +1,5 @@
 import { DERET, FASE_API, type FaseData } from "@/lib/api"
+import { useLebarHp } from "@/hooks/useMedia"
 import faseBundel from "@/lib/fase_bulanan.json"
 import { useMemo, useState } from "react"
 import { Sprout } from "lucide-react"
@@ -414,7 +415,7 @@ function EstimateBars() {
     keterangan: "proyeksi model K1 dengan selang 90%, dibanding periode sama 2025 (BPS)",
     wilayah: est.map((k) => ({ wilayah: k.n, proyeksi: bul(k.est, 1), selang_bawah: bul(k.lo, 1), selang_atas: bul(k.hi, 1), periode_sama_2025: bul(k.prev, 1) })),
   })
-  const W = 560
+  const { ref: svgRef, W, hp } = useLebarHp<SVGSVGElement>(560)
   const ml = 96
   const mr = 46
   const H = MT + est.length * ROW_H + 24
@@ -423,9 +424,9 @@ function EstimateBars() {
 
   return (
     <>
-    <svg viewBox={`0 0 ${W} ${H}`} role="img">
+    <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} role="img">
       <g className="grid">
-        {ticks(0, xm, 5).map((t) => (
+        {ticks(0, xm, hp ? 3 : 5).map((t) => (
           <g key={t}>
             <line x1={xs(t)} x2={xs(t)} y1={MT} y2={H - 22} />
             <text x={xs(t)} y={H - 8} textAnchor="middle">
@@ -530,7 +531,7 @@ function PhaseBars() {
     satuan: `ribu ha per fase tumbuh (porsi titik sampel × luas sawah); padi = sawah tergenang dalam 120 hari terakhir, urut siap panen + generatif; ${fase.ket}`,
     wilayah: ps.map((k) => ({ wilayah: k.n, ...Object.fromEntries(FASE_NAMA.map((n, j) => [n, bul(k.rb[j] ?? 0, 1)])) })),
   })
-  const W = 560
+  const { ref: svgRef, W } = useLebarHp<SVGSVGElement>(560)
   const ml = 96
   const H = MT + ps.length * ROW_H + 40
   // Batang hanya padi, dari yang paling dekat panen (rata kiri, sama dengan urutan): siap panen, generatif, vegetatif, olah tanah.
@@ -542,7 +543,7 @@ function PhaseBars() {
 
   return (
     <>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img">
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} role="img">
         {ps.map((k, i) => {
           const y = MT + i * ROW_H + ROW_H / 2
           let acc = 0

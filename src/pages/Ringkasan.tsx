@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { PetaInteraktif } from "@/components/charts/PetaInteraktif"
 import { Legenda } from "@/components/charts/Legenda"
@@ -30,6 +30,8 @@ export default function Ringkasan() {
   const { select } = useSelection()
   // Panel kanan menampilkan daftar perhatian sampai pengguna memilih satu wilayah.
   const [detail, setDetail] = useState(false)
+  // Di HP panel kanan berada di bawah peta; memilih dari daftar menggulir kartu detail ke layar.
+  const kananRef = useRef<HTMLDivElement>(null)
   // Filter dilepas (semua wilayah): kembali ke daftar perhatian.
   const semuaWil = wil.length === Object.keys(byName).length
   useEffect(() => {
@@ -74,7 +76,7 @@ export default function Ringkasan() {
           </Link>
         ))}
       </div>
-      <div className="fl-right">
+      <div className="fl-right" ref={kananRef}>
         {detail ? (
           <KabCard onBack={() => setDetail(false)} />
         ) : (
@@ -83,6 +85,7 @@ export default function Ringkasan() {
             onPick={(n) => {
               select(n)
               setDetail(true)
+              if (window.matchMedia?.("(max-width: 899px)").matches) requestAnimationFrame(() => kananRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }))
             }}
           />
         )}
