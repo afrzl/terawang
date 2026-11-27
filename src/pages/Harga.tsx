@@ -577,7 +577,7 @@ function PanelGkpSatu() {
   const satu = wil.length === 1 ? wil[0].n : null
   const sebagian = wil.length < WILAYAH.length
   const kab = satu ? g.kabupaten?.find((k) => k.nama === satu) : undefined
-  const rw = kab ? kab.riwayat.map((r) => ({ ...r, sumber: "Bapanas" })) : g.riwayat
+  const rw = kab?.riwayat.length ? kab.riwayat.map((r) => ({ ...r, sumber: r.sumber ?? "Bapanas" })) : g.riwayat
   const fc: BarisGkp[] = kab ? kab.prakiraan : g.prakiraan
   const n = rw.length
   const dates = rw.map((r) => tglBulan(r.bulan)).concat(fc.map((f) => tglBulan(f.bulan_target)))
@@ -626,7 +626,7 @@ function PanelGkpSatu() {
                   <>
                     <b>{labelBulan(dates[i])}</b>
                     <br />
-                    <span className="m">{rp(r.harga)}</span> per kg, sumber {r.sumber}
+                    <span className="m">{rp(r.harga)}</span> per kg{r.sumber === "taksiran" ? "" : `, sumber ${r.sumber}`}
                   </>
                 )
               }
@@ -648,11 +648,16 @@ function PanelGkpSatu() {
       <Panel title={`Prakiraan harga GKP ${wilayahLabel} 1–3 bulan`}>
         <DataTable rows={fc} columns={kolom} rowKey={(f) => f.bulan_target} rowName={(f) => f.bulan_target} pageSize={3} />
         <p style={{ padding: "12px 16px", margin: 0, fontSize: 12, color: "var(--ink-3)", lineHeight: 1.5 }}>
-          {kab ? (
+          {kab?.taksiran ? (
+            <>
+              Prakiraan Jawa Timur yang disesuaikan dengan selisih harga {kab.nama} terhadap rata-rata provinsi. MAPE uji mundur seluruh
+              kab/kota:{" "}
+            </>
+          ) : kab ? (
             <>
               Rata-rata harga {kab.nama} bulan terakhir dan prakiraan Jawa Timur yang disesuaikan dengan selisih harga {kab.nama} terhadap
               rata-rata provinsi 3 bulan terakhir
-              {kab.metode === "rasio_provinsi" ? ` (data ${kab.nama} terakhir ${labelBulan(tglBulan(kab.bulan_data_terakhir))}, jadi hanya bagian provinsi)` : ""}.
+              {kab.metode === "rasio_provinsi" && kab.bulan_data_terakhir ? ` (data ${kab.nama} terakhir ${labelBulan(tglBulan(kab.bulan_data_terakhir))}, jadi hanya bagian provinsi)` : ""}.
               Harga panel Bapanas, data sampai {labelBulan(tglBulan(bulanAcuan))}. MAPE uji mundur seluruh kab/kota:{" "}
             </>
           ) : (
