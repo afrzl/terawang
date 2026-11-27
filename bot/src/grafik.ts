@@ -12,6 +12,20 @@ export const POLA_GRAFIK = /\b(grafik|grafiknya|chart|charts|diagram|visualisasi
 
 export type Jenis = "medium" | "premium" | "keduanya"
 
+export type TopikGrafik = "harga" | "stok" | "produksi"
+
+/** Topik grafik yang disebut di kalimat ("stoknya", "produksi padi", "harganya"), atau null. */
+export function topikDisebut(teks: string): TopikGrafik | null {
+  const n = normal(teks)
+  if (/\b(stok\w*|stock\w*|persediaan\w*|cadangan\w*|ketersediaan\w*)\b/.test(n)) return "stok"
+  if (/\b(produksi\w*|panen\w*|hasil panen)\b/.test(n)) return "produksi"
+  if (/\b(harga\w*|hrg)\b/.test(n)) return "harga"
+  return null
+}
+
+/** Hal yang belum punya grafik: dijawab terus terang lewat teks. */
+export const POLA_GRAFIK_BELUM = /\b(sphp|konsumsi\w*|distribusi\w*|arus|pasokan\w*|gabah|gkp|gkg|bulog|peringatan)\b/
+
 /** Rentang hari yang disebut di kalimat ("seminggu", "2 minggu", "3 bulan", "setahun", "30 hari"), atau null. Salah ketik umum ikut dikenali. */
 export function rentangDisebut(teks: string): number | null {
   const n = normal(teks)
@@ -81,9 +95,9 @@ const tglPendek = (iso: string) => {
   return `${d} ${BULAN[b - 1]}`
 }
 const tglPanjang = (iso: string) => `${tglPendek(iso)} ${iso.slice(0, 4)}`
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
 
-const WARNA = { medium: "#1F5FA8", premium: "#C26A1B", het: "#B3261E", tinta: "#1B2A24", tinta2: "#5B6B63", garis: "#DCE3DE", latar: "#FFFFFF" }
+export const WARNA = { medium: "#1F5FA8", premium: "#C26A1B", het: "#B3261E", tinta: "#1B2A24", tinta2: "#5B6B63", garis: "#DCE3DE", latar: "#FFFFFF" }
 
 type Seri = { kunci: "medium" | "premium"; label: string; warna: string; nilai: (number | null)[] }
 
@@ -95,7 +109,7 @@ function seriAktif(d: DataGrafik): Seri[] {
 }
 
 /** Langkah sumbu Y yang rapi (50, 100, 250, 500, 1000 ...). */
-function langkahRapi(rentang: number): number {
+export function langkahRapi(rentang: number): number {
   const kasar = rentang / 5
   const p = 10 ** Math.floor(Math.log10(kasar))
   return [1, 2, 2.5, 5, 10].map((m) => m * p).find((x) => x >= kasar) ?? 10 * p
@@ -191,6 +205,6 @@ export function teksGrafik(d: DataGrafik): string {
     baris.push(`Tertinggi ${rp(maks.v)} (${tglPendek(maks.t)}), terendah ${rp(min.v)} (${tglPendek(min.t)})`)
   }
   if (d.het != null && d.jenis !== "premium") baris.push(`HET beras medium: ${rp(d.het)}/kg`)
-  baris.push("", "Ganti rentang dengan membalas _setahun_ atau _3 bulan_, atau ketik *GRAFIK Jember 6 bulan* untuk wilayah lain.")
+  baris.push("", "Mau versi lain? Balas aja _setahun_, _premium aja_, _stoknya_, atau nama wilayah lain.")
   return baris.join("\n")
 }
