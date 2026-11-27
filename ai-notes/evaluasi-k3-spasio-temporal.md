@@ -68,3 +68,23 @@ Fitur spasial yang ditambahkan: porsi tetangga di atas HET, jarak tetangga ke HE
 3. **Fitur spasial untuk peringatan HET: opsional.** Arahnya positif di keempat horizon, tetapi belum signifikan. Layak diuji ulang setelah ada data lebih panjang (episode lewat HET masih ±31 per 15 bulan).
 
 Belum dipasang ke pipeline. Menunggu keputusan user.
+
+## Lanjutan: uji skor "kecenderungan naik" sebagai tampilan (27 Nov 2026 malam)
+
+Skrip `scripts/k3/uji_skor_naik.py`. Kategori untuk tiap tanggal ditentukan tanpa melihat label: **tinggi** = 10% skor teratas, **sedang** = 70–90%, **rendah** = sisanya, diukur terhadap skor 180 hari sebelumnya. Asal uji mulai Mar 2025. Model GNN-tanpa-graf, horizon 28 hari, kejadian naik >= 2%:
+
+| Kuartal | Tinggi | Sedang | Rendah | Prevalensi |
+|---|---|---|---|---|
+| 2025 Q1 | 26% | 12% | 9% | 12% |
+| 2025 Q2 | 32% | 35% | 19% | 24% |
+| 2025 Q3 | 39% | 38% | 13% | 22% |
+| 2025 Q4 | 35% | 10% | 7% | 8% |
+| 2026 Q1 | 14% | 15% | 4% | 7% |
+| 2026 Q2 | 11% | 10% | 4% | 5% |
+| 2026 Q3 | 3% | 5% | 6% | 6% |
+| 2026 Q4 | 0% | 6% | 1% | 2% |
+
+- Secara keseluruhan: tinggi 23%, sedang 20%, rendah 8%. Kategori tinggi + sedang menangkap separuh kejadian naik.
+- **Sejak 2026 Q3 urutannya rusak**: wilayah berlabel "tinggi" justru paling jarang naik. AUC 2025 0,69, sedangkan 2026 0,59.
+- Ridge (model linear sederhana) hampir setara (tinggi 21% / sedang 15% / rendah 9%), jadi keunggulan jaringan saraf kecil.
+- **Kesimpulan: belum layak ditampilkan.** Skor ini berguna saat harga sedang dalam tren naik (2025), tetapi tidak andal pada kondisi sekarang yang harganya lengket di bawah HET. Contoh tampilan untuk data terakhir sengaja tidak dibuat, karena justru periode inilah yang gagal.
