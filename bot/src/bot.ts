@@ -6,6 +6,7 @@ import * as kontak from "./kontak.ts"
 import { q } from "./db.ts"
 import { jawabBebas, llmAktif, pilahNiat } from "./llm.ts"
 import * as pagar from "./pagar.ts"
+import * as lapor from "./lapor.ts"
 import { pantau } from "./pantau.ts"
 import { buangSalam, CONTOH, jawabBasaBasi, jawabIstilah, POLA_TERIMA_KASIH, TERIMA_KASIH } from "./istilah.ts"
 import { dataGrafik, jenisDisebut, pngGrafik, POLA_GRAFIK, POLA_GRAFIK_BELUM, rentangDisebut, svgGrafik, teksGrafik, topikDisebut, type Jenis, type TopikGrafik } from "./grafik.ts"
@@ -28,7 +29,7 @@ const ALIAS: Record<string, Perintah> = {
 
 type Tunda =
   | { jenis: "pilih"; perintah: Perintah; pilihan: Wilayah[]; sampai: number; sisa?: string }
-  | { jenis: "lapor"; sampai: number }
+  | { jenis: "lapor"; sampai: number; draf: lapor.Draf; tanya?: lapor.Isian }
 const tunda = new Map<string, Tunda>()
 const MENIT = 60_000
 
@@ -249,39 +250,81 @@ async function denganWilayah(nomor: string, k: kontak.Kontak, p: Perintah, arg: 
   return { teks: `Hmm, aku nggak nemu wilayah "${arg}". Aku bisa bantu 38 kab/kota di Jawa Timur, misalnya Jember, Kota Malang, atau Kota Surabaya.`, intent: p, wilayahId: null }
 }
 
-const POLA_LAPOR = /^(.+?)[,;\n]\s*(medium|premium)\s*[,;\n]\s*(?:rp\.?\s*)?([\d.,]+)/i
+const NAMA_PERAN: Record<lapor.Peran, string> = { PENJUAL: "penjual", PEMBELI: "pembeli" }
 
-async function laporHarga(k: kontak.Kontak, arg: string): Promise<Balasan> {
-  const m = arg.match(POLA_LAPOR)
-  if (!m) {
-    tunda.set(k.nomor_wa, { jenis: "lapor", sampai: Date.now() + 15 * MENIT })
-    return {
-      teks: "Kirim harga beras di pasarmu dengan format:\n*nama pasar, jenis beras, harga/kg*\n\nContoh: _Pasar Besar Malang, medium, 13800_",
-      intent: "lapor",
-      wilayahId: null,
-    }
+function ringkasDraf(d: lapor.Draf): string {
+  const bagian = [
+    d.pasar,
+    d.jenis || d.harga ? `beras ${d.jenis ?? ""}${d.harga ? ` ${rp(d.harga)}/kg` : ""}`.replace(/\s+/g, " ").trim() : "",
+    d.peran ? `kamu ${NAMA_PERAN[d.peran]}` : "",
+  ].filter(Boolean)
+  return bagian.join(", ")
+}
+
+const TANYA: Record<lapor.Isian, string> = {
+  harga: "Harganya berapa per kg? Misalnya _13800_ atau _14 rb_.",
+  jenis: "Berasnya *medium* atau *premium*?",
+  pasar: "Di pasar atau toko mana? Misalnya _Pasar Besar Malang_.",
+  peran: "Kamu di sana sebagai *penjual* atau *pembeli*?",
+}
+
+/**
+ * Laporan harga warga: boleh bahasa bebas ("di pasar induk kota batu, beras medium 15000, aku pembeli")
+ * maupun format lama "pasar, jenis, harga". Isian yang kurang ditanyakan satu per satu, lalu disimpan.
+ */
+async function laporHarga(k: kontak.Kontak, teks: string, awal?: Extract<Tunda, { jenis: "lapor" }>): Promise<Balasan> {
+  const n = normal(teks)
+  if (awal && lapor.BATAL.test(n)) {
+    tunda.delete(k.nomor_wa)
+    return { teks: "Oke, laporannya nggak jadi. Kalau mau lapor lagi, ketik aja _lapor_.", intent: "lapor_batal", wilayahId: null }
   }
-  const pasar = m[1].trim()
-  const jenis = m[2].toLowerCase()
-  const harga = Number(m[3].replace(/[.,](?=\d{3}\b)/g, "").replace(",", "."))
-  if (!Number.isFinite(harga) || harga < 5000 || harga > 40000) {
-    return { teks: "Harganya sepertinya kurang tepat. Tulis harga per kg dalam rupiah, misalnya 13800.", intent: "lapor", wilayahId: null }
+  let baru = lapor.uraiLaporan(teks)
+  // jawaban pendek atas pertanyaan terakhir: "pasar tanjung" / "tanjung" untuk pasar, "jual" untuk peran
+  if (awal?.tanya === "pasar" && !baru.pasar && !baru.harga && n && n.split(" ").length <= 6) baru.pasar = teks.trim().replace(/^(di|dari)\s+/i, "").replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 80)
+  let d: lapor.Draf = { ...(awal?.draf ?? {}), ...baru }
+  if (lapor.kurang(d).length && !awal?.tanya) d = await lapor.lengkapiDenganLLM(teks, d)
+  else if (lapor.kurang(d).length && awal && Object.keys(baru).length === 0) d = await lapor.lengkapiDenganLLM(teks, d)
+  const sisa = lapor.kurang(d)
+  if (sisa.length) {
+    const tanya = sisa[0]
+    tunda.set(k.nomor_wa, { jenis: "lapor", sampai: Date.now() + 15 * MENIT, draf: d, tanya })
+    const ada = ringkasDraf(d)
+    if (!ada) {
+      const aneh = lapor.adaAngkaAneh(teks)
+      return {
+        teks: aneh
+          ? "Harganya sepertinya bukan per kg nih. Tulis harga per kg ya, misalnya _13800_ atau _14 rb_."
+          : [
+              "Boleh banget! Ceritain aja pakai bahasamu sendiri, misalnya:",
+              "_aku beli beras medium di Pasar Besar Malang 13.800 sekilo_",
+              "_aku jual premium 15 rb di Pasar Induk Kota Batu_",
+              "",
+              "Sebutin juga kamu *penjual* atau *pembeli* ya. Ketik _batal_ kalau nggak jadi.",
+            ].join("\n"),
+        intent: "lapor",
+        wilayahId: null,
+      }
+    }
+    const aneh = tanya === "harga" && lapor.adaAngkaAneh(teks) ? "Harganya sepertinya bukan per kg. " : ""
+    return { teks: `${aneh}Oke, aku catat: ${ada}.\n${TANYA[tanya]}`, intent: "lapor", wilayahId: null }
   }
   const daftar = await semuaWilayah()
-  const c = cariDiKalimat(pasar, daftar)
-  const wilayahId = c.jenis === "pas" ? c.wilayah.id : k.wilayah_id
+  const c = cariDiKalimat(`${d.pasar} ${awal ? "" : teks}`, daftar)
+  const c2 = c.jenis === "pas" ? c : cariDiKalimat(d.pasar!, daftar)
+  const wilayahId = c2.jenis === "pas" ? c2.wilayah.id : k.wilayah_id
   const w = daftar.find((x) => x.id === wilayahId)
-  const r = await kontak.simpanLaporan(k.id, wilayahId, `beras_${jenis}`, pasar, Math.round(harga))
+  const r = await kontak.simpanLaporan(k.id, wilayahId, `beras_${d.jenis}`, d.pasar!, d.harga!, d.peran!)
   tunda.delete(k.nomor_wa)
   return {
     teks: [
-      "✓ *Laporan diterima*",
-      `Pasar: ${pasar}${w ? ` (${labelWilayah(w)})` : ""}`,
-      `Beras ${jenis}: ${rp(harga)}/kg`,
+      "✓ *Laporan diterima, makasih ya!*",
+      `Pasar: ${d.pasar}${w ? ` (${labelWilayah(w)})` : ""}`,
+      `Beras ${d.jenis}: ${rp(d.harga!)}/kg`,
+      `Sebagai: ${NAMA_PERAN[d.peran!]}`,
       r?.panel ? `Panel harga wilayah ini: ${rp(r.panel)}/kg (${(r.selisih ?? 0) > 0 ? "+" : ""}${nf(r.selisih)}%)` : "",
-      "Status: menunggu validasi",
+      "Status: menunggu dicek petugas",
       "",
-      "Terima kasih, laporanmu membantu memantau harga beras di wilayah ini.",
+      "Laporanmu bantu kami memantau harga beras di wilayah ini.",
     ].filter(Boolean).join("\n"),
     intent: "lapor",
     wilayahId: wilayahId ?? null,
@@ -427,7 +470,15 @@ async function proses(nomor: string, k: kontak.Kontak, teks: string): Promise<Ba
         return jalankan(t.perintah, w, k, "")
       }
     }
-    if (t.jenis === "lapor") return laporHarga(k, teks)
+  }
+  // laporan yang sedang diisi: jawaban seperti "15000" atau "harga 15000" tetap masuk ke laporan
+  if (t?.jenis === "lapor" && t.sampai >= Date.now() && (!cmd || cmd.perintah === "lapor" || Object.keys(lapor.uraiLaporan(teks)).length)) {
+    return laporHarga(k, cmd?.perintah === "lapor" ? cmd.mentah || teks : teks, cmd?.perintah === "lapor" && cmd.mentah ? undefined : t)
+  }
+  // "aku mau ngelaporin, di pasar induk kota batu ..." (tanpa perintah LAPOR di depan)
+  if (cmd?.perintah !== "lapor" && lapor.niatLapor(teks)) {
+    tunda.delete(nomor)
+    return laporHarga(k, teks)
   }
   const lanjutGrafik = !cmd && grafikAktif(k.id) && lanjutanGrafik(teks, cariDiKalimat(teks, await semuaWilayah()).jenis !== "tidak_ada")
   if (cmd?.perintah === "grafik" || (!cmd && POLA_GRAFIK.test(normal(teks))) || lanjutGrafik) {
