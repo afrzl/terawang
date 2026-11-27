@@ -55,13 +55,31 @@ interface LineChartProps {
   xFmt?: (d: Date) => string
   /** Jauhkan label ujung garis yang bertumpuk (untuk grafik banyak garis). */
   sebarLabel?: boolean
+  /** Sumbu x menurut tanggal sungguhan (bukan urutan titik), dengan label per awal bulan. Dipakai supaya grafik pekanan dan bulanan sejajar. */
+  xDomain?: [Date, Date]
+  /** Dengan xDomain: tanggal acuan; area prakiraan dimulai di sini dan diberi garis "hari ini". */
+  xNow?: Date
+}
+
+const BLN_X = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
+const labelBulanX = (d: Date) => `${BLN_X[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`
+
+/** Tanggal 1 tiap bulan di dalam rentang. */
+function awalBulan([a, b]: [Date, Date]) {
+  const hasil: Date[] = []
+  const d = new Date(a.getFullYear(), a.getMonth() + (a.getDate() > 1 ? 1 : 0), 1)
+  while (+d <= +b) {
+    hasil.push(new Date(d))
+    d.setMonth(d.getMonth() + 1)
+  }
+  return hasil
 }
 
 const M_DESKTOP = { l: 58, r: 96, t: 14, b: 28 }
 // HP: lebar grafik mengikuti layar sehingga teks tetap terbaca; margin kiri/kanan dipersempit.
 const M_HP = { l: 46, r: 78, t: 14, b: 28 }
 
-export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], points = [], splitAt, splitLabel = "prakiraan", W: lebarAsal = 720, H = 280, tip, xFmt = dfmt, sebarLabel = false }: LineChartProps) {
+export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], points = [], splitAt, splitLabel = "prakiraan", W: lebarAsal = 720, H = 280, tip, xFmt = dfmt, sebarLabel = false, xDomain, xNow }: LineChartProps) {
   const { show, hide } = useTooltip()
   useDataTafsir("garis", dataGaris(xDates, series, bands, refs, splitAt, splitLabel, xFmt))
   const svgRef = useRef<SVGSVGElement>(null)
@@ -78,7 +96,14 @@ export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], p
   const W = hp && lebarWadah ? Math.min(lebarAsal, Math.max(lebarWadah, 300)) : lebarAsal
   const M = hp ? M_HP : M_DESKTOP
   const n = xDates.length
-  const x = scale(0, n - 1, M.l, W - M.r)
+  const xi = scale(0, n - 1, M.l, W - M.r)
+  const xt = xDomain ? scale(+xDomain[0], +xDomain[1], M.l, W - M.r) : null
+  /** Posisi x titik ke-i. */
+  const x = (i: number) => (xt ? xt(+xDates[i]) : xi(i))
+  const bulanX = xDomain ? awalBulan(xDomain) : []
+  const stepBulan = Math.max(1, Math.ceil(bulanX.length / (hp ? Math.max(3, Math.floor((W - M.l - M.r) / 56)) : 10)))
+  const xAwalPrak = xt && xNow ? xt(+xNow) : splitAt != null ? x(splitAt) : null
+  const xUjung = xt ? W - M.r : xi(n - 1)
   const y = scale(yDom[0], yDom[1], H - M.b, M.t)
   const step = Math.ceil(n / (hp ? Math.max(3, Math.min(7, Math.floor((W - M.l - M.r) / 64))) : 7))
 
@@ -87,7 +112,18 @@ export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], p
     if (!svg || !tip) return
     const r = svg.getBoundingClientRect()
     const px = ((e.clientX - r.left) / r.width) * W
-    const i = clamp(Math.round(x.inv(px)), 0, n - 1)
+    let i = clamp(Math.round(xi.inv(px)), 0, n - 1)
+    if (xt) {
+      // Titik terdekat menurut jarak pada sumbu tanggal.
+      let jarak = Infinity
+      xDates.forEach((_, j) => {
+        const dj = Math.abs(x(j) - px)
+        if (dj < jarak) {
+          jarak = dj
+          i = j
+        }
+      })
+    }
     setHover(i)
     show(tip(i), e)
   }
@@ -133,15 +169,32 @@ export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], p
           </g>
         ))}
       </g>
-      {splitAt != null && (
+      {xAwalPrak != null && (
         <>
-          <rect x={x(splitAt)} y={M.t} width={x(n - 1) - x(splitAt)} height={H - M.b - M.t} fill="var(--panel-2)" />
-          <text x={x(splitAt) + 6} y={M.t + 12} className="lab">
+          <rect x={xAwalPrak} y={M.t} width={Math.max(0, xUjung - xAwalPrak)} height={H - M.b - M.t} fill="var(--panel-2)" />
+          {xt && xNow && <line x1={xAwalPrak} x2={xAwalPrak} y1={M.t} y2={H - M.b} stroke="var(--ink-3)" strokeWidth={1} strokeDasharray="2 3" />}
+          <text x={xAwalPrak + 6} y={M.t + 12} className="lab">
             {splitLabel}
           </text>
+          {xt && xNow && (
+            <text x={xAwalPrak - 6} y={M.t + 12} className="lab" textAnchor="end">
+              hari ini
+            </text>
+          )}
         </>
       )}
-      {xDates.map((d, i) =>
+      {xt &&
+        bulanX.map((d, i) =>
+          i % stepBulan === 0 ? (
+            <g key={+d}>
+              <line x1={xt(+d)} x2={xt(+d)} y1={H - M.b} y2={H - M.b + 4} stroke="var(--rule)" />
+              <text x={xt(+d)} y={H - M.b + 16} textAnchor="middle">
+                {labelBulanX(d)}
+              </text>
+            </g>
+          ) : null,
+        )}
+      {!xt && xDates.map((d, i) =>
         (i % step === 0 && (!hp || n - 1 - i >= step * 0.6)) || i === n - 1 ? (
           <text key={i} x={x(i)} y={H - M.b + 16} textAnchor="middle">
             {xFmt(d)}
