@@ -28,6 +28,26 @@ export async function kirim(tujuan: string, pesan: string): Promise<string | und
   }
 }
 
+/** Kirim gambar PNG dengan keterangan (POST /send/image, multipart). */
+export async function kirimGambar(tujuan: string, png: Buffer, keterangan: string, nama = "grafik.png"): Promise<string | undefined> {
+  const phone = tujuan.includes("@") ? tujuan : `${tujuan.replace(/\D/g, "")}@s.whatsapp.net`
+  const form = new FormData()
+  form.set("phone", phone)
+  form.set("caption", keterangan)
+  form.set("compress", "false")
+  form.set("image", new Blob([new Uint8Array(png)], { type: "image/png" }), nama)
+  const h = header()
+  delete h["content-type"] // batas multipart diisi fetch
+  const res = await fetch(`${config.gowa.url}/send/image`, { method: "POST", headers: h, body: form, signal: AbortSignal.timeout(30_000) })
+  const teks = await res.text()
+  if (!res.ok) throw new Error(`GoWA ${res.status}: ${teks.slice(0, 300)}`)
+  try {
+    return (JSON.parse(teks) as { results?: { message_id?: string } }).results?.message_id
+  } catch {
+    return undefined
+  }
+}
+
 /** Indikator "sedang mengetik..." di WhatsApp. Gagal diabaikan (hanya kosmetik). */
 export async function mengetik(tujuan: string, action: "start" | "stop"): Promise<void> {
   const phone = tujuan.includes("@") ? tujuan : `${tujuan.replace(/\D/g, "")}@s.whatsapp.net`

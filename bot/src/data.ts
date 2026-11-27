@@ -12,7 +12,7 @@ async function idKomoditas(kode: string): Promise<number | undefined> {
   return (await q1<{ id: number }>("select id from ref.komoditas where kode = $1", [kode]))?.id
 }
 
-async function hetMedium(wilayahId: number): Promise<{ het: number; resmi: boolean }> {
+export async function hetMedium(wilayahId: number): Promise<{ het: number; resmi: boolean }> {
   const r = await q1<{ het_rp_kg: number }>(
     `select a.het_rp_kg
        from app.ambang_harga a join ref.komoditas k on k.id = a.komoditas_id

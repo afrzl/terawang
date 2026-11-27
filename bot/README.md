@@ -2,7 +2,8 @@
 
 Bot warga untuk info beras Jawa Timur. Pesan masuk lewat GoWA (go-whatsapp-web-multidevice), dijawab dari tabel `app.*` dan `silver.*` hasil pipeline Dagster, jadi angkanya sama dengan dasbor.
 
-- **Perintah baku** dijawab langsung dari database, tanpa LLM: `HARGA <wilayah>`, `STOK <wilayah>`, `SPHP <wilayah>` / `BERAS MURAH`, `PERINGATAN`, `LANGGANAN <wilayah>`, `BERHENTI`, `LAPOR`, `BANTUAN`. Pesan berisi nama wilayah saja dianggap `HARGA`.
+- **Perintah baku** dijawab langsung dari database, tanpa LLM: `HARGA <wilayah>`, `STOK <wilayah>`, `SPHP <wilayah>` / `BERAS MURAH`, `PERINGATAN`, `LANGGANAN <wilayah>`, `BERHENTI`, `LAPOR`, `BANTUAN`, `GRAFIK <wilayah> [rentang]`. Pesan berisi nama wilayah saja dianggap `HARGA`.
+- **Grafik harga**: `GRAFIK Malang 3 bulan` atau kalimat seperti _grafik harga beras sebulan ini_ dibalas gambar PNG (dirender `src/grafik.ts` dari `silver.harga_kabkota_harian`, tanpa LLM) dengan keterangan angka terakhir, tertinggi, dan terendah. Tanpa nama wilayah memakai wilayah percakapan terakhir, selain itu rata-rata Jawa Timur. Dikirim lewat GoWA `POST /send/image`; bila gagal, keterangannya dikirim sebagai teks.
 - **Pesan bebas** diteruskan ke OpenAI (model kelas mini) dengan function calling ke fungsi di `src/data.ts`. LLM tidak boleh mengarang angka. Batas `LLM_BATAS_HARIAN` per nomor. Nomor WA tidak dikirim ke OpenAI.
 - **Siaran**: peringatan SIAGA dikirim segera ke pelanggan wilayahnya; WASPADA dirangkum tiap Senin 06.00 WIB. Setiap kiriman dicatat di `app.notifikasi`.
 
@@ -26,6 +27,7 @@ Batas keras tetap dipasang di dasbor OpenAI (Settings → Limits). Pemakaian tok
 | Berkas | Isi |
 |---|---|
 | `src/server.ts` | HTTP: `POST /webhook/wa` (GoWA), `POST /api/tanya` (simulator dasbor), `GET /health` |
+| `src/grafik.ts` | Grafik harga beras: data, SVG, PNG (resvg), keterangan |
 | `src/bot.ts` | Pengurai perintah dan alur percakapan (pilih wilayah, LAPOR) |
 | `src/data.ts` | Semua query angka |
 | `src/format.ts` | Templat balasan WhatsApp |

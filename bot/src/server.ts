@@ -3,7 +3,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { tanggapi } from "./bot.ts"
 import { config } from "./config.ts"
 import { pool } from "./db.ts"
-import { kirim, nomorBot, sambilMengetik, sehat, tandaTanganSah, uraiWebhook } from "./gowa.ts"
+import { kirim, kirimGambar, nomorBot, sambilMengetik, sehat, tandaTanganSah, uraiWebhook } from "./gowa.ts"
 import { pemakaianHariIni, muatTokenHariIni } from "./pagar.ts"
 import { catatWebhook, pantau } from "./pantau.ts"
 import { q } from "./db.ts"
@@ -35,9 +35,17 @@ function json(res: ServerResponse, kode: number, isi: unknown) {
 }
 
 function proses(jid: string, nomor: string, nama: string | undefined, teks: string) {
-  const kirimDicatat = async (isi: string) => {
+  const kirimDicatat = async (isi: string, gambar?: Buffer) => {
     try {
-      await kirim(jid, isi)
+      if (gambar) {
+        try {
+          await kirimGambar(jid, gambar, isi)
+        } catch (e) {
+          // gambar gagal: tetap kirim keterangannya sebagai teks
+          console.error("[gowa] kirim gambar gagal:", (e as Error).message)
+          await kirim(jid, isi)
+        }
+      } else await kirim(jid, isi)
       pantau.balasan.terakhirOk = Date.now()
       pantau.balasan.jumlahOk++
     } catch (e) {
@@ -53,7 +61,7 @@ function proses(jid: string, nomor: string, nama: string | undefined, teks: stri
       // "mengetik..." tampil selama bot menyiapkan jawaban (mis. menunggu OpenAI) sampai balasan terkirim
       const b = await sambilMengetik(jid, async () => {
         const b = await tanggapi(nomor, nama, teks)
-        await kirimDicatat(b.teks)
+        await kirimDicatat(b.teks, b.gambar)
         return b
       })
       console.log(`[pesan] ${nomor.slice(0, 4)}…${nomor.slice(-3)} intent=${b.intent}`)
@@ -140,8 +148,8 @@ const server = createServer(async (req, res) => {
       const b = JSON.parse((await bacaBody(req, 20_000)).toString("utf8") || "{}") as { teks?: string; sesi?: string }
       if (!b.teks) return json(res, 400, { ok: false, galat: "teks wajib" })
       const sesi = `sim-${String(b.sesi ?? "demo").replace(/[^a-z0-9-]/gi, "").slice(0, 32)}`
-      const r = await tanggapi(sesi, "Simulator dasbor", b.teks)
-      return json(res, 200, { ok: true, ...r })
+      const { gambar, ...r } = await tanggapi(sesi, "Simulator dasbor", b.teks)
+      return json(res, 200, { ok: true, ...r, gambar: gambar ? `data:image/png;base64,${gambar.toString("base64")}` : undefined })
     }
 
     json(res, 404, { ok: false })

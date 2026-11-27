@@ -107,6 +107,7 @@ export const BANTUAN = [
   "• *SPHP Kediri* · cari beras lebih murah",
   "• *PERINGATAN* · wilayah waspada/siaga",
   "• *LANGGANAN Blitar* · peringatan otomatis",
+  "• *GRAFIK Malang* · grafik harga beras sebulan (atau _GRAFIK Malang 3 bulan_)",
   "• *LAPOR* · kirim harga di pasarmu",
   "• *BERHENTI* · berhenti berlangganan",
   "",

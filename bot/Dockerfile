@@ -1,7 +1,7 @@
 FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=production TZ=Asia/Jakarta
-RUN apk add --no-cache tzdata
+RUN apk add --no-cache tzdata font-dejavu
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY tsconfig.json ./
