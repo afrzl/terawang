@@ -73,3 +73,7 @@ test("saran perintah karangan dibuang", () => {
   assert.equal(rapikanJawaban("Jaraknya 197,5 km.\nKetik *JARAK Jember Surabaya* untuk rinciannya."), "Jaraknya 197,5 km.")
   assert.equal(rapikanJawaban("Harga Rp12.060.\nKetik *HARGA Jember* untuk rinciannya."), "Harga Rp12.060.\nKetik *HARGA Jember* untuk rinciannya.")
 })
+
+test("kalimat dengan perintah karangan dibuang utuh", () => {
+  assert.equal(rapikanJawaban("Konsumsi 6,1 kg/bulan. Bila mau banding, ketik *PERINGATAN* atau *BANDINGKAN* tidak tersedia, coba lagi."), "Konsumsi 6,1 kg/bulan.")
+})

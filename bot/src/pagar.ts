@@ -139,10 +139,11 @@ export function rapikanJawaban(s: string): string {
     .replace(/\n{3,}/g, "\n\n")
     .trim()
   // saran "Ketik *X ...*" hanya untuk perintah resmi; perintah karangan model dibuang
-  t = t.split("\n").filter((baris) => {
-    const m = baris.match(/\b(ketik|balas|kirim)\s+\*([A-Za-z]+)/i)
-    return !m || PERINTAH_RESMI.has(m[2].toUpperCase())
-  }).join("\n").trim()
+  const karangan = (s: string) =>
+    [...s.matchAll(/\*([A-Za-z]+)[^*]*\*/g)].some((m) => /\b(ketik|balas|kirim|perintah)\b/i.test(s) && m[1] === m[1].toUpperCase() && m[1].length > 2 && !PERINTAH_RESMI.has(m[1]))
+  // buang seluruh kalimat yang memuat perintah tidak resmi
+  t = t.split("\n").map((baris) => (karangan(baris) ? baris.split(/(?<=[.!?])\s+/).filter((k) => !karangan(k)).join(" ") : baris))
+    .filter((b, i, xs) => b.trim() !== "" || (i > 0 && xs[i - 1].trim() !== "")).join("\n").trim()
   if (t.length > 1200) t = t.slice(0, 1150).replace(/\s+\S*$/, "") + "…"
   return t
 }
