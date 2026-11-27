@@ -1,5 +1,6 @@
 /** Templat jawaban WhatsApp (*tebal*, _miring_). Hanya merangkai angka dari data.ts. */
 import type { InfoBerasMurah, InfoHarga, InfoStok, ItemPeringatan, Tingkat } from "./data.ts"
+import { akses } from "./hak.ts"
 
 const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
 
@@ -27,11 +28,15 @@ export function teksHarga(h: InfoHarga): string {
     `Premium: ${rp(h.premium_rp_kg)}/kg`,
     `HET medium: ${rp(h.het_medium_rp_kg)}/kg${h.selisih_het_pct === null ? "" : ` (${h.selisih_het_pct > 0 ? "+" : ""}${nf(h.selisih_het_pct)}%)`}`,
   ]
-  for (const p of h.prediksi) {
+  const { estimasi, sphp } = akses()
+  // tanpa hak estimasi: tanpa prakiraan dan status (status harga dihitung dari prakiraan 4 pekan)
+  for (const p of estimasi ? h.prediksi : []) {
     const arah = h.medium_rp_kg === null ? "" : p.harga_rp_kg - h.medium_rp_kg > 100 ? "naik" : p.harga_rp_kg - h.medium_rp_kg < -100 ? "turun" : "stabil"
     baris.push(`${p.horizon_hari / 7} pekan lagi: ${arah ? arah + " ±" : "±"}${rp(p.harga_rp_kg)}`)
   }
-  baris.push("", `Status: *${status(h.status_harga)}*`, "", "Balas *SPHP* untuk beras murah, *STOK* untuk stok, *LANGGANAN* untuk peringatan otomatis.")
+  if (estimasi) baris.push("", `Status: *${status(h.status_harga)}*`)
+  const saran = [sphp && "*SPHP* untuk beras murah", "*STOK* untuk stok", estimasi && "*LANGGANAN* untuk peringatan otomatis", !estimasi && "*GRAFIK* untuk riwayat harga"].filter(Boolean)
+  baris.push("", `Balas ${saran.slice(0, -1).join(", ")}, atau ${saran.at(-1)}.`)
   return baris.join("\n")
 }
 
@@ -46,7 +51,9 @@ export function teksStok(s: InfoStok): string {
     `Cukup untuk: *${nf(b.cakupan_bulan)} bulan* konsumsi`,
     `Status: *${status(b.status)}*`,
   ]
-  if (s.bulan_defisit_pertama && (s.bulan_defisit_pertama.tahun !== b.tahun || s.bulan_defisit_pertama.bulan !== b.bulan)) {
+  if (!akses().estimasi) {
+    // tanpa hak estimasi: hanya bulan yang sudah lewat, tanpa proyeksi defisit
+  } else if (s.bulan_defisit_pertama && (s.bulan_defisit_pertama.tahun !== b.tahun || s.bulan_defisit_pertama.bulan !== b.bulan)) {
     baris.push(`⚠ Diperkirakan defisit mulai *${bulanTahun(s.bulan_defisit_pertama.tahun, s.bulan_defisit_pertama.bulan)}*`)
   } else if (!s.bulan_defisit_pertama && s.proyeksi.length > 1) {
     const akhir = s.proyeksi[s.proyeksi.length - 1]
@@ -98,7 +105,7 @@ export function teksSiaran(items: ItemPeringatan[]): string {
   return baris.join("\n")
 }
 
-export const BANTUAN = [
+const BANTUAN_LENGKAP = [
   "*TERAWANG Jatim* · info beras dari sawah ke pasar",
   "",
   "Ketik salah satu:",
@@ -113,6 +120,15 @@ export const BANTUAN = [
   "",
   "Bisa juga bertanya biasa, misalnya _beras di Surabaya naik nggak bulan depan?_",
 ].join("\n")
+
+/** Daftar perintah sesuai hak bot (hak Tamu di admin): tanpa SPHP/prakiraan/peringatan bila tidak berhak. */
+export function bantuan(): string {
+  const { estimasi, sphp } = akses()
+  return BANTUAN_LENGKAP.split("\n")
+    .filter((b) => (sphp || !b.includes("*SPHP")) && (estimasi || !/\*(PERINGATAN|LANGGANAN|BERHENTI)\b/.test(b)))
+    .map((b) => (estimasi ? b : b.replace("harga beras dan prakiraannya", "harga beras terkini").replace("_beras di Surabaya naik nggak bulan depan?_", "_harga beras di Surabaya sebulan terakhir gimana?_")))
+    .join("\n")
+}
 
 export function teksPilihWilayah(pilihan: { nama: string; jenis: "KABUPATEN" | "KOTA" }[], label: (w: { nama: string; jenis: "KABUPATEN" | "KOTA" }) => string): string {
   const kabKota = pilihan.length === 2 && new Set(pilihan.map((w) => w.jenis)).size === 2

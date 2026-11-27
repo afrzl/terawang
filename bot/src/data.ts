@@ -2,6 +2,7 @@
  * Semua angka yang dijawab bot berasal dari fungsi di berkas ini (schema app dan silver, hasil pipeline Dagster).
  * Bot dan LLM tidak menghitung sendiri; mereka hanya merangkai hasil fungsi ini.
  */
+import { akses, bulanKini } from "./hak.ts"
 import { config } from "./config.ts"
 import { q, q1 } from "./db.ts"
 import { labelWilayah, semuaWilayah, type Wilayah } from "./wilayah.ts"
@@ -122,10 +123,11 @@ export async function infoStok(w: Wilayah): Promise<InfoStok> {
      select tahun, bulan, round(greatest(stok_ton, 0))::int as stok_ton, round(greatest(cakupan_bulan, 0)::numeric, 2)::float8 as cakupan_bulan, status::text as status
        from app.estimasi_stok
       where model_run_id = (select id from run) and wilayah_id = $1 and skenario = 'TENGAH'
-        and (tahun * 12 + bulan) >= (extract(year from now() at time zone 'Asia/Jakarta') * 12 + extract(month from now() at time zone 'Asia/Jakarta'))
+        and (tahun * 12 + bulan) >= $2
       order by tahun, bulan
-      limit 6`,
-    [w.id],
+      limit $3`,
+    // tanpa hak estimasi (Tamu): hanya bulan lengkap terakhir, tanpa proyeksi ke depan (sama seperti dasbor Tamu)
+    [w.id, akses().estimasi ? bulanKini() : bulanKini() - 1, akses().estimasi ? 6 : 1],
   )
   const defisit = rows.find((r) => r.status === "DEFISIT")
   return {

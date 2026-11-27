@@ -9,6 +9,7 @@ import { config } from "./config.ts"
 import { q } from "./db.ts"
 import { teksSiaran } from "./format.ts"
 import { kirim } from "./gowa.ts"
+import { muatHak } from "./hak.ts"
 import * as kontak from "./kontak.ts"
 import { labelWilayah } from "./wilayah.ts"
 
@@ -66,10 +67,14 @@ async function kirimKelompok(rows: Calon[]): Promise<number> {
 let berjalan = false
 
 export async function siaranSiaga(): Promise<number> {
+  // peringatan dini berbasis prakiraan: hanya dikirim bila hak bot (Tamu) punya hak estimasi
+  if (!(await muatHak()).estimasi) return 0
   return kirimKelompok(await calon("SIAGA", 7))
 }
 
 export async function siaranWaspadaMingguan(): Promise<number> {
+  // peringatan dini berbasis prakiraan: hanya dikirim bila hak bot (Tamu) punya hak estimasi
+  if (!(await muatHak()).estimasi) return 0
   return kirimKelompok(await calon("WASPADA", 6))
 }
 
