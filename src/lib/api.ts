@@ -16,6 +16,10 @@ export interface K1Wilayah {
   p90: (number | null)[]
   /** Produksi beras BPS 2025 per bulan (ton), Jan sampai Des. */
   bps2025: (number | null)[]
+  /** Luas panen K1 (ha), indeks sama dengan k1. Tidak ada pada API lama. */
+  luas?: (number | null)[]
+  /** Luas panen BPS 2025 per bulan (ha), Jan sampai Des (Survei KSA). */
+  luas2025?: (number | null)[]
 }
 
 export interface K1Data {

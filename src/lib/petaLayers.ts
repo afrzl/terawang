@@ -110,8 +110,34 @@ export const faktorBeras = (a: number, b: number) => porsiPanen(a, b) * BERAS_PE
 /** Produktivitas beras (ton/ha), dari dokumen K1. */
 export const PRODUKTIVITAS = PROD_HA
 
-/** Luas panen bulan i (ha). */
-export const luasPanen = (k: Wilayah, i: number) => produksiBeras(k, i) / PROD_HA
+/** Luas panen bulan i (ha). Dari K1 (luas panen hasil citra, diselaraskan dengan total BPS Jan–Sep 2026) bila API tersambung;
+ *  selain itu produksi dibagi produktivitas rata-rata. */
+export const luasPanen = (k: Wilayah, i: number) => {
+  const v = K1?.wilayah[k.n]?.luas?.[bln(i)]
+  return v != null ? v : produksiBeras(k, i) / PROD_HA
+}
+
+/** Luas panen periode yang sama setahun sebelumnya (ha): BPS 2025 (KSA) untuk Jan–Des 2026; Jan 2027 dibandingkan dengan K1 Jan 2026. */
+export const luasPanenPrev = (k: Wilayah, i: number) => {
+  const w = K1?.wilayah[k.n]
+  if (i <= 11) {
+    const v = w?.luas2025?.[bln(i)]
+    if (v != null) return v
+  } else if (w?.luas?.[bln(i) - 12] != null) return w.luas[bln(i) - 12]!
+  return produksiPrev(k, i) / PROD_HA
+}
+
+/** Luas panen bulan a sampai b (termasuk), ha. */
+export const luasRentang = (k: Wilayah, a: number, b: number) => {
+  let t = 0
+  for (let i = Math.min(a, b); i <= Math.max(a, b); i++) t += luasPanen(k, i)
+  return t
+}
+export const luasPrevRentang = (k: Wilayah, a: number, b: number) => {
+  let t = 0
+  for (let i = Math.min(a, b); i <= Math.max(a, b); i++) t += luasPanenPrev(k, i)
+  return t
+}
 
 /** Cakupan stok akhir bulan i (bulan konsumsi). */
 export function covBulan(k: Wilayah, i: number) {

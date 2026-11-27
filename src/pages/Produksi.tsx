@@ -12,10 +12,11 @@ import { PHASES, byName, type Wilayah } from "@/lib/data"
 import { dfmt, hash, nf, rng, scale, short, sum, ticks } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
-import { BULAN_NAMA, N_BULAN, SATUAN, bulanLabel, useFilter, useWilayah } from "@/lib/filter"
+import { BULAN_KINI, BULAN_NAMA, N_BULAN, SATUAN, bulanLabel, useFilter, useWilayah } from "@/lib/filter"
 import { KpiPerWilayah, LegendaWilayah, usePerWilayah } from "@/lib/perWilayah"
 import { bul, useDataTafsir } from "@/lib/tafsir"
-import { PRODUKTIVITAS, luasPanen, produksiBatas, produksiPrevRentang, produksiRentang, yoyRentang } from "@/lib/petaLayers"
+import { K1 } from "@/lib/api"
+import { luasPanen, luasPanenPrev, luasPrevRentang, luasRentang, produksiBatas, produksiBeras, produksiPrevRentang, produksiRentang, yoyRentang } from "@/lib/petaLayers"
 
 const STEPS = ["--s1", "--s2", "--s3", "--s4", "--s5"]
 const ROW_H = 22
@@ -38,7 +39,10 @@ export default function Produksi() {
   const berasT = sum(wil, (k) => produksiRentang(k, mulai, akhir)) / 1000 // ribu ton beras
   const prodT = berasT * sat.f // ribu ton, satuan terpilih
   const prevT = (sum(wil, (k) => produksiPrevRentang(k, mulai, akhir)) / 1000) * sat.f
-  const luasRb = (berasT * 1000) / PRODUKTIVITAS / 1000 // ribu ha
+  const luasHa = sum(wil, (k) => luasRentang(k, mulai, akhir))
+  const luasPrevHa = sum(wil, (k) => luasPrevRentang(k, mulai, akhir))
+  const luasYoy = luasPrevHa ? (luasHa / luasPrevHa - 1) * 100 : 0
+  const prodHa = luasHa ? (berasT * 1000 * sat.f) / luasHa : 0 // ton satuan terpilih per ha
   const turun = wil.filter((k) => yoyRentang(k, mulai, akhir) < 0).length
   const yoy = prevT ? (prodT / prevT - 1) * 100 : 0
   const { pisah, warna, wil: wilP } = usePerWilayah()
@@ -48,6 +52,17 @@ export default function Produksi() {
     return (
       <>
         {v >= 1000 ? `${nf(v / 1000, 2)} jt` : `${nf(v, 0)} rb`} <small className={y < 0 ? "delta-dn" : "delta-up"}>{nf(y, 1)}%</small>
+      </>
+    )
+  }
+
+  const luasWil = (k: Wilayah) => {
+    const v = luasRentang(k, mulai, akhir)
+    const p = luasPrevRentang(k, mulai, akhir)
+    const y = p ? (v / p - 1) * 100 : 0
+    return (
+      <>
+        {fmtHa(v)} <small className={y < 0 ? "delta-dn" : "delta-up"}>{nf(y, 1)}%</small>
       </>
     )
   }
@@ -68,7 +83,17 @@ export default function Produksi() {
               </>
             ),
           },
-          { k: "Luas panen", v: luasRb >= 1000 ? `${nf(luasRb / 1000, 2)} jt ha` : `${nf(luasRb, 0)} rb ha`, t: `${nf(PRODUKTIVITAS * sat.f, 1)} ton ${sat.lab}/ha` },
+          pisah
+            ? { k: "Luas panen, ha", v: <KpiPerWilayah wil={wilP} warna={warna} nilai={luasWil} />, t: "per wilayah, % = YoY" }
+            : {
+                k: "Luas panen",
+                v: fmtHa(luasHa),
+                t: (
+                  <>
+                    <span className={luasYoy < 0 ? "delta-dn" : "delta-up"}>{nf(luasYoy, 1)}%</span> YoY · {nf(prodHa, 2)} ton {sat.lab}/ha
+                  </>
+                ),
+              },
           { k: "Selisih dari BPS", v: "9,3%", t: "uji Jan–Sep 2026, 38 kab/kota (WAPE)" },
           { k: "Wilayah YoY turun", v: `${turun} dari ${wil.length}`, t: "produksi di bawah periode sama 2025" },
         ]}
@@ -82,6 +107,17 @@ export default function Produksi() {
         <Panel title="Produksi per wilayah">
           <div className="pb chart">
             <EstimateBars />
+          </div>
+        </Panel>
+      </div>
+      <div className="grid-2">
+        {pisah ? <LuasBulananWil /> : <LuasBulanan />}
+        <Panel
+          title="Luas panen per wilayah"
+          tafsir="Luas panen padi pada rentang bulan terpilih (batang), dibanding periode yang sama 2025 dari Survei KSA BPS (titik). Angka kanan = produktivitas beras per hektare."
+        >
+          <div className="pb chart">
+            <LuasBars />
           </div>
         </Panel>
       </div>
@@ -105,6 +141,247 @@ export default function Produksi() {
         {pisah ? <ProfilSatelitWil /> : <ProfilSatelit wilayah={citraWil} />}
       </div>
     </section>
+  )
+}
+
+/** "12,3 rb ha", "1,25 jt ha", atau "850 ha". */
+function fmtHa(ha: number) {
+  if (ha >= 1e6) return `${nf(ha / 1e6, 2)} jt ha`
+  if (ha >= 1e4) return `${nf(ha / 1000, 0)} rb ha`
+  if (ha >= 1000) return `${nf(ha / 1000, 1)} rb ha`
+  return `${nf(ha, 0)} ha`
+}
+
+const BLN_PENDEK = (d: Date) => `${BULAN_NAMA[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`
+const tglBulan = (i: number) => new Date(2026 + Math.floor(i / 12), i % 12, 15)
+
+/** Pita P10–P90 luas panen bulan i (ha), mengikuti pita produksi K1 (luas dan produksi berbanding lurus). */
+function luasBatas(k: Wilayah, i: number) {
+  const w = K1?.wilayah[k.n]
+  const v = luasPanen(k, i)
+  const p = produksiBeras(k, i)
+  const lo = w?.p10[i]
+  const hi = w?.p90[i]
+  if (lo == null || hi == null || !p) return { lo: v, hi: v }
+  return { lo: (v * lo) / p, hi: (v * hi) / p }
+}
+
+/** Luas panen bulanan gabungan wilayah terpilih: K1 2026 + pita, dibanding BPS 2025 bulan yang sama. */
+function LuasBulanan() {
+  const wil = useWilayah()
+  const { mulai, akhir } = useFilter()
+  const bulan = [...Array(N_BULAN)].map((_, i) => i)
+  const dates = bulan.map(tglBulan)
+  const ini = bulan.map((i) => sum(wil, (k) => luasPanen(k, i)) / 1000)
+  const lalu = bulan.map((i) => sum(wil, (k) => luasPanenPrev(k, i)) / 1000)
+  const lo = bulan.map((i) => sum(wil, (k) => luasBatas(k, i).lo) / 1000)
+  const hi = bulan.map((i) => sum(wil, (k) => luasBatas(k, i).hi) / 1000)
+  const top = Math.max(1, ...ini, ...lalu, ...hi.slice(BULAN_KINI)) * 1.1
+  const d = top >= 10 ? 0 : 1
+  const rentang = mulai === akhir ? bulanLabel(mulai) : `${bulanLabel(mulai)}–${bulanLabel(akhir)}`
+  const jRentang = sum(bulan.filter((i) => i >= mulai && i <= akhir), (i) => ini[i])
+  const puncak = bulan.slice(0, BULAN_KINI + 3).reduce((a, b) => (ini[b] > ini[a] ? b : a), 0)
+  return (
+    <Panel
+      title="Luas panen per bulan"
+      tafsir={`Luas panen padi (ribu ha) wilayah terpilih. Garis tegas = 2026 (Jan–Sep diselaraskan dengan angka BPS, sesudahnya taksiran citra Sentinel K1), putus-putus = BPS 2025 bulan yang sama. Area berlatar = bulan berjalan dan prakiraan, pita = selang P10–P90. Rentang terpilih ${rentang}: ${nf(jRentang, d)} ribu ha. Puncak panen ${bulanLabel(puncak)}.`}
+    >
+      <div className="pb chart">
+        <LineChart
+          xDates={dates}
+          xFmt={BLN_PENDEK}
+          yDom={[0, top]}
+          yFmt={(v) => nf(v, 0)}
+          W={480}
+          H={250}
+          splitAt={BULAN_KINI}
+          splitLabel="taksiran"
+          bands={[{ lo: lo.slice(BULAN_KINI), hi: hi.slice(BULAN_KINI), off: BULAN_KINI, color: "var(--s4)", op: 0.16, nama: "2026 selang P10–P90" }]}
+          series={[
+            { vals: lalu, color: "var(--ink-3)", dash: "4 3", w: 1.4, nama: "BPS 2025" },
+            { vals: ini, color: "var(--s4)", w: 2.4, nama: "2026" },
+          ]}
+          tip={(i) => (
+            <>
+              <b>{bulanLabel(i)}</b>
+              <br />
+              Luas panen <span className="m">{nf(ini[i] * 1000)} ha</span>
+              {i >= BULAN_KINI && (
+                <>
+                  <br />
+                  Selang P10–P90{" "}
+                  <span className="m">
+                    {nf(lo[i] * 1000)}–{nf(hi[i] * 1000)} ha
+                  </span>
+                </>
+              )}
+              <br />
+              {i <= 11 ? "BPS 2025" : "Jan 2026"} <span className="m">{nf(lalu[i] * 1000)} ha</span>
+            </>
+          )}
+        />
+        <div className="legend" style={{ padding: "6px 0 0" }}>
+          <span className="ttl">ribu ha</span>
+          <span>
+            <span className="sw" style={{ background: "var(--s4)" }} />
+            2026
+          </span>
+          <span>
+            <span className="sw" style={{ background: "var(--ink-3)" }} />
+            BPS 2025 (putus-putus)
+          </span>
+        </div>
+      </div>
+    </Panel>
+  )
+}
+
+/** Luas panen bulanan, satu garis per wilayah terpilih (2 sampai 6 wilayah). BPS 2025 putus-putus bila paling banyak 3 wilayah. */
+function LuasBulananWil() {
+  const { wil, warna } = usePerWilayah()
+  const bulan = [...Array(N_BULAN)].map((_, i) => i)
+  const dates = bulan.map(tglBulan)
+  const denganLalu = wil.length <= 3
+  const data = wil.map((k) => ({ k, ini: bulan.map((i) => luasPanen(k, i) / 1000), lalu: bulan.map((i) => luasPanenPrev(k, i) / 1000) }))
+  const top = Math.max(1, ...data.flatMap((x) => [...x.ini, ...(denganLalu ? x.lalu : [])])) * 1.1
+  const d = top >= 10 ? 0 : 1
+  return (
+    <Panel
+      title="Luas panen per bulan per wilayah"
+      tafsir="Luas panen padi (ribu ha) tiap wilayah. Garis tegas = 2026 (Jan–Sep diselaraskan dengan angka BPS, sesudahnya taksiran citra Sentinel K1); putus-putus = BPS 2025 bulan yang sama. Area berlatar = bulan berjalan dan prakiraan."
+    >
+      <div className="pb chart">
+        <LineChart
+          xDates={dates}
+          xFmt={BLN_PENDEK}
+          yDom={[0, top]}
+          yFmt={(v) => nf(v, d)}
+          W={480}
+          H={250}
+          splitAt={BULAN_KINI}
+          splitLabel="taksiran"
+          sebarLabel
+          series={data.flatMap((x) => [
+            ...(denganLalu ? [{ vals: x.lalu, color: warna(x.k), dash: "3 3", w: 1.2, nama: `${x.k.n} BPS 2025` }] : []),
+            { vals: x.ini, color: warna(x.k), w: 2.2, label: short(x.k.n), nama: `${x.k.n} 2026` },
+          ])}
+          tip={(i) => (
+            <>
+              <b>{bulanLabel(i)}</b>
+              {data.map((x) => (
+                <span key={x.k.n}>
+                  <br />
+                  <span className="sw-dot" style={{ background: warna(x.k) }} />
+                  {x.k.n} <span className="m">{nf(x.ini[i] * 1000)} ha</span>
+                  {denganLalu && (
+                    <>
+                      , 2025 <span className="m">{nf(x.lalu[i] * 1000)} ha</span>
+                    </>
+                  )}
+                </span>
+              ))}
+            </>
+          )}
+        />
+        <LegendaWilayah wil={wil} warna={warna} extra={<span>{denganLalu ? "garis tegas = 2026, putus-putus = BPS 2025" : "2026"}</span>} />
+      </div>
+    </Panel>
+  )
+}
+
+/** Luas panen rentang terpilih per wilayah (batang) dibanding periode sama 2025 (titik), dengan produktivitas di ujung. */
+function LuasBars() {
+  const wil = useWilayah()
+  const { mulai, akhir, satuan } = useFilter()
+  const sat = SATUAN[satuan]
+  const { sel, select } = useSelection()
+  const { show, hide } = useTooltip()
+  const { daftar: rows, tombol } = useSemua(
+    wil
+      .map((k) => {
+        const ha = luasRentang(k, mulai, akhir)
+        const prev = luasPrevRentang(k, mulai, akhir)
+        return { n: k.n, ha: ha / 1000, prev: prev / 1000, yoy: prev ? (ha / prev - 1) * 100 : 0, prod: ha ? (produksiRentang(k, mulai, akhir) * sat.f) / ha : 0 }
+      })
+      .sort((a, b) => b.ha - a.ha),
+    16,
+  )
+  useDataTafsir("luas", {
+    satuan: "ribu ha luas panen; produktivitas ton per ha",
+    periode: mulai === akhir ? bulanLabel(mulai) : `${bulanLabel(mulai)}–${bulanLabel(akhir)}`,
+    wilayah: rows.map((k) => ({ wilayah: k.n, luas_panen: bul(k.ha, 2), periode_sama_2025: bul(k.prev, 2), yoy_persen: bul(k.yoy, 1), produktivitas: bul(k.prod, 2) })),
+  })
+  const { ref: svgRef, W, hp } = useLebarHp<SVGSVGElement>(560)
+  const ml = 96
+  const mr = 46
+  const H = MT + rows.length * ROW_H + 24
+  const xm = Math.max(...rows.map((k) => Math.max(k.ha, k.prev))) * 1.05 || 1
+  const xs = scale(0, xm, ml, W - mr)
+  return (
+    <>
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Luas panen per wilayah">
+        <g className="grid">
+          {ticks(0, xm, hp ? 3 : 5).map((t) => (
+            <g key={t}>
+              <line x1={xs(t)} x2={xs(t)} y1={MT} y2={H - 22} />
+              <text x={xs(t)} y={H - 8} textAnchor="middle">
+                {nf(t, xm < 5 ? 1 : 0)}
+              </text>
+            </g>
+          ))}
+        </g>
+        {rows.map((k, i) => {
+          const y = MT + i * ROW_H + ROW_H / 2
+          const isSel = k.n === sel
+          return (
+            <g
+              key={k.n}
+              style={{ cursor: "pointer" }}
+              onMouseMove={(e) =>
+                show(
+                  <>
+                    <b>{k.n}</b>
+                    <br />
+                    Luas panen <span className="m">{nf(k.ha * 1000)} ha</span>
+                    <br />
+                    Periode sama 2025 <span className="m">{nf(k.prev * 1000)} ha</span>{" "}
+                    <span className={k.yoy < 0 ? "delta-dn" : "delta-up"}>({nf(k.yoy, 1)}%)</span>
+                    <br />
+                    Produktivitas <span className="m">{nf(k.prod, 2)} ton {sat.lab}/ha</span>
+                  </>,
+                  e,
+                )
+              }
+              onMouseLeave={hide}
+              onClick={() => select(k.n)}
+            >
+              <rect x={0} y={y - ROW_H / 2} width={W} height={ROW_H} fill="transparent" />
+              <text x={ml - 8} y={y + 4} textAnchor="end" className={isSel ? "lab-b" : "lab"}>
+                {short(k.n)}
+              </text>
+              <rect x={ml} y={y - 5} width={Math.max(0, xs(k.ha) - ml)} height={10} fill={isSel ? "var(--accent)" : "var(--s4)"} />
+              <circle cx={xs(k.prev)} cy={y} r={3.6} fill="var(--panel)" stroke="var(--ink-2)" strokeWidth={1.6} />
+              <text x={xs(Math.max(k.ha, k.prev)) + 8} y={y + 4}>
+                {nf(k.prod, 1)}
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+      <div className="legend" style={{ padding: "6px 0 0" }}>
+        <span className="ttl">ribu ha</span>
+        <span>
+          <span className="sw" style={{ background: "var(--s4)" }} />
+          luas panen
+        </span>
+        <span>
+          <span className="sw" style={{ background: "var(--panel)", border: "1.6px solid var(--ink-2)", borderRadius: "50%" }} />
+          periode sama 2025
+        </span>
+        <span>angka kanan = ton {sat.lab}/ha</span>
+      </div>
+      {tombol}
+    </>
   )
 }
 

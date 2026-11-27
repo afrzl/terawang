@@ -107,15 +107,33 @@ async function produksi(per?: string) {
      from app.prediksi_produksi p join ref.wilayah w on w.id = p.wilayah_id where p.model_run_id = $1`,
     [run.id],
   )
-  const bps = await q<{ kab: string; bulan: number; v: number | null }>(
-    `select distinct on (w.id, p.bulan_awal) w.nama_repo kab, p.bulan_awal bulan, p.produksi_beras_ton v
+  const bps = await q<{ kab: string; bulan: number; v: number | null; luas: number | null }>(
+    `select distinct on (w.id, p.bulan_awal) w.nama_repo kab, p.bulan_awal bulan, p.produksi_beras_ton v, p.luas_panen_ha luas
      from silver.produksi_padi p join ref.wilayah w on w.id = p.wilayah_id
      where w.level = 'KABKOTA' and p.tahun = 2025 and p.granularitas = 'BULANAN' and p.bulan_awal = p.bulan_akhir
      order by w.id, p.bulan_awal, (p.status_angka = 'TETAP') desc, p.sumber_id desc`,
   )
+  // Produktivitas beras BPS per kab yang dipakai K1 (k2_operasional.produksi): Jan-Sep 2026 untuk bulan Jan-Sep 2026,
+  // Okt-Des 2025 untuk bulan lain (cadangan Jan-Sep 2026 bila Okt-Des 2025 tanpa panen). Luas panen K1 = produksi / produktivitas.
+  const periode = await q<{ kab: string; tahun: number; ba: number; bk: number; luas: number | null; beras: number | null }>(
+    `select distinct on (w.id, p.tahun, p.bulan_awal, p.bulan_akhir) w.nama_repo kab, p.tahun, p.bulan_awal ba, p.bulan_akhir bk,
+            p.luas_panen_ha luas, p.produksi_beras_ton beras
+     from silver.produksi_padi p join ref.wilayah w on w.id = p.wilayah_id
+     where w.level = 'KABKOTA' and p.granularitas = 'PERIODE'
+       and ((p.tahun = 2026 and p.bulan_awal = 1 and p.bulan_akhir = 9) or (p.tahun = 2025 and p.bulan_awal = 10 and p.bulan_akhir = 12))
+     order by w.id, p.tahun, p.bulan_awal, p.bulan_akhir, p.sumber_id desc`,
+  )
+  const rasio = (r?: { luas: number | null; beras: number | null }) => (r && r.luas && r.luas > 0 && r.beras != null ? r.beras / r.luas : null)
+  const r26: Record<string, number | null> = {}
+  const r25: Record<string, number | null> = {}
+  for (const r of periode) (r.tahun === 2026 ? r26 : r25)[r.kab] = rasio(r)
+  const produktivitas = (kab: string, tahun: number, bulan: number) =>
+    tahun === 2026 && bulan <= 9 ? r26[kab] ?? null : r25[kab] ?? r26[kab] ?? null
   const N = jumlahBulan()
-  const wilayah: Record<string, { k1: (number | null)[]; p10: (number | null)[]; p90: (number | null)[]; bps2025: (number | null)[] }> = {}
-  const ambil = (kab: string) => (wilayah[kab] ??= { k1: kosong(N), p10: kosong(N), p90: kosong(N), bps2025: Array(12).fill(null) })
+  type Baris = { k1: (number | null)[]; p10: (number | null)[]; p90: (number | null)[]; luas: (number | null)[]; bps2025: (number | null)[]; luas2025: (number | null)[] }
+  const wilayah: Record<string, Baris> = {}
+  const ambil = (kab: string) =>
+    (wilayah[kab] ??= { k1: kosong(N), p10: kosong(N), p90: kosong(N), luas: kosong(N), bps2025: Array(12).fill(null), luas2025: Array(12).fill(null) })
   for (const r of rows) {
     const i = idxBulan(r.tahun, r.bulan)
     if (i < 0 || i >= N) continue
@@ -123,10 +141,17 @@ async function produksi(per?: string) {
     w.k1[i] = angka(r.v)
     w.p10[i] = angka(r.lo)
     w.p90[i] = angka(r.hi)
+    const pr = produktivitas(r.kab, r.tahun, r.bulan)
+    w.luas[i] = pr && w.k1[i] != null ? angka(w.k1[i]! / pr) : null
   }
-  for (const r of bps) if (r.bulan >= 1 && r.bulan <= 12) ambil(r.kab).bps2025[r.bulan - 1] = angka(r.v)
+  for (const r of bps)
+    if (r.bulan >= 1 && r.bulan <= 12) {
+      const w = ambil(r.kab)
+      w.bps2025[r.bulan - 1] = angka(r.v)
+      w.luas2025[r.bulan - 1] = angka(r.luas)
+    }
   return {
-    meta: { ...metaRun(run, rows[0]?.jd ?? null), awal: `${AWAL_TAHUN}-${String(AWAL_BULAN).padStart(2, "0")}`, bulan: N, satuan: "ton beras" },
+    meta: { ...metaRun(run, rows[0]?.jd ?? null), awal: `${AWAL_TAHUN}-${String(AWAL_BULAN).padStart(2, "0")}`, bulan: N, satuan: "ton beras", satuan_luas: "ha" },
     wilayah,
   }
 }
