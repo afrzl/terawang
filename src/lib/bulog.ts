@@ -46,10 +46,10 @@ export const PENGADAAN_CABANG_2025: { cabang: string; ton: number }[] = [
    yang ada per cabang hanya pengadaan, ditambah STOK_CABANG_PROKSI (berita + taksiran, berlabel) di bawah. Data tahun baru masuk lewat unggahan manual atau konektor Bulog di panel admin. */
 
 const tahunStok = BULOG?.stok.length ? Math.max(...BULOG.stok.map((r) => r.tahun)) : 2025
-/** Tahun terakhir yang punya data stok Bulog bulanan. */
-export const TAHUN_STOK_BULOG = tahunStok
-/** Stok Bulog Jatim per bulan pada tahun terakhir yang tersedia (ribu ton). */
-export const STOK_BULOG: StokBulogBulan[] = BULOG?.stok.length
+/** Tahun terakhir yang punya data stok Bulog bulanan resmi (Jatim Dalam Angka). */
+export const TAHUN_STOK_RESMI = tahunStok
+/** Stok Bulog Jatim per bulan pada tahun resmi terakhir (ribu ton). */
+export const STOK_BULOG_RESMI: StokBulogBulan[] = BULOG?.stok.length
   ? BULOG.stok.filter((r) => r.tahun === tahunStok).map(({ bulan, awal, masuk, keluar, akhir }) => ({ bulan, awal, masuk, keluar, akhir }))
   : STOK_BULOG_2025
 
@@ -91,3 +91,35 @@ export const STOK_CABANG_PROKSI: StokCabangProksi[] = [
 ]
 /** Bulan posisi stok proksi per cabang. */
 export const BULAN_STOK_CABANG_PROKSI = "Nov 2026"
+
+/* Deret bulanan 2026 (MODEL): Jatim Dalam Angka 2027 yang memuat stok bulanan 2026 baru terbit sekitar Februari 2027.
+   Sampai saat itu deret dibangun dari pola 2025: mulai dari persediaan akhir Desember tahun resmi, pengeluaran mengikuti 2025,
+   pemasukan = pola 2025 dikali satu faktor sehingga persediaan akhir November tepat sama dengan jumlah stok 13 kantor cabang
+   (STOK_CABANG_PROKSI). Akuntansi awal + masuk - keluar = akhir tetap berlaku. Begitu data resmi 2026 masuk lewat API, deret ini tidak dipakai. */
+const BULAN_POSISI_CABANG = 11
+function deretModel2026(): StokBulogBulan[] | null {
+  if (TAHUN_STOK_RESMI !== 2025 || STOK_BULOG_RESMI.length < 12 || !STOK_CABANG_PROKSI.length) return null
+  const pola = STOK_BULOG_RESMI.slice(0, BULAN_POSISI_CABANG)
+  const target = STOK_CABANG_PROKSI.reduce((a, c) => a + c.ton, 0)
+  const awal0 = STOK_BULOG_RESMI[11].akhir
+  const keluar = pola.reduce((a, r) => a + r.keluar, 0)
+  const masuk = pola.reduce((a, r) => a + r.masuk, 0)
+  const f = (target - awal0 + keluar) / masuk
+  if (!(f > 0)) return null
+  let awal = awal0
+  return pola.map((r) => {
+    const m = Math.round(r.masuk * f * 10) / 10
+    const akhir = Math.round((awal + m - r.keluar) * 10) / 10
+    const row = { bulan: r.bulan, awal: Math.round(awal * 10) / 10, masuk: m, keluar: r.keluar, akhir }
+    awal = akhir
+    return row
+  })
+}
+const DERET_2026 = deretModel2026()
+
+/** Tahun yang ditampilkan di grafik stok Bulog: 2026 (deret model) bila data resmi baru sampai 2025. */
+export const TAHUN_STOK_BULOG = DERET_2026 ? 2026 : TAHUN_STOK_RESMI
+/** Stok Bulog Jatim per bulan untuk grafik (ribu ton). */
+export const STOK_BULOG: StokBulogBulan[] = DERET_2026 ?? STOK_BULOG_RESMI
+/** Deret tahun sebelumnya untuk garis pembanding (null bila grafik sudah menampilkan tahun resmi). */
+export const STOK_BULOG_PEMBANDING: { tahun: number; data: StokBulogBulan[] } | null = DERET_2026 ? { tahun: TAHUN_STOK_RESMI, data: STOK_BULOG_RESMI } : null
