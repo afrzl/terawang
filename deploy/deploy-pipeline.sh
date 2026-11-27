@@ -62,8 +62,14 @@ EXTRA="postgres"; grep -q "^TERAWANG_SUMBER_CITRA=gee" pipeline/.env && EXTRA="p
 # 2. Dependensi ingest (api/, Prisma) dan migrasi schema
 #    npm ci hanya bila package-lock.json berubah sejak pemasangan terakhir (npm ci selalu menghapus node_modules).
 LOCK_SHA="$(sha256sum api/package-lock.json | cut -d' ' -f1)"
+#    Kalau masih ada run aktif setelah batas tunggu, npm ci ditunda ke deploy berikutnya: menghapus node_modules di tengah run
+#    membuat langkah ingest gagal "tsx: not found" (run pipeline_penuh e7af81be, 26 Nov 2026).
 if [ "$(cat api/node_modules/.terawang-lock-sha 2>/dev/null)" != "$LOCK_SHA" ]; then
-  ( cd api && npm ci --silent && echo "$LOCK_SHA" > node_modules/.terawang-lock-sha )
+  if [ -n "${AKTIF:-}" ] && [ "${AKTIF:-}" != "?" ] && [ -x api/node_modules/.bin/tsx ]; then
+    echo "PERINGATAN: npm ci ditunda karena run masih berjalan ($AKTIF); jalankan deploy lagi setelah run selesai."
+  else
+    ( cd api && npm ci --silent && echo "$LOCK_SHA" > node_modules/.terawang-lock-sha )
+  fi
 fi
 ( cd api && set -a && . ../pipeline/.env && set +a && npx prisma migrate deploy && npx prisma generate )
 
@@ -98,6 +104,37 @@ run_queue:
       value: "pipeline"
       limit: 1
 YAML
+
+# 3b. Zona waktu sesi db Dagster = UTC. Dagster menulis jam UTC ke kolom "timestamp without time zone" (runs.create_timestamp,
+#     update_timestamp) lalu membacanya sebagai UTC. Postgres server ini ber-zona Asia/Jakarta, jadi tanpa ini jam tersimpan
+#     sebagai jam WIB dan "Created at" di UI maju 7 jam. Saat pertama kali diubah, jam run lama dikoreksi -7 jam
+#     (cadangan di tabel _cadangan_runs_tz_<tanggal>). Daemon sudah dihentikan di langkah 0, jadi tidak ada run baru di tengahnya.
+if grep -q '^DAGSTER_PG_URL=' pipeline/.env; then
+  ( cd pipeline && DAGSTER_HOME="$DAGSTER_HOME" "$VENV/bin/dotenv" -f .env run --no-override -- "$VENV/bin/python" - <<'PY'
+import os, time
+import sqlalchemy as sa
+u = sa.engine.make_url(os.environ["DAGSTER_PG_URL"])
+e = sa.create_engine(u.set(drivername="postgresql+psycopg2") if u.drivername == "postgresql" else u)  # driver yang dipakai dagster-postgres
+with e.begin() as c:
+    db = c.execute(sa.text("select current_database()")).scalar()
+    conf = c.execute(sa.text("select setconfig from pg_db_role_setting s join pg_database d on d.oid = s.setdatabase "
+                             "where d.datname = current_database() and s.setrole = 0")).scalar() or []
+    if any(x.lower() == "timezone=utc" for x in conf):
+        raise SystemExit(0)
+    zona = c.execute(sa.text("show timezone")).scalar()
+    c.execute(sa.text(f'ALTER DATABASE "{db}" SET timezone TO \'UTC\''))
+    if zona.upper() not in ("UTC", "ETC/UTC", "GMT"):
+        cad = "_cadangan_runs_tz_" + time.strftime("%Y%m%d")
+        c.execute(sa.text(f"create table if not exists {cad} as select run_id, create_timestamp, update_timestamp from runs"))
+        # Selisih zona dihitung dari jam server, mis. +7 jam untuk Asia/Jakarta.
+        n = c.execute(sa.text("update runs set create_timestamp = create_timestamp - (now() at time zone current_setting('TimeZone') - now() at time zone 'UTC'), "
+                              "update_timestamp = update_timestamp - (now() at time zone current_setting('TimeZone') - now() at time zone 'UTC')")).rowcount
+        print(f"Zona waktu db {db}: {zona} -> UTC; {n} run lama dikoreksi (cadangan {cad}).")
+    else:
+        print(f"Zona waktu db {db} diset UTC.")
+PY
+  ) || echo "PERINGATAN: zona waktu db Dagster tidak bisa diset ke UTC (perlu hak pemilik database)."
+fi
 
 NODE_BIN="$(dirname "$(command -v npm)")"
 
