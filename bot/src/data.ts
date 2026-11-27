@@ -305,6 +305,57 @@ export async function infoProduksi(w: Wilayah) {
   }
 }
 
+/** Jarak jalan dan waktu tempuh antar dua kab/kota (silver.jarak_antar_wilayah, model rute jalan). */
+export async function jarakWilayah(dari: Wilayah, ke: Wilayah) {
+  const r = await q1<{ jarak_jalan_km: number; waktu_tempuh_jam: number; jarak_garis_lurus_km: number }>(
+    `select round(jarak_jalan_km::numeric, 1)::float8 as jarak_jalan_km, round(waktu_tempuh_jam::numeric, 1)::float8 as waktu_tempuh_jam,
+            round(jarak_garis_lurus_km::numeric, 1)::float8 as jarak_garis_lurus_km
+       from silver.jarak_antar_wilayah where dari_id = $1 and ke_id = $2`,
+    [dari.id, ke.id],
+  )
+  return { dari: labelWilayah(dari), ke: labelWilayah(ke), ...(r ?? { galat: "jarak belum tersedia" }), catatan: "Perkiraan rute mobil tanpa macet." }
+}
+
+/** Peringkat produksi/luas panen BPS tahunan antar kab/kota untuk satu tahun (tahun terbaru yang ada bila tidak diisi). */
+export async function peringkatProduksi(ukuran: "luas_panen_ha" | "produksi_gkg_ton" | "produksi_beras_ton", urutan: "terendah" | "tertinggi", tahun?: number, jumlah = 5) {
+  const kol = ({ luas_panen_ha: "luas_panen_ha", produksi_gkg_ton: "produksi_gkg_ton", produksi_beras_ton: "produksi_beras_ton" } as const)[ukuran] ?? "produksi_gkg_ton"
+  const arah = urutan === "terendah" ? "asc" : "desc"
+  const n = Math.min(Math.max(Math.round(jumlah) || 5, 1), 38)
+  const rows = await q<{ nama: string; wjenis: "KABUPATEN" | "KOTA"; tahun: number; status_angka: string; nilai: number }>(
+    `with t as (select coalesce($2::int, (select max(tahun) from silver.produksi_padi where granularitas = 'TAHUNAN')) as th)
+     select w.nama, w.jenis::text as wjenis, p.tahun, p.status_angka::text as status_angka, round(p.${kol})::int as nilai
+       from silver.produksi_padi p join ref.wilayah w on w.id = p.wilayah_id
+      where p.granularitas = 'TAHUNAN' and p.tahun = (select th from t) and p.${kol} is not null
+      order by p.${kol} ${arah} limit $1`,
+    [n, tahun ?? null],
+  )
+  return { ukuran, tahun: rows[0]?.tahun ?? tahun ?? null, status_angka: rows[0]?.status_angka ?? null,
+    daftar: rows.map(({ nama, wjenis, nilai }) => ({ wilayah: labelWilayah({ nama, jenis: wjenis }), nilai })) }
+}
+
+/** Bulog Jatim: pengadaan per tahun per saluran (ton) dan stok bulanan kanwil terakhir. */
+export async function infoBulog() {
+  const [pengadaan, stok] = await Promise.all([
+    q<{ tahun: number; saluran: string; volume_ton: number }>(
+      `select tahun, saluran::text as saluran, round(sum(volume_kg) / 1000)::int as volume_ton
+         from silver.pengadaan_bulog group by 1, 2 order by 1 desc, 2 limit 20`,
+    ),
+    q<{ tahun: number; bulan: number; persediaan_akhir_ton: number; pemasukan_ton: number; pengeluaran_ton: number }>(
+      `select tahun, bulan, round(sum(persediaan_akhir_kg) / 1000)::int as persediaan_akhir_ton,
+              round(sum(pemasukan_kg) / 1000)::int as pemasukan_ton, round(sum(pengeluaran_kg) / 1000)::int as pengeluaran_ton
+         from silver.stok_bulog_bulanan group by 1, 2 order by 1 desc, 2 desc limit 6`,
+    ),
+  ])
+  const total = new Map<number, number>()
+  for (const p of pengadaan) total.set(p.tahun, (total.get(p.tahun) ?? 0) + p.volume_ton)
+  return {
+    pengadaan_per_tahun: [...total].map(([tahun, volume_ton]) => ({ tahun, volume_ton })),
+    pengadaan_per_saluran: pengadaan,
+    stok_kanwil_bulanan_terakhir: stok,
+    catatan: "Data Bulog Kanwil Jatim; pengadaan hanya tersedia tahunan.",
+  }
+}
+
 /** Ringkasan Jatim: jumlah kab/kota per status gabungan pada tanggal status terakhir. */
 export async function ringkasanJatim() {
   return q<{ status: Tingkat; jumlah: number }>(
