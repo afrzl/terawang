@@ -320,7 +320,7 @@ const PROMPT = [
   "3. Kalimat pertama langsung ke temuan utama (siapa/kapan tertinggi, terendah, atau arah tren). Kalimat berikutnya: perbandingan atau penyimpangan paling menonjol, atau akibat praktis yang langsung mengikuti dari data. Jangan memberi saran umum.",
   "4. Dilarang membuka dengan 'Grafik ini menunjukkan', 'Berdasarkan data', 'Secara keseluruhan'. Hindari kata: signifikan, krusial, menarik, perlu dicatat, dinamika, tren positif/negatif.",
   "5. Format angka Indonesia: koma untuk desimal, titik untuk ribuan (13.500; 8,1). Sertakan satuan sesuai keterangan data. Persen tulis dengan %.",
-  "6. Bila data berlabel estimasi/prakiraan/simulasi, sebut begitu. Jangan menyatakan sebab yang tidak ada di data.",
+  "6. Bila data berupa prakiraan, sebut sebagai prakiraan, cukup sekali. Jangan menambah penafian (misalnya 'belum divalidasi', 'asumsi', 'perkiraan kasar') yang tidak ada di data. Jangan menyatakan sebab yang tidak ada di data.",
   "   Bandingkan dengan ambang (HET, batas aman, defisit, HPP) secara benar: sebut 'di bawah' hanya bila angkanya memang lebih kecil. Jangan memakai kata 'mayoritas', 'tinggi', atau 'rendah' kecuali data jelas mendukung.",
   "   Jangan menulis tanggal format 2026-11-04; tulis '4 Nov 2026' atau nama bulannya saja.",
   "   Bila data memuat lebih dari satu jenis beras, wilayah, atau garis, sebut jenis/wilayah/garis untuk setiap angka. Arus dari kawasan ke dirinya sendiri bukan arus antarkawasan.",

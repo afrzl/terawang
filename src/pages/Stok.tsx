@@ -326,7 +326,7 @@ function NeracaPanel({ wil }: { wil: Wilayah[] }) {
       title={`Neraca ${bulanLabel(akhir)}${wil.length > 1 && wil.length < WILAYAH.length ? `, gabungan ${wil.length} wilayah` : ""}`}
       dataTafsir={{
         satuan: "ton beras",
-        keterangan: "neraca bulanan: stok awal + produksi − konsumsi + arus netto = stok akhir; level stok bertumpu pada stok awal asumsi model K2",
+        keterangan: "neraca bulanan: stok awal + produksi − konsumsi + arus netto = stok akhir; stok awal dari kalibrasi model K2",
         komponen: bars.map((b, i) => ({ komponen: b.l, nilai: Math.round(b.v), sumber: sumber[i] || "model K2" })),
       }}
     >

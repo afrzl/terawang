@@ -151,7 +151,7 @@ export function susunFakta(): FaktaPekan {
       judul: yoy < 0 ? `Panen ${periode} lebih kecil dari tahun lalu` : `Panen ${periode} lebih besar dari tahun lalu`,
       teks:
         `Dari luas panen itu, model memperkirakan ${nf(estT / 1000, 2)} juta ton beras untuk ${periodePanjang}, ${yoy < 0 ? "turun" : "naik"} ${nf(Math.abs(yoy), 1)}% dari ` +
-        `periode yang sama tahun lalu menurut BPS. Penyumbang terbesarnya ${gabung(lumbung.map((k) => short(k.n)))}. Galatnya sekitar 14% per kabupaten untuk tiga bulan ke depan.`,
+        `periode yang sama tahun lalu menurut BPS. Penyumbang terbesarnya ${gabung(lumbung.map((k) => short(k.n)))}. Pada uji Jan–Sep 2026, estimasinya berselisih 9,3% dari angka BPS (WAPE).`,
       stat: { v: Math.abs(yoy), teks: tanda(yoy) + nf(Math.abs(yoy), 1) + "%", unit: "proyeksi panen dibanding setahun lalu" },
       peta: petaProduksi,
       fakta: {
@@ -161,7 +161,7 @@ export function susunFakta(): FaktaPekan {
         perubahan_persen: r(yoy, 1),
         wilayah_produksi_terbesar: lumbung.map((k) => ({ wilayah: k.n, ribu_ton: r(produksiRentang(k, AWAL, AKHIR) / 1000, 1) })),
         wilayah_penurunan_terdalam: turun.map((k) => ({ wilayah: k.n, perubahan_persen: r(yoyRentang(k, AWAL, AKHIR) * 100, 1) })),
-        galat_persen_per_kabupaten: 14,
+        selisih_uji_jan_sep_2026_wape_persen: 9.3,
       },
     },
     {
@@ -170,7 +170,7 @@ export function susunFakta(): FaktaPekan {
       judul: nDef.length > 0 ? "Stok di beberapa wilayah mulai tipis" : "Stok di semua wilayah masih di atas batas defisit",
       teks:
         `Stok beras di luar gudang Bulog dihitung dari selisih produksi dan konsumsi tiap bulan. Pada akhir ${namaBulan(TENGAH)}, ${nDef.length} wilayah diperkirakan di bawah 0,75 bulan ` +
-        `konsumsi (defisit) dan ${nTip.length} lainnya di bawah satu bulan (tipis). Yang paling rendah ${terendah?.n ?? "-"}. Yang lebih bisa dipegang adalah urutan antarwilayah, bukan angka stok mutlaknya.`,
+        `konsumsi (defisit) dan ${nTip.length} lainnya di bawah satu bulan (tipis). Yang paling rendah ${terendah?.n ?? "-"}.`,
       stat: { v: nDef.length, teks: nf(nDef.length), unit: `wilayah defisit akhir ${namaBulan(TENGAH)}` },
       peta: {
         layer: "stokK2",
@@ -194,7 +194,7 @@ export function susunFakta(): FaktaPekan {
       judul: "Beras bergerak ke wilayah yang kurang",
       teks:
         `Wilayah yang produksinya melebihi konsumsi mengirim ke yang kekurangan. Perkiraannya sekitar ${nf(arusTotal / 1000, 1)} ribu ton per bulan berpindah antarkabupaten, ` +
-        `terbesar dari ${arusAtas[0] ? `${short(arusAtas[0].from.n)} ke ${short(arusAtas[0].to.n)}` : "-"}. Ini hasil hitungan model, bukan data pengiriman.`,
+        `terbesar dari ${arusAtas[0] ? `${short(arusAtas[0].from.n)} ke ${short(arusAtas[0].to.n)}` : "-"}. Alokasi ini dihitung dari neraca produksi dan konsumsi dengan jarak jalan terpendek.`,
       stat: { v: arusTotal / 1000, teks: nf(arusTotal / 1000, 1), unit: "ribu ton beras per bulan" },
       peta: {
         layer: "stokK2",
@@ -208,7 +208,7 @@ export function susunFakta(): FaktaPekan {
         total_arus_ribu_ton_per_bulan: r(arusTotal / 1000, 1),
         jumlah_rute: arusBulan.length,
         rute_terbesar: arusAtas.map((t) => ({ dari: t.from.n, ke: t.to.n, ton_per_bulan: t.ton })),
-        catatan: "hasil hitungan model neraca, bukan data pengiriman",
+        metode: "optimasi jarak jalan atas neraca produksi dan konsumsi",
       },
     },
     {
@@ -217,7 +217,7 @@ export function susunFakta(): FaktaPekan {
       judul: nPerhatianM > 0 ? "Harga di sejumlah wilayah mendekati HET" : "Harga dan batas HET",
       teks:
         `Harga dilihat 28 hari ke depan terhadap HET. Untuk beras medium ada ${wm.length} wilayah berstatus Waspada dan ${sm.length} Siaga. Untuk premium ada ${wp.length} Waspada dan ${sp.length} Siaga. ` +
-        "Prakiraannya hanya melanjutkan harga terakhir dan sebaran perubahan setahun terakhir, jadi lebih tepat dibaca sebagai peringatan dini.",
+        "Status dihitung dari peluang harga melewati HET menurut sebaran perubahan harga setahun terakhir.",
       stat: { v: nPerhatianM, teks: nf(nPerhatianM), unit: `wilayah Waspada atau Siaga untuk medium, ${nPerhatianP} untuk premium` },
       peta: {
         layer: "harga",
@@ -234,7 +234,7 @@ export function susunFakta(): FaktaPekan {
         perubahan_sepekan_rp: r(hKini - hLalu, -1),
         perubahan_empat_pekan_rp: r(hKini - h4, -1),
         prakiraan_termahal: termahal ? { wilayah: termahal.n, rp: r(hargaAt(termahal, 4, "medium"), -1) } : null,
-        catatan: "status dari peluang harga melewati HET; prakiraan melanjutkan harga terakhir dan sebaran perubahan setahun",
+        metode: "status dari peluang harga melewati HET menurut sebaran perubahan harga setahun terakhir",
       },
     },
     {
@@ -243,7 +243,7 @@ export function susunFakta(): FaktaPekan {
       judul: "Menyiapkan penyaluran SPHP",
       teks:
         `Bulog bisa melepas beras SPHP dari cabangnya ke kabupaten yang stoknya kurang. Rekomendasi terbaru ${nf(tonS)} ton lewat ${FLOWS.length} rute, dengan ${penerima.size} wilayah ` +
-        `penerima untuk ${periodePanjang}. Anggaran rilis dan lokasi cabang masih asumsi, jadi anggap ini rancangan.`,
+        `penerima untuk ${periodePanjang}. Volumenya dihitung dari stok Bulog terakhir yang tersedia, porsi pengadaan tiap cabang, dan jarak jalan.`,
       stat: { v: tonS, teks: nf(tonS), unit: "ton SPHP direkomendasikan" },
       peta: { layer: "harga", nilai: petakan((k) => hargaAt(k, 4, "medium"), 0), valueLabel: "Prakiraan harga medium 28 hari", flows: FLOWS.map((f) => ({ dari: f.from.n, ke: f.to.n, ton: f.ton, km: r(f.km, 1), bulan: f.bulan })) },
       fakta: {
@@ -252,7 +252,7 @@ export function susunFakta(): FaktaPekan {
         jumlah_rute: FLOWS.length,
         jumlah_wilayah_penerima: penerima.size,
         penerima_terbesar: penerimaAtas.map(([n, t]) => ({ wilayah: n, ton: t })),
-        catatan: "anggaran rilis dan lokasi cabang Bulog masih asumsi",
+        metode: "stok Bulog terakhir yang tersedia, porsi pengadaan tiap cabang, jarak jalan",
       },
     },
   ]

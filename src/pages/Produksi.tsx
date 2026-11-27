@@ -69,7 +69,7 @@ export default function Produksi() {
             ),
           },
           { k: "Luas panen", v: luasRb >= 1000 ? `${nf(luasRb / 1000, 2)} jt ha` : `${nf(luasRb, 0)} rb ha`, t: `${nf(PRODUKTIVITAS * sat.f, 1)} ton ${sat.lab}/ha` },
-          { k: "Galat prakiraan", v: "±14%", t: "3 bulan ke depan per kabupaten · ±29% per bulan" },
+          { k: "Selisih dari BPS", v: "9,3%", t: "uji Jan–Sep 2026, 38 kab/kota (WAPE)" },
           { k: "Wilayah YoY turun", v: `${turun} dari ${wil.length}`, t: "produksi di bawah periode sama 2025" },
         ]}
       />

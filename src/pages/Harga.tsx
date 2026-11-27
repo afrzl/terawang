@@ -560,7 +560,7 @@ function PanelGkpWil() {
         <DataTable rows={baris} columns={kolom} rowKey={(f) => `${f.wilayah}-${f.bulan_target}`} rowName={(f) => `${f.wilayah} ${f.bulan_target}`} pageSize={9} />
         <p style={{ padding: "12px 16px", margin: 0, fontSize: 12, color: "var(--ink-3)", lineHeight: 1.5 }}>
           Per kab/kota: rata-rata harga bulan terakhir dan prakiraan Jawa Timur yang disesuaikan dengan selisih harga kab terhadap rata-rata
-          provinsi 3 bulan terakhir. Harga panel Bapanas.{tanpaGkp(tanpa)} Galat uji mundur seluruh kab/kota (MAPE):{" "}
+          provinsi 3 bulan terakhir. Harga panel Bapanas.{tanpaGkp(tanpa)} MAPE uji mundur seluruh kab/kota:{" "}
           {[1, 2, 3].map((h) => `${h} bln ${mape(h) != null ? nf(mape(h)!, 1) : "–"}%`).join(", ")}.
         </p>
       </Panel>
@@ -651,7 +651,7 @@ function PanelGkpSatu() {
               Rata-rata harga {kab.nama} bulan terakhir dan prakiraan Jawa Timur yang disesuaikan dengan selisih harga {kab.nama} terhadap
               rata-rata provinsi 3 bulan terakhir
               {kab.metode === "rasio_provinsi" ? ` (data ${kab.nama} terakhir ${labelBulan(tglBulan(kab.bulan_data_terakhir))}, jadi hanya bagian provinsi)` : ""}.
-              Harga panel Bapanas, data sampai {labelBulan(tglBulan(bulanAcuan))}. Galat uji mundur seluruh kab/kota (MAPE):{" "}
+              Harga panel Bapanas, data sampai {labelBulan(tglBulan(bulanAcuan))}. MAPE uji mundur seluruh kab/kota:{" "}
             </>
           ) : (
             <>

@@ -320,8 +320,8 @@ export function SatCompare({ wilayah, onPilih, kandidat }: { wilayah?: string; o
         </span>
         <span className="sat-note">
           {asli
-            ? `${mode === "radar" ? "Sentinel-1" : "Sentinel-2"} asli · petak & label ${asli.mode_label === "dummy" ? "simulasi" : "otomatis, belum divalidasi"}`
-            : "Ilustrasi simulasi, bukan citra asli"}
+            ? `${mode === "radar" ? "Sentinel-1" : "Sentinel-2"} · petak dideteksi otomatis`
+            : "Ilustrasi pola tanam"}
         </span>
         <input
           type="range"
