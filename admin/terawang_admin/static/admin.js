@@ -791,7 +791,8 @@ function gambarWa() {
     llm: "Pesan bebas (OpenAI)", llm_cache: "Pesan bebas (cache)", istilah: "Istilah", siaran: "Siaran peringatan" };
   $("#intent-wa").replaceChildren(...(it.length ? it.map((x) => el("div", { class: "br" + (/^(tolak|llm_gagal|galat)/.test(x.intent || "") ? " waspada" : "") },
     el("div", { class: "nm" }, el("div", { class: "id" }, LABEL_INTENT[x.intent] || x.intent || "–")), el("div", { class: "st" }, pillSt(String(x.jumlah), "")),
-    el("div", { class: "wkt" }, relatif(Date.parse(x.terakhir.replace(" ", "T") + "Z") / 1000)))) : [el("p", { class: "kosong" }, "Belum ada balasan 24 jam terakhir.")]));
+    // dibuat_pada disimpan sebagai jam WIB tanpa zona (zona DB Asia/Jakarta)
+    el("div", { class: "wkt" }, relatif(Date.parse(x.terakhir.replace(" ", "T") + "+07:00") / 1000)))) : [el("p", { class: "kosong" }, "Belum ada balasan 24 jam terakhir.")]));
   $("#info-kontak-wa").textContent = b.kontak ? `${b.kontak.n} kontak · ${b.kontak.langganan} berlangganan` : "";
   const tw = $("#titik-wa");
   if (tw) { const bad = langkahWa().some((x) => x.st === "gagal"); tw.className = "titik " + (bad ? "gagal" : stK === "ok" ? "ok" : "waspada"); }
