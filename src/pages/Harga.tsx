@@ -2,29 +2,18 @@ import { GKP, K3A } from "@/lib/api"
 import { TrendingUp } from "lucide-react"
 import { useState } from "react"
 import { LineChart } from "@/components/charts/LineChart"
-import { MapLegend, PetaJatim } from "@/components/charts/PetaJatim"
 import { PriceHeatmap } from "@/components/charts/PriceHeatmap"
 import { PriceRidgeline } from "@/components/charts/PriceRidgeline"
 import { DataTable, type Column } from "@/components/ui/DataTable"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
-import { HET, HET_PREMIUM, HIST, SIAGA_KALI, STATUS, WILAYAH, fcDates, fcHarga, flowsBulan, histDates, pNowHarga, peluangHet, seriHarga, statusDari, type Flow } from "@/lib/data"
+import { HET, HET_PREMIUM, HIST, SIAGA_KALI, STATUS, WILAYAH, fcDates, fcHarga, histDates, pNowHarga, peluangHet, seriHarga, statusDari } from "@/lib/data"
 import { dfmt, nf, rp, sum } from "@/lib/format"
-import { bulanLabel, useFilter, useWilayah } from "@/lib/filter"
-import { covBulan, statusHargaAt, type Komoditas } from "@/lib/petaLayers"
-import { useSesi } from "@/lib/sesi"
-import { Terkunci } from "@/components/ui/Terkunci"
+import { useFilter, useWilayah } from "@/lib/filter"
+import { statusHargaAt, type Komoditas } from "@/lib/petaLayers"
 import { CatatanGabungan, KpiPerWilayah, LegendaWilayah, MAKS_PISAH, usePerWilayah } from "@/lib/perWilayah"
 import { short } from "@/lib/format"
 
-
-const flowColumns: Column<Flow>[] = [
-  { head: "Bulan", cell: (f) => bulanLabel(f.bulan), sort: (f) => f.bulan },
-  { head: "Tujuan", cell: (f) => <b>{f.to.n}</b>, sort: (f) => f.to.n },
-  { head: "Asal (cabang Bulog)", cell: (f) => f.from.n, sort: (f) => f.from.n },
-  { head: "Volume", right: true, num: true, cell: (f) => `${nf(f.ton)} ton`, sort: (f) => f.ton },
-  { head: "Jarak tempuh", right: true, num: true, cell: (f) => (f.km ? `${nf(f.km)} km` : "lokal"), sort: (f) => f.km },
-]
 
 /** Kartu hasil uji K3a: AUC peluang melewati HET pada backtest (kab yang saat itu masih di bawah HET), beras medium 28 hari; dari parameter model_run. */
 function ujiHet() {
@@ -41,28 +30,10 @@ function ujiHet() {
   }
 }
 
-const KET_SPHP =
-  "Rekomendasi penyaluran beras SPHP (model K3b) dari cabang Bulog ke kab/kota tujuan; volume dalam ton; km = jarak tempuh, 0 = disalurkan di wilayah cabang sendiri; warna peta = cakupan stok non-Bulog (bulan konsumsi) akhir periode, < 0,75 defisit, 0,75–1 tipis, 1–1,5 cukup, ≥ 1,5 surplus"
-
-/** Data interpretasi peta SPHP: rute persis seperti di peta, total per tujuan, dan cakupan stok wilayah terpilih. */
-function dataSphp(flows: Flow[], wil: { n: string }[], akhir: number) {
-  const perTujuan = new Map<string, number>()
-  for (const f of flows) perTujuan.set(f.to.n, (perTujuan.get(f.to.n) ?? 0) + f.ton)
-  return {
-    total_ton: Math.round(sum(flows, (f) => f.ton)),
-    jumlah_rute: flows.length,
-    rute: flows.map((f) => ({ bulan: bulanLabel(f.bulan), tujuan: f.to.n, asal_cabang_bulog: f.from.n, ton: Math.round(f.ton), km: Math.round(f.km) })),
-    total_per_tujuan: [...perTujuan].sort((a, b) => b[1] - a[1]).map(([tujuan, ton]) => ({ tujuan, ton: Math.round(ton) })),
-    cakupan_stok_bulan: WILAYAH.filter((k) => wil.some((w) => w.n === k.n)).map((k) => ({ wilayah: k.n, cakupan: Math.round(covBulan(k, akhir) * 100) / 100 })),
-  }
-}
-
 export default function Harga() {
   const wil = useWilayah()
-  const { mulai, akhir, jenisHarga } = useFilter()
-  const flows = flowsBulan(mulai, akhir).filter((f) => wil.includes(f.to))
+  const { jenisHarga } = useFilter()
   const jenis = jenisHarga
-  const sphp = useSesi().boleh("dasbor_sphp")
   const ganda = jenis.length > 1
   const popT = sum(wil, (k) => k.pop) || 1
   const ringkas = (kom: Komoditas) => ({
@@ -72,7 +43,6 @@ export default function Harga() {
     nW: wil.filter((k) => statusHargaAt(k, 4, kom) === "waspada").length,
   })
   const rk = jenis.map(ringkas)
-  const periode = mulai === akhir ? bulanLabel(mulai) : `${bulanLabel(mulai)} sampai ${bulanLabel(akhir)}`
   // Satu jenis: dua kotak biasa. Dua jenis: tiap kotak menumpuk nilai medium dan premium, supaya kotak tidak berulang.
   const baris = (f: (r: (typeof rk)[number]) => React.ReactNode) => (
     <div className="kv2">
@@ -113,16 +83,8 @@ export default function Harga() {
 
   return (
     <section className="view">
-      <ViewHeader icon={TrendingUp} title="Harga & SPHP" />
-      <KpiStrip
-        items={[
-          ...kpiHarga,
-          sphp
-            ? { k: "Rekomendasi SPHP", v: `${nf(sum(flows, (f) => f.ton))} ton`, t: `${flows.length} rute, ${periode}` }
-            : { k: "Rekomendasi SPHP", v: "Terbatas", t: "untuk akun dinas dan perusahaan" },
-          ujiHet(),
-        ]}
-      />
+      <ViewHeader icon={TrendingUp} title="Harga" />
+      <KpiStrip items={[...kpiHarga, ujiHet()]} />
       <div className="grid-2">
         <PricePanel jenis={jenis} />
         <Panel title="Sebaran harga 38 wilayah per pekan">
@@ -132,55 +94,6 @@ export default function Harga() {
           {ganda && <LegendaJenis />}
         </Panel>
       </div>
-      <Panel
-        title="Peta rekomendasi SPHP"
-        note={sphp && flows.length ? `${nf(sum(flows, (f) => f.ton))} ton, ${flows.length} rute, ${periode}` : undefined}
-        tafsir={sphp ? KET_SPHP : false}
-        dataTafsir={sphp ? dataSphp(flows, wil, akhir) : undefined}
-      >
-        <Terkunci judul="Rekomendasi penyaluran SPHP">
-          <div className="map">
-            <PetaJatim layer="stokK2" getValue={(k) => covBulan(k, akhir)} valueLabel="Cakupan stok" flows flowList={flows} muted labels={false} />
-          </div>
-          <MapLegend
-            layer="stokK2"
-            title={`Cakupan stok non-Bulog, akhir ${bulanLabel(akhir)}`}
-            extra={
-              <>
-                <span>
-                  <svg width="22" height="10" style={{ verticalAlign: -1, marginRight: 5 }}>
-                    <line x1="1" y1="5" x2="20" y2="5" stroke="var(--accent)" strokeWidth="2.5" />
-                  </svg>
-                  rute antar kabupaten, tebal = volume
-                </span>
-                <span>
-                  <svg width="16" height="16" style={{ verticalAlign: -4, marginRight: 5 }}>
-                    <circle cx="8" cy="8" r="6.5" fill="var(--panel)" fillOpacity="0.5" stroke="var(--accent)" strokeWidth="2.6" />
-                  </svg>
-                  kiriman ke wilayah sendiri (cabang di wilayah itu), besar = volume
-                </span>
-                <span>
-                  <svg width="18" height="18" viewBox="0 0 18 18" style={{ verticalAlign: -5, marginRight: 5 }}>
-                    <circle cx="9" cy="9" r="8" fill="var(--accent)" stroke="#fff" strokeWidth="1" />
-                    <g transform="translate(4.5,4.5) scale(0.375)" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35Z" />
-                      <path d="M6 18h12" />
-                      <path d="M6 14h12" />
-                      <rect width="12" height="12" x="6" y="10" />
-                    </g>
-                  </svg>
-                  cabang Bulog
-                </span>
-              </>
-            }
-          />
-        </Terkunci>
-      </Panel>
-      <Panel title="Rute rekomendasi SPHP">
-        <Terkunci judul="Rute rekomendasi SPHP">
-          <DataTable rows={flows} columns={flowColumns} rowKey={(f, i) => `${f.bulan}-${f.to.n}-${f.from.n}-${i}`} rowName={(f) => f.to.n} pageSize={10} />
-        </Terkunci>
-      </Panel>
       {GKP && <PanelGkp />}
       <PanelPeta jenis={jenis} />
     </section>

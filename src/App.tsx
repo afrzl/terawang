@@ -11,6 +11,7 @@ import Produksi from "@/pages/Produksi"
 import Stok from "@/pages/Stok"
 import ArusBeras from "@/pages/ArusBeras"
 import Harga from "@/pages/Harga"
+import Sphp from "@/pages/Sphp"
 import Whatsapp from "@/pages/Whatsapp"
 import Cerita from "@/pages/Cerita"
 import Masuk from "@/pages/Masuk"
@@ -36,6 +37,7 @@ export default function App() {
                 <Route path="/stok" element={<PerluHak hak="dasbor_stok"><Stok /></PerluHak>} />
                 <Route path="/arus" element={<PerluHak hak="dasbor_arus"><ArusBeras /></PerluHak>} />
                 <Route path="/harga" element={<PerluHak hak="dasbor_harga"><Harga /></PerluHak>} />
+                <Route path="/sphp" element={<PerluHak hak="dasbor_sphp"><Sphp /></PerluHak>} />
                 <Route path="/whatsapp" element={<PerluHak hak="dasbor_whatsapp"><Whatsapp /></PerluHak>} />
                 <Route path="/cerita" element={<PerluHak hak="dasbor_cerita"><Cerita /></PerluHak>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
