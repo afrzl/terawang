@@ -108,7 +108,7 @@ export const BANTUAN = [
   "• *PERINGATAN* · wilayah waspada/siaga",
   "• *LANGGANAN Blitar* · peringatan otomatis",
   "• *GRAFIK Jember* · grafik harga beras sebulan (atau _GRAFIK Jember 3 bulan_)",
-  "• *LAPOR* · kirim harga di pasarmu",
+  "• *LAPOR* · kirim harga di pasarmu (boleh pakai bahasa sendiri, sebutin kamu penjual atau pembeli)",
   "• *BERHENTI* · berhenti berlangganan",
   "",
   "Bisa juga bertanya biasa, misalnya _beras di Surabaya naik nggak bulan depan?_",
