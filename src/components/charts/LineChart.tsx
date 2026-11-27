@@ -1,4 +1,5 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useMedia } from "@/hooks/useMedia"
 import { clamp, dfmt, scale, ticks } from "@/lib/format"
 import { useTooltip } from "@/lib/tooltip"
 import { bul, useDataTafsir } from "@/lib/tafsir"
@@ -56,17 +57,30 @@ interface LineChartProps {
   sebarLabel?: boolean
 }
 
-const M = { l: 58, r: 96, t: 14, b: 28 }
+const M_DESKTOP = { l: 58, r: 96, t: 14, b: 28 }
+// HP: lebar grafik mengikuti layar sehingga teks tetap terbaca; margin kiri/kanan dipersempit.
+const M_HP = { l: 46, r: 78, t: 14, b: 28 }
 
-export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], points = [], splitAt, splitLabel = "prakiraan", W = 720, H = 280, tip, xFmt = dfmt, sebarLabel = false }: LineChartProps) {
+export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], points = [], splitAt, splitLabel = "prakiraan", W: lebarAsal = 720, H = 280, tip, xFmt = dfmt, sebarLabel = false }: LineChartProps) {
   const { show, hide } = useTooltip()
   useDataTafsir("garis", dataGaris(xDates, series, bands, refs, splitAt, splitLabel, xFmt))
   const svgRef = useRef<SVGSVGElement>(null)
   const [hover, setHover] = useState<number | null>(null)
+  const hp = useMedia("(max-width: 640px)")
+  const [lebarWadah, setLebarWadah] = useState(0)
+  useEffect(() => {
+    const el = svgRef.current?.parentElement
+    if (!hp || !el || typeof ResizeObserver === "undefined") return
+    const ro = new ResizeObserver((es) => setLebarWadah(Math.round(es[0].contentRect.width)))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [hp])
+  const W = hp && lebarWadah ? Math.min(lebarAsal, Math.max(lebarWadah, 300)) : lebarAsal
+  const M = hp ? M_HP : M_DESKTOP
   const n = xDates.length
   const x = scale(0, n - 1, M.l, W - M.r)
   const y = scale(yDom[0], yDom[1], H - M.b, M.t)
-  const step = Math.ceil(n / 7)
+  const step = Math.ceil(n / (hp ? Math.max(3, Math.min(7, Math.floor((W - M.l - M.r) / 64))) : 7))
 
   const onMove = (e: React.MouseEvent) => {
     const svg = svgRef.current
@@ -128,7 +142,7 @@ export function LineChart({ xDates, yDom, yFmt, series, bands = [], refs = [], p
         </>
       )}
       {xDates.map((d, i) =>
-        i % step === 0 || i === n - 1 ? (
+        (i % step === 0 && (!hp || n - 1 - i >= step * 0.6)) || i === n - 1 ? (
           <text key={i} x={x(i)} y={H - M.b + 16} textAnchor="middle">
             {xFmt(d)}
           </text>

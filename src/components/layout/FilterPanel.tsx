@@ -1,4 +1,6 @@
-import { ListFilter, PanelLeftClose, RotateCcw } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { ListFilter, PanelLeftClose, RotateCcw, X } from "lucide-react"
+import { MQ_SEMPIT, useMedia } from "@/hooks/useMedia"
 import { BulanPicker } from "@/components/ui/BulanPicker"
 import { MultiSelect } from "@/components/ui/MultiSelect"
 import { WilayahSelect } from "@/components/ui/WilayahSelect"
@@ -161,38 +163,43 @@ function PetaSet({ lapisan }: { lapisan: boolean }) {
   )
 }
 
-/** Filter global di sisi kiri. Berlaku untuk semua tampilan pada halaman yang sedang dibuka. */
+/** Filter global di sisi kiri. Berlaku untuk semua tampilan pada halaman yang sedang dibuka.
+ *  Di HP dan tablet tegak (< 900 px) panel menjadi laci yang dibuka dari bilah Filter di atas konten. */
 export function FilterPanel() {
   const f = useFilter()
   const { pathname } = useLocation()
   const { tersedia: t } = f
+  const sempit = useMedia(MQ_SEMPIT)
+  // Laci terbuka hanya untuk halaman tempat ia dibuka; pindah halaman atau melebar ke desktop otomatis menutupnya.
+  const [laciDi, setLaciDi] = useState<string | null>(null)
+  const laci = sempit && laciDi === pathname
+  const setLaci = (buka: boolean) => setLaciDi(buka ? pathname : null)
+  const laciRef = useRef<HTMLElement>(null)
+  const pemicuRef = useRef<HTMLButtonElement>(null)
+
+  // Laci terbuka: halaman di belakang tidak ikut bergulir, Esc menutup, fokus pindah ke laci.
+  useEffect(() => {
+    if (!laci) return
+    const html = document.documentElement
+    const lama = html.style.overflow
+    html.style.overflow = "hidden"
+    laciRef.current?.focus()
+    const pemicu = pemicuRef.current
+    const esc = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape" && !document.querySelector(".laci [aria-expanded=\"true\"]")) setLaciDi(null)
+    }
+    document.addEventListener("keydown", esc)
+    return () => {
+      html.style.overflow = lama
+      document.removeEventListener("keydown", esc)
+      pemicu?.focus()
+    }
+  }, [laci])
+
   // Halaman tanpa filter yang berlaku (Alur, Kanal warga) tidak menampilkan panel.
   if (!t.waktu && !t.wilayah && !t.hs && !t.ss) return null
 
-  if (f.panel === "tutup") {
-    return (
-      <aside className="fp rail" aria-label="Filter">
-        <button type="button" className="fp-rail-btn" onClick={() => f.setPanel("buka")} aria-label="Buka filter" title="Buka filter">
-          <ListFilter size={15} />
-          {f.aktif > 0 && <span className="fp-badge">{f.aktif}</span>}
-        </button>
-      </aside>
-    )
-  }
-
-  return (
-    <aside className="fp open" aria-label="Filter">
-      <div className="fp-head">
-        <ListFilter size={15} />
-        <b>Filter</b>
-        <span className="fp-count">
-          {f.W.length}/{WILAYAH.length}
-        </span>
-        <button type="button" className="fp-ib" onClick={() => f.setPanel("tutup")} aria-label="Tutup filter" title="Tutup filter">
-          <PanelLeftClose size={16} />
-        </button>
-      </div>
-
+  const isi = (
       <div className="fp-scroll">
       {t.waktu && <Waktu />}
 
@@ -264,12 +271,80 @@ export function FilterPanel() {
 
       </div>
 
-      <div className="fp-foot">
-        <button type="button" className="fp-reset" onClick={f.reset} disabled={f.aktif === 0 && f.bulan === BULAN_KINI && !f.rentang}>
-          <RotateCcw size={13} />
-          Atur ulang filter
+  )
+  const reset = (
+    <button type="button" className="fp-reset" onClick={f.reset} disabled={f.aktif === 0 && f.bulan === BULAN_KINI && !f.rentang}>
+      <RotateCcw size={13} />
+      Atur ulang filter
+    </button>
+  )
+
+  if (sempit) {
+    const ringkas = [t.waktu && (f.rentang ? `${bulanLabel(f.bulan)} – ${bulanLabel(f.bulan2)}` : bulanLabel(f.bulan)), t.wilayah && `${f.W.length}/${WILAYAH.length} wilayah`].filter(Boolean).join(" · ")
+    return (
+      <>
+        <div className="fp-bar">
+          <button type="button" ref={pemicuRef} className="fp-bar-btn" onClick={() => setLaci(true)} aria-haspopup="dialog" aria-expanded={laci}>
+            <ListFilter size={15} />
+            Filter
+            {f.aktif > 0 && <span className="fp-badge">{f.aktif}</span>}
+          </button>
+          <span className="fp-bar-sum">{ringkas}</span>
+        </div>
+        {laci && (
+          <>
+            <div className="laci-bg" onClick={() => setLaci(false)} aria-hidden="true" />
+            <aside className="fp open laci" role="dialog" aria-modal="true" aria-label="Filter" ref={laciRef} tabIndex={-1}>
+              <div className="fp-head">
+                <ListFilter size={15} />
+                <b>Filter</b>
+                <span className="fp-count">
+                  {f.W.length}/{WILAYAH.length}
+                </span>
+                <button type="button" className="fp-ib" onClick={() => setLaci(false)} aria-label="Tutup filter" title="Tutup filter">
+                  <X size={18} />
+                </button>
+              </div>
+              {isi}
+              <div className="fp-foot laci-foot">
+                {reset}
+                <button type="button" className="laci-ok" onClick={() => setLaci(false)}>
+                  Lihat hasil
+                </button>
+              </div>
+            </aside>
+          </>
+        )}
+      </>
+    )
+  }
+
+  if (f.panel === "tutup") {
+    return (
+      <aside className="fp rail" aria-label="Filter">
+        <button type="button" className="fp-rail-btn" onClick={() => f.setPanel("buka")} aria-label="Buka filter" title="Buka filter">
+          <ListFilter size={15} />
+          {f.aktif > 0 && <span className="fp-badge">{f.aktif}</span>}
+        </button>
+      </aside>
+    )
+  }
+
+  return (
+    <aside className="fp open" aria-label="Filter">
+      <div className="fp-head">
+        <ListFilter size={15} />
+        <b>Filter</b>
+        <span className="fp-count">
+          {f.W.length}/{WILAYAH.length}
+        </span>
+        <button type="button" className="fp-ib" onClick={() => f.setPanel("tutup")} aria-label="Tutup filter" title="Tutup filter">
+          <PanelLeftClose size={16} />
         </button>
       </div>
+
+      {isi}
+      <div className="fp-foot">{reset}</div>
     </aside>
   )
 }

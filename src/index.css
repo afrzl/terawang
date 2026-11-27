@@ -1006,3 +1006,105 @@ main.full{flex:1;min-height:0;position:relative}
 @media (max-width:899px){.kop .wrap{column-gap:12px}}
 @media (max-width:440px){.brand{gap:9px}.brand .logo{width:34px;height:34px;border-radius:10px}.brand .logo svg{width:24px;height:24px}.brand h1{font-size:25px}.kop .meta{gap:6px}}
 @media (max-width:374px){.akun-nama{display:none}.akun-btn{padding-right:6px}}
+
+/* ===== Responsif HP & tablet ===== */
+/* Bilah filter + laci (HP, tablet tegak) */
+.fp-bar{display:none}
+@media (max-width:899px){
+  .fp-bar{position:sticky;top:var(--kop-h,102px);z-index:15;display:flex;align-items:center;gap:10px;min-width:0;padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--rule)}
+  .fp-bar-btn{flex:none;display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border:1px solid var(--rule);border-radius:999px;background:var(--panel-2);color:var(--ink);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+  .fp-bar-btn:hover{border-color:var(--ink-3)}
+  .fp-bar-btn .fp-badge{border-radius:999px}
+  .fp-bar-sum{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:500 11.5px var(--f-mono);color:var(--ink-3)}
+  .laci-bg{position:fixed;inset:0;z-index:60;background:rgba(8,14,11,.48);animation:laci-bg .18s ease-out}
+  .fp.laci{position:fixed;top:0;bottom:0;left:0;z-index:61;width:min(360px,90vw);height:100dvh;max-height:none;border-right:1px solid var(--rule);border-bottom:0;box-shadow:12px 0 40px -12px rgba(0,0,0,.45);animation:laci-in .22s cubic-bezier(.2,.8,.2,1);outline:none;padding-top:env(safe-area-inset-top,0px)}
+  .fp.laci .fp-head{padding:12px 8px 12px 16px}
+  .fp.laci .fp-ib{width:40px;height:40px}
+  .fp.laci .fp-body{max-height:none}
+  .laci-foot{display:flex;gap:8px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+  .laci-foot .fp-reset{flex:1;min-height:42px}
+  .laci-ok{flex:1;min-height:42px;border:0;border-radius:3px;background:var(--accent);color:var(--onaccent);font:inherit;font-size:13px;font-weight:650;cursor:pointer}
+  .fp.laci .picker-btn,.fp.laci .ms-btn{min-height:40px}
+}
+@keyframes laci-in{from{transform:translateX(-100%)}to{transform:none}}
+@keyframes laci-bg{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.fp.laci,.laci-bg{animation:none}}
+
+/* Kop di HP: logo tidak tertimpa tombol tema/akun, nama akun dipotong bila sempit */
+@media (max-width:899px){
+  .kop .wrap{grid-template-columns:auto minmax(0,1fr)}
+  .kop .meta{flex-wrap:nowrap;justify-content:flex-end;min-width:0}
+  .kop .meta .akun{min-width:0}
+  .kop .meta .akun-btn{max-width:100%}
+  .kop .meta .icon-btn{flex:none}
+  .kop nav.tabs a{padding:0 13px}
+  .kop nav.tabs{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
+  .story-sticky{top:calc(var(--kop-h,102px) + 4px) !important}
+}
+@media (max-width:430px){.akun-nama{max-width:96px}}
+@media (max-width:359px){.brand h1{font-size:22px}}
+/* Tablet mendatar (900–1180 px): menu muat tanpa terpotong */
+@media (min-width:900px) and (max-width:1180px){
+  .kop .wrap{gap:0 12px}
+  .brand h1{font-size:25px}
+  .brand .logo{width:34px;height:34px}
+  .kop nav.tabs a{padding:0 9px;font-size:13px}
+  .kop .akun-nama{display:none}
+  .kop .akun-btn{padding-right:6px}
+}
+
+/* Peta Ringkasan di HP/tablet tegak: peta di atas, angka utama, penggeser waktu, lalu daftar perhatian di bawahnya */
+@media (max-width:899px){
+  .scroll.full{overflow:visible;display:block}
+  main.full{height:auto;min-height:0}
+  .mapview{position:static;display:flex;flex-direction:column;gap:12px;padding:12px 12px 92px}
+  .mapview > .pmap{position:relative;inset:auto;order:1;height:clamp(340px,50svh,560px);margin-inline:-12px}
+  .pmap:not(.emb) .mtools button:disabled{display:none}
+  .mapview .wk-ticks{overflow:hidden}
+  .mapview .pmap-box{height:auto}
+  .pmap:not(.emb) .mdim{right:10px;top:10px}
+  .pmap:not(.emb) .mtools{right:10px;top:54px}
+  .pmap:not(.emb) .mdim button{padding:7px 11px}
+  .pmap:not(.emb) .pmap-leg{right:10px}
+  .mapview .fl-top{position:static;order:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));pointer-events:auto}
+  .mapview .fl-kpi{min-width:0;padding:7px 9px}
+  .mapview .fl-kpi b{font-size:15px;overflow-wrap:anywhere}
+  .mapview .fl-kpi b small{display:block;margin-top:1px}
+  .mapview .fl-kpi>span:last-child{font-size:11px}
+  .mapview .fl-bottom{position:static;order:2;width:auto;max-height:none;overflow:hidden}
+  .mapview .fl-right{position:static;order:3;display:block;width:auto;overflow:visible;scroll-margin-top:calc(var(--kop-h,102px) + 64px)}
+  .mapview .fl-right .panel{box-shadow:none}
+}
+@media (max-width:420px){
+  .mapview .fl-kpi .eyebrow{font-size:10px}
+  .mapview .fl-kpi b{font-size:14px}
+}
+/* Tablet mendatar: angka utama pindah ke kiri tombol peta agar tidak tertutup tombol 2D/3D */
+.mapview{container-type:inline-size}
+@container (max-width:1180px){
+  .fl-top{top:58px;right:398px;justify-content:flex-start}
+  .fl-kpi{flex:1 1 0;min-width:0;padding:7px 10px}
+  .fl-kpi b{font-size:15px}
+}
+@container (max-width:880px){
+  .fl-top{flex-wrap:wrap}
+  .fl-kpi b small{display:block}
+}
+
+/* Grafik lebar di HP: digeser ke samping (bukan diperkecil) agar teks tetap terbaca */
+@media (max-width:640px){
+  .pb.chart:has(> svg.heat),.pb.chart:has(> svg.sankey),.pb.chart:has(> svg.tmap),
+  .pb.chart:has(> svg[aria-label^="Kalender panen"]),.pb.chart:has(> svg[aria-label^="Stok beras Bulog"]){overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin}
+  .chart svg.heat{min-width:820px}
+  .chart svg.sankey{min-width:700px}
+  .chart svg.tmap{min-width:600px}
+  .chart svg[aria-label^="Kalender panen"]{min-width:620px}
+  .chart svg[aria-label^="Stok beras Bulog"]{min-width:560px}
+}
+@media (max-width:420px){
+  .kpi{padding:11px 12px}
+  .kv2>div{gap:6px}
+  .kv2 b{font-size:17px}
+}
+/* Tablet mendatar: grafik berpasangan ditumpuk satu kolom agar teks grafik tidak terlalu kecil */
+@media (max-width:1180px){.grid-2{grid-template-columns:minmax(0,1fr)}}

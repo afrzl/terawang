@@ -207,6 +207,12 @@ interface PetaInteraktifProps {
 }
 
 /** Peta 38 kabupaten/kota yang bisa digeser dan di-zoom (MapLibre), dengan basemap jalan/satelit dan lapisan citra GEE. */
+/** Ruang tepi saat peta penuh menyesuaikan seluruh Jatim: desktop memberi tempat panel mengambang; HP/tablet tegak tidak, karena panel ada di bawah peta. */
+function padPenuh(kiri: number) {
+  if (window.matchMedia?.("(max-width: 899px)").matches) return { top: 50, bottom: 12, left: 8, right: 8 }
+  return { top: 80, bottom: 150, left: kiri, right: 360 }
+}
+
 export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, embedded, onPick, fokus = true }: PetaInteraktifProps) {
   const onPickRef = useRef(onPick)
   onPickRef.current = onPick
@@ -275,6 +281,12 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
     map.on("rotate", () => setBearing(map.getBearing()))
     map.addControl(new ScaleControl({ unit: "metric" }), "bottom-left")
     map.on("load", () => {
+      // HP/tablet tegak: sesuaikan ulang ke seluruh Jatim setelah ukuran kotak peta final, dan ciutkan atribusi agar tidak menutupi peta.
+      if (!embedded && window.matchMedia?.("(max-width: 899px)").matches) {
+        map.resize()
+        map.fitBounds(JATIM_BOUNDS, { padding: padPenuh(20), duration: 0 })
+        box.current?.querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show")
+      }
       map.addSource("kab", { type: "geojson", data: { type: "FeatureCollection", features: [] } })
       map.addLayer({ id: "kab-fill", type: "fill", source: "kab", paint: { "fill-color": ["get", "fill"], "fill-opacity": 0.7 } })
       map.addSource("kab3d", { type: "geojson", data: { type: "FeatureCollection", features: [] } })
@@ -589,7 +601,7 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
   const fitFilter = (map: MlMap) => {
     const semua = W.length === kab.features.length || W.length === 0
     if (semua) {
-      map.fitBounds(JATIM_BOUNDS, { padding: embedded ? 12 : { top: 80, bottom: 150, left: 20, right: 360 }, duration: 700 })
+      map.fitBounds(JATIM_BOUNDS, { padding: embedded ? 12 : padPenuh(20), duration: 700 })
       return
     }
     const ada = new Set(W.map((k) => k.n))
@@ -600,7 +612,7 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
       w = Math.min(w, fw); e = Math.max(e, fe); s = Math.min(s, fs); n = Math.max(n, fn)
     }
     if (e < w) return
-    map.fitBounds([[w, s], [e, n]], { padding: embedded ? 30 : { top: 80, bottom: 150, left: 30, right: 360 }, maxZoom: 10.5, duration: 800 })
+    map.fitBounds([[w, s], [e, n]], { padding: embedded ? 30 : padPenuh(30), maxZoom: 10.5, duration: 800 })
   }
   const firstFit = useRef(true)
   useEffect(() => {
@@ -1007,7 +1019,7 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, citraMode, ck?.folder])
 
-  const reset = () => mapRef.current?.fitBounds(JATIM_BOUNDS, { padding: embedded ? 12 : { top: 80, bottom: 150, left: 20, right: 360 }, bearing: 0, pitch: tiga ? PITCH_3D : 0, duration: 700 })
+  const reset = () => mapRef.current?.fitBounds(JATIM_BOUNDS, { padding: embedded ? 12 : padPenuh(20), bearing: 0, pitch: tiga ? PITCH_3D : 0, duration: 700 })
   const ovNow = overlays.find((o) => o.id === ov)
 
   return (
