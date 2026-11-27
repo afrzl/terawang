@@ -111,7 +111,7 @@ export default function Stok() {
             <BulogStok />
           </div>
         </Panel>
-        <Panel title="Pengadaan per Kantor Cabang Bulog" note="stok per cabang tidak dipublikasikan">
+        <Panel title="Pengadaan dan Stok per Kantor Cabang Bulog" note="stok Nov 2026: proksi dari berita dan taksiran">
           <BulogCabang />
         </Panel>
       </div>

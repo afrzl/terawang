@@ -43,7 +43,7 @@ export const PENGADAAN_CABANG_2025: { cabang: string; ton: number }[] = [
 
 /* Data yang dipakai dasbor: dari database (silver.stok_bulog_bulanan, silver.pengadaan_bulog) lewat /api/bulog bila API tersambung,
    selain itu salinan 2025 di atas. Hanya data asli: tidak ada ekstrapolasi tahun berjalan. Stok per kantor cabang tidak dipublikasikan;
-   yang ada per cabang hanya pengadaan. Data tahun baru masuk lewat unggahan manual atau konektor Bulog di panel admin. */
+   yang ada per cabang hanya pengadaan, ditambah STOK_CABANG_PROKSI (berita + taksiran, berlabel) di bawah. Data tahun baru masuk lewat unggahan manual atau konektor Bulog di panel admin. */
 
 const tahunStok = BULOG?.stok.length ? Math.max(...BULOG.stok.map((r) => r.tahun)) : 2025
 /** Tahun terakhir yang punya data stok Bulog bulanan. */
@@ -62,3 +62,32 @@ export const PENGADAAN_CABANG: { cabang: string; ton: number; tonLalu: number | 
       .filter((r) => r.tahun === tahunPeng)
       .map((r) => ({ cabang: r.cabang, ton: r.ton, tonLalu: BULOG!.pengadaan.find((x) => x.cabang === r.cabang && x.tahun === tahunPeng - 1)?.ton ?? null }))
   : PENGADAAN_CABANG_2025.map((c) => ({ ...c, tonLalu: null }))
+
+/** Stok beras Bulog per kantor cabang, Nov 2026 (ribu ton). PROKSI, bukan publikasi resmi: Bulog tidak menerbitkan stok per cabang.
+ *  "berita" = pernyataan pimpinan cabang di media (tanggal posisi dan tautan disertakan); "taksiran" = porsi pengadaan 2025 x rasio
+ *  (jumlah stok berita / porsi pengadaan cabang-cabang itu). Sumber: scripts/bulog/proksi_stok_cabang.py,
+ *  data/bulog/stok_beras/kantor_cabang/proksi/bulog_jatim_stok_beras_kantorcabang_proksi_2026.csv. Dipakai juga oleh K3b (SPHP). */
+export interface StokCabangProksi {
+  cabang: string
+  ton: number
+  jenis: "berita" | "taksiran"
+  tanggal?: string
+  url?: string
+}
+export const STOK_CABANG_PROKSI: StokCabangProksi[] = [
+  { cabang: "Surabaya Utara", ton: 63.4, jenis: "taksiran" },
+  { cabang: "Surabaya Selatan", ton: 89.6, jenis: "taksiran" },
+  { cabang: "Bojonegoro", ton: 72.2, jenis: "taksiran" },
+  { cabang: "Madiun", ton: 107.0, jenis: "berita", tanggal: "2026-11-16", url: "https://jatim.antaranews.com/berita/1119935/bulog-madiun-pastikan-stok-107-ribu-ton-beras-aman-hingga-lebaran-2027" },
+  { cabang: "Kediri", ton: 75.4, jenis: "taksiran" },
+  { cabang: "Bondowoso", ton: 64.2, jenis: "taksiran" },
+  { cabang: "Malang", ton: 81.0, jenis: "berita", tanggal: "2026-11-24", url: "https://surabaya.bisnis.com/read/20261124/532/2024068/jelang-nataru-bulog-malang-jamin-stok-beras-aman" },
+  { cabang: "Probolinggo", ton: 115.6, jenis: "taksiran" },
+  { cabang: "Banyuwangi", ton: 77.3, jenis: "taksiran" },
+  { cabang: "Tulungagung", ton: 62.9, jenis: "taksiran" },
+  { cabang: "Jember", ton: 132.0, jenis: "taksiran" },
+  { cabang: "Madura", ton: 1.7, jenis: "taksiran" },
+  { cabang: "Ponorogo", ton: 78.0, jenis: "berita", tanggal: "2026-11-20", url: "https://radarmadiun.jawapos.com/ponorogo/2611200034/stok-beras-bulog-ponorogo-capai-78-ribu-ton-aman-hingga-lebaran-2027" },
+]
+/** Bulan posisi stok proksi per cabang. */
+export const BULAN_STOK_CABANG_PROKSI = "Nov 2026"

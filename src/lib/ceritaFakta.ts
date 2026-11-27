@@ -243,7 +243,7 @@ export function susunFakta(): FaktaPekan {
       judul: "Menyiapkan penyaluran SPHP",
       teks:
         `Bulog bisa melepas beras SPHP dari cabangnya ke kabupaten yang stoknya kurang. Rekomendasi terbaru ${nf(tonS)} ton lewat ${FLOWS.length} rute, dengan ${penerima.size} wilayah ` +
-        `penerima untuk ${periodePanjang}. Volumenya dihitung dari stok Bulog terakhir yang tersedia, porsi pengadaan tiap cabang, dan jarak jalan.`,
+        `penerima untuk ${periodePanjang}. Volumenya dihitung dari stok Bulog per cabang November 2026 (angka pimpinan cabang di media, sisanya taksiran) dan jarak jalan.`,
       stat: { v: tonS, teks: nf(tonS), unit: "ton SPHP direkomendasikan" },
       peta: { layer: "harga", nilai: petakan((k) => hargaAt(k, 4, "medium"), 0), valueLabel: "Prakiraan harga medium 28 hari", flows: FLOWS.map((f) => ({ dari: f.from.n, ke: f.to.n, ton: f.ton, km: r(f.km, 1), bulan: f.bulan })) },
       fakta: {
@@ -252,7 +252,7 @@ export function susunFakta(): FaktaPekan {
         jumlah_rute: FLOWS.length,
         jumlah_wilayah_penerima: penerima.size,
         penerima_terbesar: penerimaAtas.map(([n, t]) => ({ wilayah: n, ton: t })),
-        metode: "stok Bulog terakhir yang tersedia, porsi pengadaan tiap cabang, jarak jalan",
+        metode: "stok Bulog per cabang Nov 2026 (berita pimpinan cabang + taksiran dari porsi pengadaan), jarak jalan",
       },
     },
   ]

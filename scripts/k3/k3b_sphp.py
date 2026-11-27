@@ -5,6 +5,7 @@ Model : program linear (HiGHS) dua tahap berbasis skenario (stochastic LP). Kepu
         Stok kab-skenario = rerata K2 + derau (faktor bersama 0,4 bulan + derau khas kab) + kiriman kumulatif.
         Minimalkan rata-rata (bobot x kekurangan di bawah target) + h x (kelebihan di atas batas) + lambda x ton-km.
         Target cakupan = (1 + beta x P(harga>HET)) bulan konsumsi; bobot = 1 + gamma x P(harga>HET).
+Stok Bulog per cabang: proksi Nov 2026 (scripts/bulog/proksi_stok_cabang.py): angka berita untuk sebagian cabang, sisanya taksiran.
 Sumber: Bulog cabang (anggaran rilis dibatasi) dan, opsional, kab surplus (stok di atas surplus_batas bulan konsumsi).
 """
 import sys
@@ -15,7 +16,9 @@ import scipy.sparse as sp
 from scipy.optimize import linprog
 
 sys.path.insert(0, "scripts/k2")
+sys.path.insert(0, "scripts/bulog")
 import model_stok as ms  # noqa: E402
+import proksi_stok_cabang  # noqa: E402
 
 BULAN = [(2026, 11), (2026, 12), (2027, 1)]
 CABANG = {1: "Kota Surabaya", 2: "Kota Surabaya", 3: "Bojonegoro", 4: "Kota Madiun", 5: "Kota Kediri", 6: "Bondowoso", 7: "Kota Malang",
@@ -41,10 +44,13 @@ def muat(k2_rinci=None, k3_harga=None):
     K = pd.read_csv("data/satelit/k3_harga_operasional.csv") if k3_harga is None else k3_harga
     K = K[K.komoditas == 1]
     ph = {b: K[K.horizon_hari == (7 if b == BULAN[0] else 28)].set_index("kab").p_di_atas_het.reindex(kab).fillna(0) for b in BULAN}
-    peng = ms.sql("select cabang_id, sum(volume_kg) v from silver.pengadaan_bulog where tahun=2025 group by 1")
-    pj = peng.assign(kab=peng.cabang_id.map(CABANG)).groupby("kab").v.sum()
+    peng = ms.sql("select p.cabang_id, c.nama, sum(p.volume_kg) v from silver.pengadaan_bulog p join silver.kantor_cabang_bulog c on c.id = p.cabang_id "
+                  "where p.tahun=2025 group by 1, 2")
+    # Stok per cabang Nov 2026: angka pimpinan cabang di media (BERITA) + sisanya porsi pengadaan 2025 x rasio (TAKSIRAN); scripts/bulog/proksi_stok_cabang.py
+    P = proksi_stok_cabang.proksi(peng.set_index("nama").v).set_index("kantor_cabang")
+    pj = peng.assign(kab=peng.cabang_id.map(CABANG), stok=peng.nama.map(P.stok_ton)).groupby("kab").stok.sum()
     return dict(kab=kab, C=(nov.stok_ton / nov.cak).to_numpy(), D=D.loc[kab, kab].to_numpy(), k2=k2, ph=ph, nodes=list(pj.index),
-                share=(pj / pj.sum()).to_numpy(), S0=float(bl.akhir.iloc[9] / 1e3), w=w)  # S0: stok Bulog akhir Okt 2025 (ASLI) sebagai proksi Okt 2026 (ASUMSI), rb ton
+                share=(pj / pj.sum()).to_numpy(), S0=float(pj.sum() / 1e3), w=w, proksi=P)  # S0: stok Bulog Jatim proksi Nov 2026, rb ton
 
 
 def instans(M, p, seed):
@@ -115,7 +121,7 @@ def solusi(M, p, A, ph, noise):
             for j in range(n):
                 rr.append(k); cc.append(X(i, j, t))
         bb.append(Rbln * p["frac"][t]); k += 1
-    for i in range(nb):  # anggaran per cabang (porsi pengadaan 2025)
+    for i in range(nb):  # anggaran per cabang (porsi stok proksi Nov 2026)
         for j in range(n):
             for t in range(T):
                 rr.append(k); cc.append(X(i, j, t))
@@ -193,7 +199,9 @@ def main():
 
 def parameter_run(M, p, met):
     return {"model": "LP stokastik berbasis skenario (S=150) dari stok K2 + peluang harga > HET K3a", "periode": [f"{t}-{b:02d}" for t, b in BULAN], "param": {k: (list(v) if isinstance(v, tuple) else v) for k, v in p.items()},
-            "stok_bulog_proksi_rb_ton": M["S0"], "asumsi": "stok Bulog 2026 = proksi akhir Okt 2025; anggaran rilis 15% stok; lokasi cabang dipetakan ke kab (asumsi)", "metrik_uji": {k: float(v) for k, v in met.items()}}
+            "stok_bulog_proksi_rb_ton": M["S0"],
+            "stok_bulog_cabang": [{"cabang": c, "stok_ton": float(r.stok_ton), "jenis": r.jenis, "tanggal_posisi": r.tanggal_posisi or None} for c, r in M["proksi"].iterrows()],
+            "asumsi": "stok Bulog per cabang Nov 2026 = angka pimpinan cabang di media (Madiun, Ponorogo, Malang), cabang lain = porsi pengadaan 2025 x rasio; anggaran rilis 15% stok; lokasi cabang dipetakan ke kab (asumsi)", "metrik_uji": {k: float(v) for k, v in met.items()}}
 
 
 def hitung(hari_ini=None, k2_rinci=None, k3_harga=None):

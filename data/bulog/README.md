@@ -15,7 +15,10 @@ Semua angka dalam **kg** (apa adanya dari publikasi, termasuk dua desimal). Bagi
 data/bulog/
 ├── stok_beras/
 │   ├── provinsi/bulanan/bulog_jatim_stok_beras_provinsi_bulanan_2025.csv                      # Tabel 10.1.3
-│   └── kanwil/tahunan/bulog_nasional_stok_beras_kanwil_tahunan_2023_2025.csv                  # Tabel 10.1.7
+│   ├── kanwil/tahunan/bulog_nasional_stok_beras_kanwil_tahunan_2023_2025.csv                  # Tabel 10.1.7
+│   └── kantor_cabang/
+│       ├── berita/bulog_jatim_stok_beras_kantorcabang_berita_2026.csv                          # pernyataan pimpinan cabang di media (BUKAN BPS)
+│       └── proksi/bulog_jatim_stok_beras_kantorcabang_proksi_2026.csv                          # proksi per cabang Nov 2026 (berita + taksiran)
 ├── pengadaan_beras/
 │   └── kantor_cabang/tahunan/bulog_jatim_pengadaan_beras_kantorcabang_tahunan_2024_2025.csv   # Tabel 10.1.6
 ├── harga_penggilingan/
@@ -67,9 +70,26 @@ Dijalankan saat berkas dibuat:
 
 Berkas diekstrak dari teks PDF publikasi, bukan diekspor dari BPS.
 
+## Proksi stok per kantor cabang (Nov 2026)
+
+Bulog tidak menerbitkan stok per kantor cabang. Untuk K3b (SPHP) dan panel cabang di halaman Stok dipakai **proksi**, dibuat oleh
+`scripts/bulog/proksi_stok_cabang.py`:
+
+1. **Berita** (`kantor_cabang/berita/`, kolom `dipakai = ya`): angka stok yang disebut pimpinan cabang di media, dengan tanggal posisi dan tautan.
+   Per 27 Nov 2026: Madiun 107 rb ton (16 Nov), Ponorogo 78 rb ton (20 Nov), Malang 81 rb ton (24 Nov). Ketiganya sudah dibuka dan dicocokkan.
+2. **Taksiran** untuk cabang lain: total Jatim S = jumlah stok berita / jumlah porsi pengadaan 2025 cabang-cabang itu (hasil: 1.020 rb ton),
+   lalu stok cabang = porsi pengadaan 2025 × S. Asumsinya stok sebanding dengan pengadaan tahun lalu.
+3. **Tidak dipakai:** pernyataan total Kanwil Jatim sekitar 1,75 juta ton (ANTARA, 27 Nov 2026, tanpa tanggal posisi). Jika dibagi menurut porsi
+   pengadaan, Madiun, Ponorogo, dan Malang menjadi 150, 150, dan 157 rb ton, hampir dua kali angka cabang. Definisinya kemungkinan berbeda
+   (belum dipastikan). Angka Bojonegoro 53 rb ton dari situs Pemkab adalah posisi September 2025, jadi juga tidak dipakai.
+
+Sebagai pembanding, angka yang disebut di media untuk Probolinggo (lebih dari 100 rb), Tulungagung (sekitar 65 rb), dan Bojonegoro (60 sampai 79 rb)
+dekat dengan taksiran (116, 63, dan 72 rb), tetapi belum bersumber jelas sehingga tidak dimasukkan. Tambah baris baru di CSV berita bila ada
+pernyataan cabang lain, lalu jalankan skripnya lagi dan salin hasilnya ke `src/lib/bulog.ts` (`STOK_CABANG_PROKSI`).
+
 ## Belum ada
 
-- **Stok Bulog menurut kabupaten atau gudang.** Tidak dipublikasikan.
+- **Stok Bulog menurut kabupaten atau gudang.** Tidak dipublikasikan. Per kantor cabang hanya ada proksi di atas.
 - **Pemetaan kantor cabang Bulog ke kabupaten** (wilayah kerja). Perlu dari Bulog.
 - **Stok bulanan sebelum 2025.** Edisi *Jawa Timur Dalam Angka 2025* kemungkinan memuat 2024 (belum dicek).
 - **Realisasi penyaluran SPHP** per wilayah.

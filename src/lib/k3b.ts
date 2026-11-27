@@ -1,5 +1,5 @@
 /** Rekomendasi penyaluran SPHP dari K3b (LP stokastik): `dari` = kabupaten lokasi cabang Bulog, `ke` = kabupaten penerima, per bulan (Nov 2026–Jan 2027).
- *  Sumber: data/satelit/k3b_rekomendasi_sphp.csv di branch danang-dev. Status di K3b: DUMMY (stok Bulog 2026 dan pemetaan cabang ke kabupaten adalah asumsi). */
+ *  Sumber: data/satelit/k3b_rekomendasi_sphp.csv di branch danang-dev. Status di K3b: DUMMY (stok Bulog per cabang Nov 2026 sebagian dari berita, sisanya taksiran; pemetaan cabang ke kabupaten asumsi). */
 export interface K3bRute {
   /** Indeks bulan, 0 = Jan 2026 (10 = Nov 2026, 12 = Jan 2027). */
   bulan: number

@@ -372,8 +372,8 @@ function KabCard({ onBack }: { onBack: () => void }) {
         </p>
         {rute.length > 0 && (
           <p className="rek-p rek-asumsi">
-            Volume dari model K3b: stok non-Bulog (K2), peluang harga melewati HET, dan jarak jalan, dengan stok Bulog terakhir yang tersedia dibagi
-            menurut porsi pengadaan tiap cabang.
+            Volume dari model K3b: stok non-Bulog (K2), peluang harga melewati HET, dan jarak jalan, dengan stok Bulog per cabang November 2026
+            (angka pimpinan cabang di media untuk Madiun, Ponorogo, dan Malang; cabang lain ditaksir dari porsi pengadaan).
           </p>
         )}
         {rute.length > 1 && (
