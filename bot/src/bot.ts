@@ -31,6 +31,8 @@ type Tunda =
   | { jenis: "pilih"; perintah: Perintah; pilihan: Wilayah[]; sampai: number; sisa?: string }
   | { jenis: "lapor"; sampai: number; draf: lapor.Draf; tanya?: lapor.Isian }
 const tunda = new Map<string, Tunda>()
+// laporan terakhir yang baru disimpan: balasan pendek "pembeli"/"penjual" dalam 10 menit mengoreksi perannya
+const laporTerakhir = new Map<string, { id: number; sampai: number }>()
 const MENIT = 60_000
 
 /** `gambar`: PNG yang dikirim sebagai gambar WhatsApp dengan `teks` sebagai keterangannya. */
@@ -321,6 +323,7 @@ async function laporHarga(k: kontak.Kontak, teks: string, awal?: Extract<Tunda, 
   const w = daftar.find((x) => x.id === wilayahId)
   const r = await kontak.simpanLaporan(k.id, wilayahId, `beras_${d.jenis}`, d.pasar!, d.harga!, d.peran!)
   tunda.delete(k.nomor_wa)
+  if (r?.id) laporTerakhir.set(k.nomor_wa, { id: r.id, sampai: Date.now() + 10 * MENIT })
   return {
     teks: [
       "✓ *Laporan diterima, makasih ya!*",
@@ -485,6 +488,14 @@ async function proses(nomor: string, k: kontak.Kontak, teks: string): Promise<Ba
   // laporan yang sedang diisi: jawaban seperti "15000" atau "harga 15000" tetap masuk ke laporan
   if (t?.jenis === "lapor" && t.sampai >= Date.now() && (!cmd || cmd.perintah === "lapor" || Object.keys(lapor.uraiLaporan(teks)).length)) {
     return laporHarga(k, cmd?.perintah === "lapor" ? cmd.mentah || teks : teks, cmd?.perintah === "lapor" && cmd.mentah ? undefined : t)
+  }
+  // koreksi peran laporan yang baru disimpan: "eh aku pembeli", "pembeli kok"
+  const akhir = laporTerakhir.get(nomor)
+  const peranKoreksi = lapor.peranDisebut(teks)
+  if (akhir && akhir.sampai >= Date.now() && !cmd && peranKoreksi && normal(teks).split(" ").length <= 5 && Object.keys(lapor.uraiLaporan(teks)).length === 1) {
+    laporTerakhir.delete(nomor)
+    await kontak.ubahPeranLaporan(akhir.id, k.id, peranKoreksi)
+    return { teks: `Siap, laporan tadi aku ubah jadi sebagai *${NAMA_PERAN[peranKoreksi]}*. Makasih koreksinya!`, intent: "lapor_koreksi", wilayahId: null }
   }
   // "aku mau ngelaporin, di pasar induk kota batu ..." (tanpa perintah LAPOR di depan)
   if (cmd?.perintah !== "lapor" && lapor.niatLapor(teks)) {
