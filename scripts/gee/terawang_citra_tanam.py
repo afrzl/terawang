@@ -14,6 +14,7 @@ Citra Sentinel-1/2 asli; "petak" = segmen SNIC (bukan batas persil); label = atu
 atau acak (dummy), belum divalidasi lapangan.
 """
 import argparse
+from datetime import date
 import json
 import math
 import pathlib
@@ -29,6 +30,7 @@ PRESET = {
 }
 LEBAR_KM, TINGGI_KM = 3.6, 2.1
 JENDELA = 12
+HARI_INI = date.today().isoformat()
 DUMMY = dict(genang=0.55, tanamDariGenang=0.78, tanamDariKering=0.25)
 AMBANG = dict(ndviTanam=0.35, naikNdvi=0.10, vvAir=-15, naikVh=3)
 UKURAN_PETAK_PX = 6
@@ -44,12 +46,20 @@ def kotak(pusat):
     return ee.Geometry.Rectangle(bbox, None, False), [round(v, 6) for v in bbox]
 
 
-def koleksi_s2(aoi, tgl, hari, bersih):
+def rentang(tgl, hari):
+    """Jendela tgl ± hari, tapi tidak melewati hari ini (citra masa depan belum ada, label jadi menyesatkan)."""
     d = ee.Date(tgl)
+    akhir = ee.Date(ee.Algorithms.If(d.advance(hari + 1, "day").millis().gt(ee.Date(HARI_INI).millis()),
+                                     ee.Date(HARI_INI), d.advance(hari + 1, "day")))
+    return d.advance(-hari, "day"), akhir
+
+
+def koleksi_s2(aoi, tgl, hari, bersih):
     cs = ee.ImageCollection("GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED")
+    awal, akhir = rentang(tgl, hari)
     kol = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
            .filterBounds(aoi)
-           .filterDate(d.advance(-hari, "day"), d.advance(hari, "day"))
+           .filterDate(awal, akhir)
            .linkCollection(cs, ["cs_cdf"]))
 
     def f(img):
@@ -58,6 +68,20 @@ def koleksi_s2(aoi, tgl, hari, bersih):
             s = s.updateMask(img.select("cs_cdf").gte(0.6))
         return s.copyProperties(img, ["system:time_start"])
     return kol.map(f)
+
+
+def tanggal_cerah(aoi, tgl, hari, min_cerah=0.3):
+    """Tanggal akuisisi S2 di jendela yang kotaknya cukup cerah (Cloud Score+ >= 0.6), untuk label yang jujur."""
+    cs = ee.ImageCollection("GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED")
+    awal, akhir = rentang(tgl, hari)
+    kol = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED").filterBounds(aoi).filterDate(awal, akhir)
+           .linkCollection(cs, ["cs_cdf"]))
+
+    def f(img):
+        c = img.select("cs_cdf").gte(0.6).reduceRegion(ee.Reducer.mean(), aoi, 20, maxPixels=1e8).get("cs_cdf")
+        return ee.Feature(None, dict(t=img.date().format("YYYY-MM-dd"), c=c))
+    fc = kol.map(f).filter(ee.Filter.gte("c", min_cerah))
+    return fc.aggregate_array("t").distinct().sort()
 
 
 def komposit_s2(aoi, tgl):
@@ -70,10 +94,10 @@ def komposit_s2(aoi, tgl):
 
 
 def komposit_s1(aoi, tgl):
-    d = ee.Date(tgl)
+    awal, akhir = rentang(tgl, JENDELA)
     kol = (ee.ImageCollection("COPERNICUS/S1_GRD")
            .filterBounds(aoi)
-           .filterDate(d.advance(-JENDELA, "day"), d.advance(JENDELA, "day"))
+           .filterDate(awal, akhir)
            .filter(ee.Filter.eq("instrumentMode", "IW"))
            .filter(ee.Filter.listContains("transmitterReceiverPolarisation", "VV"))
            .filter(ee.Filter.listContains("transmitterReceiverPolarisation", "VH"))
@@ -110,6 +134,10 @@ def proses(pusat, nama, tgl_b, tgl_s, mode, asset_sawah):
     ib, is_ = indeks(sb_a), indeks(ss_a)
 
     genang_b = genang(ib, rb)
+    # bagian kotak yang berawan di komposit analisis diisi NDVI komposit tampilan (jendela lebar), agar tiap petak
+    # tetap punya nilai "hijau awal" dan statistik belum_hijau_sebelum_pct tidak bolong
+    hijau_b = (ib.select("ndvi").unmask(indeks(sb_t).select("ndvi"))
+               .gte(AMBANG["ndviTanam"]).rename("hijau_b"))
     genang_s = genang(is_, rs)
     tanam_s2 = is_.select("ndvi").gte(AMBANG["ndviTanam"]).And(
         is_.select("ndvi").subtract(ib.select("ndvi")).gte(AMBANG["naikNdvi"]))
@@ -130,29 +158,34 @@ def proses(pusat, nama, tgl_b, tgl_s, mode, asset_sawah):
 
     stack = snic.int().addBands(ee.Image.cat([
         sawah.toFloat().rename("f_sawah"), genang_b.toFloat().rename("f_genang_b"),
-        genang_s.toFloat().rename("f_genang_s"), tanam_s.toFloat().rename("f_tanam_s")]))
+        genang_s.toFloat().rename("f_genang_s"), tanam_s.toFloat().rename("f_tanam_s"),
+        hijau_b.toFloat().rename("f_hijau_b")]))
     petak = (stack.reduceToVectors(
         geometry=aoi, scale=10, crs="EPSG:32749", geometryType="polygon", labelProperty="id",
         eightConnected=False, maxPixels=1e9,
-        reducer=ee.Reducer.mean().forEach(["f_sawah", "f_genang_b", "f_genang_s", "f_tanam_s"]))
+        reducer=ee.Reducer.mean().forEach(["f_sawah", "f_genang_b", "f_genang_s", "f_tanam_s", "f_hijau_b"]))
         .filter(ee.Filter.gte("f_sawah", 0.6))
         .randomColumn("r1", 11).randomColumn("r2", 22))
 
     def kelas(f):
+        # fraksi bisa null bila seluruh piksel petak ter-mask (awan + tanpa radar): anggap 0
+        def fr(k):
+            return ee.Number(ee.Algorithms.If(f.get(k), f.get(k), 0))
         if mode == "dummy":
             gb = ee.Number(f.get("r1")).lt(DUMMY["genang"])
             pt = ee.Number(ee.Algorithms.If(gb, DUMMY["tanamDariGenang"], DUMMY["tanamDariKering"]))
             ts = ee.Number(f.get("r2")).lt(pt)
             gs = gb.And(ts.Not())
         else:
-            gb = ee.Number(f.get("f_genang_b")).gte(0.5)
-            ts = ee.Number(f.get("f_tanam_s")).gte(0.5)
-            gs = ee.Number(f.get("f_genang_s")).gte(0.5)
+            gb = fr("f_genang_b").gte(0.5)
+            ts = fr("f_tanam_s").gte(0.5)
+            gs = fr("f_genang_s").gte(0.5)
         sebelum = ee.String(ee.Algorithms.If(gb, "genang", "kering"))
         sesudah = ee.String(ee.Algorithms.If(ts, "tanam", ee.Algorithms.If(gs, "genang", "kering")))
         tertinggal = gb.And(ts.Not())
+        hijau_awal = fr("f_hijau_b").gte(0.5)
         return ee.Feature(f.geometry(), dict(
-            sebelum=sebelum, sesudah=sesudah, tertinggal=tertinggal,
+            sebelum=sebelum, hijau_awal=hijau_awal, sesudah=sesudah, tertinggal=tertinggal,
             kelas_sesudah=ee.Algorithms.If(tertinggal, "tertinggal", sesudah),
             luas_ha=f.geometry().area(1).divide(1e4)))
     petak = petak.map(kelas)
@@ -189,9 +222,11 @@ def proses(pusat, nama, tgl_b, tgl_s, mode, asset_sawah):
             jumlah_petak=n,
             luas_sawah_ha=petak.aggregate_sum("luas_ha"),
             genang_sebelum_pct=pct(petak.filter(ee.Filter.eq("sebelum", "genang"))),
+            belum_hijau_sebelum_pct=pct(petak.filter(ee.Filter.eq("hijau_awal", 0))),
             tertanam_sesudah_pct=pct(petak.filter(ee.Filter.eq("sesudah", "tanam"))),
             tertinggal_pct=pct(tertinggal_fc)),
         histogram=petak.aggregate_histogram("kelas_sesudah"),
+        tanggal_citra=dict(s2_sebelum=tanggal_cerah(aoi, tgl_b, JENDELA), s2_sesudah=tanggal_cerah(aoi, tgl_s, JENDELA)),
     )).getInfo()
     tif = (sb_t.select(["B4", "B3", "B2", "B8", "B11"])
            .addBands(ss_t.select(["B4", "B3", "B2", "B8", "B11"]).rename(["B4_s", "B3_s", "B2_s", "B8_s", "B11_s"]))
@@ -207,6 +242,7 @@ def unduh(url, path):
 
 
 def main():
+    global JENDELA, HARI_INI
     ap = argparse.ArgumentParser()
     ap.add_argument("--project", required=True, help="ID Cloud project yang terdaftar di GEE")
     ap.add_argument("--lokasi", default="Ngawi", help="nama kabupaten persis seperti di dasbor")
@@ -216,10 +252,13 @@ def main():
     ap.add_argument("--sesudah", default="2026-10-30")
     ap.add_argument("--mode", default="aturan", choices=["aturan", "dummy"])
     ap.add_argument("--asset-sawah", default="")
+    ap.add_argument("--jendela", type=int, default=JENDELA, help="komposit ± hari di sekitar tiap tanggal")
     ap.add_argument("--out", default="public/citra")
     ap.add_argument("--tanpa-index", action="store_true", help="jangan perbarui index.json (dipakai saat paralel)")
     a = ap.parse_args()
 
+    JENDELA = a.jendela
+    HARI_INI = date.today().isoformat()
     ee.Initialize(project=a.project)
     pusat = [float(v) for v in a.pusat.split(",")] if a.pusat else PRESET[a.lokasi]
     folder = a.folder or a.lokasi.lower().replace(" ", "-")
@@ -229,6 +268,7 @@ def main():
     print(f"Memproses {a.lokasi} di {pusat} ({a.sebelum} vs {a.sesudah}, label {a.mode}) ...")
     aoi, bbox, img, petak, tif, info = proses(pusat, a.lokasi, a.sebelum, a.sesudah, a.mode, a.asset_sawah)
     print("Jumlah citra:", info["jumlah_citra"])
+    print("Tanggal S2 cerah:", info["tanggal_citra"])
     print("Statistik:", json.dumps(info["stat"], indent=1))
     print("Petak per kelas sesudah:", info["histogram"])
 
@@ -242,7 +282,7 @@ def main():
     meta = dict(
         folder=folder, lokasi=a.lokasi, pusat=pusat, kotak_km=[LEBAR_KM, TINGGI_KM], bbox=bbox,
         tanggal_sebelum=a.sebelum, tanggal_sesudah=a.sesudah, jendela_hari=JENDELA, mode_label=a.mode,
-        jumlah_citra=info["jumlah_citra"], stat=info["stat"],
+        jumlah_citra=info["jumlah_citra"], tanggal_citra=info["tanggal_citra"], stat=info["stat"],
         sumber="Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label "
                + ("acak (simulasi)" if a.mode == "dummy" else "aturan ambang (belum divalidasi)"))
     (out / folder / "meta.json").write_text(json.dumps(meta, indent=2, ensure_ascii=False))

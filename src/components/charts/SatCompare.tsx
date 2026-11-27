@@ -173,7 +173,17 @@ interface CitraMeta {
   tanggal_sebelum: string
   tanggal_sesudah: string
   mode_label: "aturan" | "dummy"
-  stat: { genang_sebelum_pct: number; tertanam_sesudah_pct: number; tertinggal_pct: number; jumlah_petak: number }
+  jendela_hari?: number
+  /** Tanggal akuisisi Sentinel-2 yang cukup cerah di jendela komposit tiap citra. */
+  tanggal_citra?: { s2_sebelum: string[]; s2_sesudah: string[] }
+  stat: {
+    genang_sebelum_pct: number
+    /** Petak yang NDVI-nya belum hijau (< 0,35) di citra awal: bera, baru diolah, atau tergenang. */
+    belum_hijau_sebelum_pct?: number
+    tertanam_sesudah_pct: number
+    tertinggal_pct: number
+    jumlah_petak: number
+  }
 }
 
 type Tampilan = "alami" | "kelas" | "radar"
@@ -194,6 +204,17 @@ const tgl = (s: string) => {
   const [y, m, d] = s.split("-").map(Number)
   return `${d} ${BULAN[m - 1]} ${y}`
 }
+/** Label tanggal citra: rentang akuisisi S2 cerah yang masuk komposit (mis. "3–13 Sep 2026"), atau tanggal acuan. */
+function labelTanggal(acuan: string, cerah?: string[]) {
+  if (!cerah?.length) return tgl(acuan)
+  const a = cerah[0].split("-").map(Number)
+  const b = cerah[cerah.length - 1].split("-").map(Number)
+  if (cerah.length === 1 || cerah[0] === cerah[cerah.length - 1]) return tgl(cerah[0])
+  if (a[0] === b[0] && a[1] === b[1]) return `${a[2]}–${b[2]} ${BULAN[b[1] - 1]} ${b[0]}`
+  if (a[0] === b[0]) return `${a[2]} ${BULAN[a[1] - 1]} – ${b[2]} ${BULAN[b[1] - 1]} ${b[0]}`
+  return `${tgl(cerah[0])} – ${tgl(cerah[cerah.length - 1])}`
+}
+const selisihHari = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000)
 const BASE = import.meta.env.BASE_URL
 
 /** Daftar citra GEE di public/citra/index.json; dimuat sekali. Kosong bila belum ada. */
@@ -208,8 +229,9 @@ function muatIndeks() {
 /** Seberapa jelas perubahan sebelum -> sesudah tanam terlihat di kotak contoh: utamakan petak yang tergenang dulu lalu
  *  tertanam (kontras air -> hijau). Kotak yang sebelumnya sudah hijau (tergenang 0%) diurutkan sesudahnya menurut % tertanam. */
 export function skorPerubahan(m: CitraMeta) {
-  const { genang_sebelum_pct: g, tertanam_sesudah_pct: t } = m.stat
-  return (g >= 10 ? 1000 : 0) + (g * t) / 100 + t / 1000
+  const { genang_sebelum_pct: g, belum_hijau_sebelum_pct: bh, tertanam_sesudah_pct: t } = m.stat
+  const awal = bh ?? g
+  return (awal >= 10 ? 1000 : 0) + (awal * t) / 100 + t / 1000
 }
 
 /** Daftar citra GEE (kosong sampai termuat). */
@@ -239,8 +261,9 @@ export function SatCompare({ wilayah, onPilih, kandidat }: { wilayah?: string; o
   const src = (when: "sebelum" | "sesudah") =>
     `${BASE}citra/${asli!.folder}/${when}${mode === "alami" ? "" : "_" + mode}.png`
   const stat = asli
-    ? { before: asli.stat.genang_sebelum_pct, after: asli.stat.tertanam_sesudah_pct, lag: asli.stat.tertinggal_pct }
+    ? { before: asli.stat.belum_hijau_sebelum_pct ?? asli.stat.genang_sebelum_pct, after: asli.stat.tertanam_sesudah_pct, lag: asli.stat.tertinggal_pct }
     : scene.stat
+  const adaBelumHijau = asli?.stat.belum_hijau_sebelum_pct != null
 
   // Pintasan wilayah: bila semua wilayah terpilih, tampilkan yang perubahannya paling terlihat (tergenang -> tertanam dulu);
   // bila disaring, tampilkan wilayah terpilih.
@@ -261,7 +284,7 @@ export function SatCompare({ wilayah, onPilih, kandidat }: { wilayah?: string; o
               type="button"
               className={`wt-chip${m.lokasi === sel ? " on" : ""}`}
               onClick={() => select(m.lokasi)}
-              title={`Petak tergenang di citra awal ${nf(m.stat.genang_sebelum_pct, 0)}% · petak yang hijaunya bertambah ${nf(m.stat.tertanam_sesudah_pct, 0)}%`}
+              title={`${m.stat.belum_hijau_sebelum_pct != null ? `Petak belum hijau di citra awal ${nf(m.stat.belum_hijau_sebelum_pct, 0)}% · ` : ""}petak tergenang di citra awal ${nf(m.stat.genang_sebelum_pct, 0)}% · petak yang hijaunya bertambah ${nf(m.stat.tertanam_sesudah_pct, 0)}%`}
             >
               {m.lokasi} · {nf(m.stat.tertanam_sesudah_pct, 0)}%
             </button>
@@ -288,11 +311,11 @@ export function SatCompare({ wilayah, onPilih, kandidat }: { wilayah?: string; o
           </span>
         </div>
         <span className="sat-tag l">
-          {asli ? tgl(asli.tanggal_sebelum) : "30 Sep 2026"}
+          {asli ? labelTanggal(asli.tanggal_sebelum, asli.tanggal_citra?.s2_sebelum) : "30 Sep 2026"}
           <span className="x"> · awal</span>
         </span>
         <span className="sat-tag r">
-          {asli ? tgl(asli.tanggal_sesudah) : "30 Okt 2026"}
+          {asli ? labelTanggal(asli.tanggal_sesudah, asli.tanggal_citra?.s2_sesudah) : "30 Okt 2026"}
           <span className="x"> · terbaru</span>
         </span>
         <span className="sat-note">
@@ -312,8 +335,9 @@ export function SatCompare({ wilayah, onPilih, kandidat }: { wilayah?: string; o
       </div>
       <div className="sat-stats">
         <div>
-          <span>Petak tergenang (citra awal)</span>
+          <span>{adaBelumHijau ? "Petak belum hijau (citra awal)" : "Petak tergenang (citra awal)"}</span>
           <b>{nf(stat.before, 0)}%</b>
+          {adaBelumHijau && <small>termasuk {nf(asli!.stat.genang_sebelum_pct, 0)}% tergenang</small>}
         </div>
         <div>
           <span>Petak hijau bertambah (citra terbaru)</span>
@@ -332,6 +356,8 @@ export function SatCompare({ wilayah, onPilih, kandidat }: { wilayah?: string; o
             ? (
                 <span>
                   Kotak contoh {asli.kotak_km?.join(" × ")} km{asli.stat.jumlah_petak ? ` · ${nf(asli.stat.jumlah_petak, 0)} petak` : ""}
+                  {` · jarak ${selisihHari(asli.tanggal_sebelum, asli.tanggal_sesudah)} hari`}
+                  {asli.jendela_hari ? ` · komposit median ±${asli.jendela_hari} hari` : ""}
                 </span>
               )
             : (

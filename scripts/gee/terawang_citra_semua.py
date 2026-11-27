@@ -22,9 +22,12 @@ def main():
     ap.add_argument("--out", default="public/citra")
     ap.add_argument("--paralel", type=int, default=4)
     ap.add_argument("--ulang", action="store_true")
+    ap.add_argument("--tanggal", help="JSON hasil pilih_tanggal_citra.py (tanggal awal/terbaru per folder)")
+    ap.add_argument("--jendela", type=int, default=12, help="komposit ± hari di sekitar tiap tanggal")
     a = ap.parse_args()
 
     wilayah = json.loads(pathlib.Path(a.data).read_text())["wilayah"]
+    tanggal = json.loads(pathlib.Path(a.tanggal).read_text()) if a.tanggal else {}
     tugas = []
     for w in wilayah:
         folder = w["n"].lower().replace(" ", "-")
@@ -38,8 +41,12 @@ def main():
 
     def jalan(w):
         cmd = [sys.executable, "-W", "ignore", str(HERE / "terawang_citra_tanam.py"), "--project", a.project,
-               "--lokasi", w["n"], "--pusat", f"{w['pusat'][0]},{w['pusat'][1]}", "--out", a.out, "--tanpa-index"]
-        for coba in range(2):
+               "--lokasi", w["n"], "--pusat", f"{w['pusat'][0]},{w['pusat'][1]}", "--out", a.out, "--tanpa-index",
+               "--jendela", str(a.jendela)]
+        t = tanggal.get(w["n"].lower().replace(" ", "-"))
+        if t:
+            cmd += ["--sebelum", t["sebelum"], "--sesudah", t["sesudah"]]
+        for coba in range(3):
             r = subprocess.run(cmd, capture_output=True, text=True)
             if r.returncode == 0:
                 return w["n"], True, ""
