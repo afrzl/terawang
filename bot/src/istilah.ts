@@ -30,7 +30,9 @@ const TANYA = /\b(apa|apaan|arti|artinya|maksud|maksudnya|jelaskan|jelasin|penge
 export function jawabIstilah(teks: string): string | null {
   const n = normal(teks)
   if (n.split(" ").length > 12 || !TANYA.test(n)) return null
-  return ISTILAH.find((i) => i.pola.test(n))?.teks ?? null
+  const t = ISTILAH.find((i) => i.pola.test(n))?.teks ?? null
+  // tanpa hak SPHP: jelaskan istilahnya saja, tanpa mengajak mengetik perintah SPHP
+  return t && !akses().sphp ? t.replace(/\n\nKetik \*SPHP <wilayah>\*[^\n]*/, "") : t
 }
 
 // ---- salam dan basa-basi: dibalas ramah tanpa OpenAI

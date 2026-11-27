@@ -3,6 +3,7 @@ import assert from "node:assert/strict"
 import { aturHak, HAK_TAMU_BAWAAN, mintaPrakiraan } from "./hak.ts"
 import { bantuan, teksHarga } from "./format.ts"
 import { normal } from "./wilayah.ts"
+import { jawabIstilah } from "./istilah.ts"
 
 const harga = {
   wilayah: "Kota Malang", tanggal_data: "2026-11-27", medium_rp_kg: 12550, premium_rp_kg: 16100, het_medium_rp_kg: 13500, het_resmi: true, selisih_het_pct: -7,
@@ -33,4 +34,11 @@ test("hak lengkap: prakiraan dan SPHP tampil", () => {
   assert.match(teksHarga(harga), /2 pekan lagi/)
   assert.match(bantuan(), /SPHP/)
   aturHak(HAK_TAMU_BAWAAN)
+})
+
+test("hak Tamu: istilah SPHP tanpa ajakan perintah SPHP", () => {
+  aturHak(HAK_TAMU_BAWAAN)
+  const t = jawabIstilah("apa itu SPHP?") ?? ""
+  assert.match(t, /Stabilisasi/)
+  assert.ok(!t.includes("Ketik *SPHP"), t)
 })

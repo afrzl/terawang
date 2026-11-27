@@ -534,7 +534,9 @@ async function proses(nomor: string, k: kontak.Kontak, teks: string): Promise<Ba
   }
   const t = tunda.get(nomor)
   if (t && t.sampai < Date.now()) tunda.delete(nomor)
-  const cmd = uraiPerintah(teks)
+  let cmd = uraiPerintah(teks)
+  // "bandingkan ..." dan "murah ..." adalah alias SPHP; tanpa hak SPHP diperlakukan sebagai pertanyaan biasa
+  if (cmd?.perintah === "sphp" && !akses().sphp && !/^(sphp|beras murah)\b/.test(normal(teks))) cmd = null
 
   if (t && t.sampai >= Date.now() && !cmd) {
     if (t.jenis === "pilih") {
