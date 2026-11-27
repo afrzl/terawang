@@ -73,6 +73,8 @@ test("pilih Kab/Kota dengan kata", async () => {
   assert.equal(pilihJenis("Kab", p)?.id, 1)
   assert.equal(pilihJenis("kabupatennya", p)?.id, 1)
   assert.equal(pilihJenis("jember", p), undefined)
+  assert.equal(pilihJenis("kabupatne", p)?.id, 1)
+  assert.equal(pilihJenis("kotaa", p)?.id, 2)
 })
 
 test("topik grafik dan kata pengisi perintah", async () => {

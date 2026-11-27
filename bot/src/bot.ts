@@ -136,7 +136,7 @@ function grafikAktif(kontakId: number): KonteksGrafik | null {
   return g && g.sampai > Date.now() ? g : null
 }
 
-async function buatGrafik(w: Wilayah | null, teks: string, k: kontak.Kontak): Promise<Balasan> {
+async function buatGrafik(w: Wilayah | null, teks: string, k: kontak.Kontak, topikObrolan?: TopikGrafik): Promise<Balasan> {
   const n = normal(teks)
   const lalu = grafikAktif(k.id)
   const disebut = topikDisebut(teks)
@@ -146,7 +146,7 @@ async function buatGrafik(w: Wilayah | null, teks: string, k: kontak.Kontak): Pr
       intent: "grafik_belum", wilayahId: w?.id ?? null,
     }
   }
-  const topik = disebut ?? lalu?.topik ?? "harga"
+  const topik = disebut ?? topikObrolan ?? lalu?.topik ?? "harga"
   // rentang yang tidak disebut ikut grafik sebelumnya; jenis beras hanya untuk grafik harga
   const hariDisebut = rentangDisebut(teks)
   const hari = hariDisebut ?? (lalu && lalu.topik === topik ? lalu.hari : null)
@@ -181,18 +181,24 @@ async function grafikDariKalimat(nomor: string, k: kontak.Kontak, teks: string):
     return { teks: teksPilihWilayah(di.pilihan, labelWilayah), intent: "pilih_wilayah", wilayahId: null }
   }
   if (seJatim) return buatGrafik(null, teks, k)
-  // tanpa nama wilayah: wilayah grafik terakhir, lalu wilayah percakapan (30 menit), selain itu rata-rata Jawa Timur
+  // tanpa nama wilayah: wilayah yang paling akhir dibicarakan (30 menit), selain itu rata-rata Jawa Timur.
+  // "kota probolinggo" lalu "grafiknya" harus Probolinggo walau grafik sebelumnya Jember.
   const g = grafikAktif(k.id)
+  const kt0 = konteks.get(k.id)
+  const kt = kt0 && kt0.sampai > Date.now() ? kt0 : null
+  if (kt && (!g || kt.sampai > g.sampai)) {
+    const topikObrolan = kt.topik === "harga" || kt.topik === "stok" ? kt.topik : undefined
+    return buatGrafik(daftar.find((w) => w.id === kt.wilayahId) ?? null, teks, k, g && g.wilayahId === kt.wilayahId ? undefined : topikObrolan)
+  }
   if (g) return buatGrafik(daftar.find((w) => w.id === g.wilayahId) ?? null, teks, k)
-  const kt = konteks.get(k.id)
-  const lanjut = kt && kt.sampai > Date.now() ? daftar.find((w) => w.id === kt.wilayahId) ?? null : null
-  return buatGrafik(lanjut, teks, k)
+  return buatGrafik(null, teks, k)
 }
 
 /** Jawaban pilihan "kota", "kab", "kabupatennya", "yang kota" untuk Kab./Kota bernama sama. */
 export function pilihJenis(teks: string, pilihan: Wilayah[]): Wilayah | undefined {
   const n = normal(teks).replace(/\b(yang|yg|itu|aja|saja|nya|dong|ya)\b/g, "").trim()
-  const jenis = /^(kota|kotanya|kot|kt)$/.test(n) ? "KOTA" : /^(kab|kabupaten|kabupatennya|kabnya|kb)$/.test(n) ? "KABUPATEN" : null
+  // toleran salah ketik: "kabupatne", "kabupetan", "kotaa"
+  const jenis = /^(kot[a-z]{0,5}|kt)$/.test(n) ? "KOTA" : /^(kab[a-z]{0,9}|kb)$/.test(n) ? "KABUPATEN" : null
   if (!jenis) return undefined
   const cocok = pilihan.filter((w) => w.jenis === jenis)
   return cocok.length === 1 ? cocok[0] : undefined
@@ -505,7 +511,8 @@ export async function tanggapi(nomor: string, nama: string | undefined, teks: st
     console.error("[bot] galat:", e)
     b = { teks: "Maaf, terjadi gangguan saat mengambil data. Coba lagi sebentar lagi.", intent: "galat", wilayahId: null }
   }
-  if (b.wilayahId && b.topik) konteks.set(k.id, { wilayahId: b.wilayahId, topik: b.topik, sampai: Date.now() + 30 * MENIT })
+  // jawaban bebas (LLM) tanpa topik tetap mencatat wilayahnya, supaya "grafiknya" berikutnya ikut wilayah ini
+  if (b.wilayahId) konteks.set(k.id, { wilayahId: b.wilayahId, topik: b.topik ?? konteks.get(k.id)?.topik ?? "harga", sampai: Date.now() + 30 * MENIT })
   await kontak.catat(k.id, "KELUAR", b.teks, b.intent, b.wilayahId)
   return b
 }
