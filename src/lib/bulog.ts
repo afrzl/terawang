@@ -1,4 +1,4 @@
-import { BULOG } from "./api"
+import { BULOG, IDX_AKHIR } from "./api"
 
 /** Stok beras Bulog Jawa Timur per bulan, 2025 (ribu ton). ASLI: BPS, Provinsi Jawa Timur Dalam Angka 2026, Tabel 10.1.3 (sumber asli Kanwil Perum Bulog Jatim). Hanya tingkat provinsi. */
 export interface StokBulogBulan {
@@ -97,7 +97,8 @@ export const BULAN_STOK_CABANG_PROKSI = "Nov 2026"
    pemasukan = pola 2025 dikali satu faktor sehingga persediaan akhir November tepat sama dengan jumlah stok 13 kantor cabang
    (STOK_CABANG_PROKSI). Akuntansi awal + masuk - keluar = akhir tetap berlaku. Begitu data resmi 2026 masuk lewat API, deret ini tidak dipakai. */
 const BULAN_POSISI_CABANG = 11
-function deretModel2026(): StokBulogBulan[] | null {
+/** Deret model mulai Jan 2026 sepanjang `n` bulan; sesudah November pola 2025 diteruskan dengan faktor pemasukan yang sama. */
+function deretModel(n: number): StokBulogBulan[] | null {
   if (TAHUN_STOK_RESMI !== 2025 || STOK_BULOG_RESMI.length < 12 || !STOK_CABANG_PROKSI.length) return null
   const pola = STOK_BULOG_RESMI.slice(0, BULAN_POSISI_CABANG)
   const target = STOK_CABANG_PROKSI.reduce((a, c) => a + c.ton, 0)
@@ -107,7 +108,8 @@ function deretModel2026(): StokBulogBulan[] | null {
   const f = (target - awal0 + keluar) / masuk
   if (!(f > 0)) return null
   let awal = awal0
-  return pola.map((r) => {
+  return [...Array(n)].map((_, i) => {
+    const r = STOK_BULOG_RESMI[i % 12]
     const m = Math.round(r.masuk * f * 10) / 10
     const akhir = Math.round((awal + m - r.keluar) * 10) / 10
     const row = { bulan: r.bulan, awal: Math.round(awal * 10) / 10, masuk: m, keluar: r.keluar, akhir }
@@ -115,7 +117,14 @@ function deretModel2026(): StokBulogBulan[] | null {
     return row
   })
 }
-const DERET_2026 = deretModel2026()
+const DERET_2026 = deretModel(BULAN_POSISI_CABANG)
+const DERET_PANJANG = deretModel(IDX_AKHIR + 1)
+
+/** Persediaan akhir Bulog Jatim bulan `i` (0 = Jan 2026), ribu ton; null bila tidak ada deret. */
+export const persediaanBulog = (i: number): number | null => {
+  const resmi = BULOG?.stok.find((r) => r.tahun === 2026 + Math.floor(i / 12) && r.bulan === (i % 12) + 1)
+  return resmi ? resmi.akhir : (DERET_PANJANG?.[i]?.akhir ?? null)
+}
 
 /** Tahun yang ditampilkan di grafik stok Bulog: 2026 (deret model) bila data resmi baru sampai 2025. */
 export const TAHUN_STOK_BULOG = DERET_2026 ? 2026 : TAHUN_STOK_RESMI

@@ -145,7 +145,10 @@ def hitung(hari_ini=HARI_INI, prod=None, sd_prod=None):
     # keluar_t = theta x max(P_t - C, 0), theta = (arus LP tahunan + sisa) / kelebihan tahunan 2025. Sebelumnya arus ke kab lain
     # dibagi rata 1/12, sehingga lumbung tetap "mengirim" di bulan paceklik dan jatuh ke DEFISIT (mis. Lamongan Jan 2027).
     theta = ((12 * keluar + sisa) / lebih25.replace(0, np.nan)).fillna(0).clip(upper=1.0)
+    # Bagian arus keluar kab yang meninggalkan Jatim (sisa surplus yang tidak dialokasikan LP ke kab lain).
+    luar = (sisa / (12 * keluar + sisa).replace(0, np.nan)).fillna(0)
     keluar[:] = 0.0
+    keluar_prov_25 = (theta * luar) @ np.maximum(P25.sub(C25, axis=0), 0)  # ton per bulan 2025, Jatim
 
     # produksi 2026-2027 dari K1
     if prod is None:
@@ -154,9 +157,11 @@ def hitung(hari_ini=HARI_INI, prod=None, sd_prod=None):
     # Lintasan stok deterministik: x_t = a*C + kumulatif neraca. Satu jangkar a (bulan konsumsi) dipilih agar cakupan TERENDAH
     # seluruh Jatim (Jan 2026 .. bulan berjalan) = JANGKAR_MIN. Tidak ada pengamatan stok acak.
     U, Q = {}, {}
+    kp = np.zeros(len(BULAN))  # keluar provinsi Jatim per bulan (ton)
     for k in kab:
         Pk = np.array([prod[b][k] for b in BULAN])
         Xk = theta[k] * np.maximum(Pk - C[k], 0)
+        kp = kp + luar[k] * Xk
         U[k] = np.cumsum(Pk - C[k] + masuk[k] - keluar[k] - Xk)
         Q[k] = np.cumsum((SIGMA_X * Xk) ** 2 + (SIGMA_C * C[k]) ** 2 + (np.array([sd_ambil(sd_prod, b, k) for b in BULAN]) * Pk) ** 2)
     tot = sum(U[k] for k in kab) / C.sum()
@@ -186,7 +191,10 @@ def hitung(hari_ini=HARI_INI, prod=None, sd_prod=None):
     # membesar sebanding produksi, sehingga penanda itu menyorot kab lumbung, bukan kab yang stoknya menipis. hari_ke_defisit_p10
     # disimpan untuk diagnosis saja.
     return {"R": R, "C": C, "prod": prod, "sd_prod": sd_prod, "theta": theta, "a_jangkar": a_jangkar, "hit": hit, "hit_p10": hit_p10,
-            "bulan": BULAN, "ini": ini, "ids": w.id.to_dict(), "arus": F}
+            "bulan": BULAN, "ini": ini, "ids": w.id.to_dict(), "arus": F,
+            "keluar_provinsi": pd.DataFrame({"tahun": [t for t, _ in BULAN], "bulan": [b for _, b in BULAN], "ton": kp}),
+            "keluar_provinsi_2025": pd.Series(np.asarray(keluar_prov_25, dtype=float), index=range(1, 13)),
+            "surplus_2025": float(net.clip(lower=0).sum())}
 
 
 def skenario(R, C):

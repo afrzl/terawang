@@ -99,7 +99,11 @@ def k2_estimasi_stok(context: AssetExecutionContext, repo: Repo, db: Database, s
                        "sudah_defisit": [k for k, v in h["hari_ke_defisit"].items() if v == 0],
                        "hari_ke_defisit": {k: round(float(v)) for v, k in segera}, "parameter": h["parameter"],
                        # arus beras antar kab (LP jarak jalan) yang dipakai neraca K2, ton per bulan; dibaca halaman Arus beras
-                       "arus_antar_kab": [{"dari": r.dari, "ke": r.ke, "ton_bulan": round(float(r.ton_bulan), 1)} for r in h["arus"].itertuples()]})
+                       "arus_antar_kab": [{"dari": r.dari, "ke": r.ke, "ton_bulan": round(float(r.ton_bulan), 1)} for r in h["arus"].itertuples()],
+                       # beras keluar Jatim per bulan (ton): sisa surplus yang tidak teralokasi ke kab lain; dibaca halaman Arus beras
+                       "keluar_provinsi": {"bulanan": [{"tahun": int(r.tahun), "bulan": int(r.bulan), "ton": round(float(r.ton))} for r in h["keluar_provinsi"].itertuples()],
+                                           "pola_2025": [round(float(v)) for v in h["keluar_provinsi_2025"]],
+                                           "surplus_kab_2025": round(h["surplus_2025"])}})
         kolom = ["wilayah_id", "tahun", "bulan", "skenario", "stok_ton", "cakupan_bulan", "status", "surplus_ton", "kebutuhan_ton"]
         sisipkan(db, "app.estimasi_stok", stok[kolom].assign(model_run_id=rid, jenis_data=k2_stok.JENIS_DATA))
     context.add_output_metadata({"model_run_id": rid, "versi": k2_stok.VERSI, "baris": len(stok),

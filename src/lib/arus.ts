@@ -147,3 +147,15 @@ export function regionStatsFor(bulan: number, trade: Trade[]) {
 }
 
 export const regionStats = () => regionStatsFor(BULAN_ARUS, TRADE)
+
+/* Beras keluar Jawa Timur (ton per bulan), dari model K2: bagian surplus kab yang tidak teralokasi ke kab lain di neraca 2025,
+ * dilepas pada bulan kelebihan panen. Null bila run K2 belum menyimpannya. */
+const KP = K2?.meta.keluar_provinsi ?? null
+/** Keluar provinsi bulan `i` (0 = Jan 2026), ton; null bila tidak ada. */
+export const KELUAR_PROV: (number | null)[] | null = KP?.bulanan.length
+  ? [...Array(IDX_AKHIR + 1)].map((_, i) => KP.bulanan.find((r) => (r.tahun - 2026) * 12 + r.bulan - 1 === i)?.ton ?? null)
+  : null
+/** Keluar provinsi per bulan 2025 (Jan..Des), ton. */
+export const KELUAR_PROV_2025: number[] | null = KP?.pola_2025.length === 12 ? KP.pola_2025 : null
+/** Jumlah surplus kab surplus 2025 (ton), penyebut porsi keluar provinsi. */
+export const SURPLUS_KAB_2025: number | null = KP?.surplus_kab_2025 ?? null
