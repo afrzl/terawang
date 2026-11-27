@@ -2,18 +2,18 @@
   "folder": "trenggalek",
   "lokasi": "Trenggalek",
   "pusat": [
-    111.82356,
-    -8.13346
+    111.83883,
+    -8.09753
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    111.807226,
-    -8.142956,
-    111.839894,
-    -8.123964
+    111.822498,
+    -8.107026,
+    111.855162,
+    -8.088034
   ],
   "tanggal_sebelum": "2026-07-26",
   "tanggal_sesudah": "2026-11-10",
@@ -22,26 +22,28 @@
   "jumlah_citra": {
     "s1_sebelum": 3,
     "s1_sesudah": 3,
-    "s2_sebelum": 6,
-    "s2_sesudah": 6
+    "s2_sebelum": 3,
+    "s2_sesudah": 3
   },
   "tanggal_citra": {
     "s2_sebelum": [
+      "2026-07-21",
       "2026-07-26",
       "2026-07-31"
     ],
     "s2_sesudah": [
+      "2026-11-08",
       "2026-11-10",
       "2026-11-13"
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 18.034118602761982,
-    "genang_sebelum_pct": 0,
-    "jumlah_petak": 1231,
-    "luas_sawah_ha": 430.96773489544216,
-    "tertanam_sesudah_pct": 1.543460601137287,
-    "tertinggal_pct": 0
+    "belum_hijau_sebelum_pct": 54.91105955143078,
+    "genang_sebelum_pct": 17.7107501933488,
+    "jumlah_petak": 1293,
+    "luas_sawah_ha": 441.93715009336967,
+    "tertanam_sesudah_pct": 28.692962103634954,
+    "tertinggal_pct": 11.36890951276102
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }

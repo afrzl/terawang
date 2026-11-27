@@ -2,18 +2,18 @@
   "folder": "kediri",
   "lokasi": "Kediri",
   "pusat": [
-    112.16672,
-    -7.89631
+    112.16043,
+    -7.87295
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    112.150396,
-    -7.905806,
-    112.183044,
-    -7.886814
+    112.144107,
+    -7.882446,
+    112.176753,
+    -7.863454
   ],
   "tanggal_sebelum": "2026-09-11",
   "tanggal_sesudah": "2026-11-08",
@@ -39,11 +39,11 @@
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 51.06493506493507,
+    "belum_hijau_sebelum_pct": 53.31147540983606,
     "genang_sebelum_pct": 0,
-    "jumlah_petak": 1925,
-    "luas_sawah_ha": 664.3507999068229,
-    "tertanam_sesudah_pct": 18.025974025974026,
+    "jumlah_petak": 1525,
+    "luas_sawah_ha": 530.3054002134085,
+    "tertanam_sesudah_pct": 7.40983606557377,
     "tertinggal_pct": 0
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"

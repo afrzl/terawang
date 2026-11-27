@@ -2,49 +2,48 @@
   "folder": "gresik",
   "lokasi": "Gresik",
   "pusat": [
-    112.4955,
-    -7.33576
+    112.54311,
+    -7.19113
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    112.479197,
-    -7.345256,
-    112.511803,
-    -7.326264
+    112.526812,
+    -7.200626,
+    112.559408,
+    -7.181634
   ],
-  "tanggal_sebelum": "2026-09-11",
-  "tanggal_sesudah": "2026-11-08",
+  "tanggal_sebelum": "2026-09-09",
+  "tanggal_sesudah": "2026-11-10",
   "jendela_hari": 6,
   "mode_label": "aturan",
   "jumlah_citra": {
-    "s1_sebelum": 2,
-    "s1_sesudah": 3,
-    "s2_sebelum": 3,
-    "s2_sesudah": 4
+    "s1_sebelum": 3,
+    "s1_sesudah": 2,
+    "s2_sebelum": 4,
+    "s2_sesudah": 3
   },
   "tanggal_citra": {
     "s2_sebelum": [
+      "2026-09-04",
       "2026-09-09",
       "2026-09-11",
       "2026-09-14"
     ],
     "s2_sesudah": [
-      "2026-11-03",
-      "2026-11-08",
       "2026-11-10",
       "2026-11-13"
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 94.75247524752474,
-    "genang_sebelum_pct": 0,
-    "jumlah_petak": 2020,
-    "luas_sawah_ha": 697.8849676446908,
-    "tertanam_sesudah_pct": 0.891089108910891,
-    "tertinggal_pct": 0
+    "belum_hijau_sebelum_pct": 96.6178697627461,
+    "genang_sebelum_pct": 0.10095911155981827,
+    "jumlah_petak": 1981,
+    "luas_sawah_ha": 681.2382430311158,
+    "tertanam_sesudah_pct": 0.6057546693589096,
+    "tertinggal_pct": 0.10095911155981827
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }

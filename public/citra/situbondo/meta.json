@@ -2,46 +2,47 @@
   "folder": "situbondo",
   "lokasi": "Situbondo",
   "pusat": [
-    114.35591,
-    -7.76515
+    114.24721,
+    -7.70137
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    114.339591,
-    -7.774646,
-    114.372229,
-    -7.755654
+    114.230893,
+    -7.710866,
+    114.263527,
+    -7.691874
   ],
-  "tanggal_sebelum": "2026-09-18",
-  "tanggal_sesudah": "2026-11-25",
+  "tanggal_sebelum": "2026-08-09",
+  "tanggal_sesudah": "2026-11-20",
   "jendela_hari": 6,
   "mode_label": "aturan",
   "jumlah_citra": {
     "s1_sebelum": 2,
-    "s1_sesudah": 1,
-    "s2_sebelum": 6,
-    "s2_sesudah": 6
+    "s1_sesudah": 2,
+    "s2_sebelum": 3,
+    "s2_sesudah": 5
   },
   "tanggal_citra": {
     "s2_sebelum": [
-      "2026-09-16",
-      "2026-09-18",
-      "2026-09-21"
+      "2026-08-07",
+      "2026-08-09",
+      "2026-08-12"
     ],
     "s2_sesudah": [
+      "2026-11-15",
       "2026-11-20",
       "2026-11-25"
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 99.34426229508196,
+    "belum_hijau_sebelum_pct": 36.637931034482754,
     "genang_sebelum_pct": 0,
-    "jumlah_petak": 1830,
-    "luas_sawah_ha": 634.2223217638553,
-    "tertanam_sesudah_pct": 0,
+    "jumlah_petak": 464,
+    "luas_sawah_ha": 165.2296217600741,
+    "tertanam_sesudah_pct": 39.87068965517241,
     "tertinggal_pct": 0
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"

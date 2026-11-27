@@ -2,18 +2,18 @@
   "folder": "kota-pasuruan",
   "lokasi": "Kota Pasuruan",
   "pusat": [
-    112.9231,
-    -7.67352
+    112.9213,
+    -7.62951
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    112.906784,
-    -7.683016,
-    112.939416,
-    -7.664024
+    112.904986,
+    -7.639006,
+    112.937614,
+    -7.620014
   ],
   "tanggal_sebelum": "2026-09-11",
   "tanggal_sesudah": "2026-11-25",
@@ -37,11 +37,11 @@
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 22.508305647840533,
-    "genang_sebelum_pct": 3.737541528239203,
-    "jumlah_petak": 1204,
-    "luas_sawah_ha": 416.2708393072208,
-    "tertanam_sesudah_pct": 38.2890365448505,
+    "belum_hijau_sebelum_pct": 100,
+    "genang_sebelum_pct": 0,
+    "jumlah_petak": 8,
+    "luas_sawah_ha": 2.881315750767932,
+    "tertanam_sesudah_pct": 0,
     "tertinggal_pct": 0
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"

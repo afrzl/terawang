@@ -2,20 +2,20 @@
   "folder": "tulungagung",
   "lokasi": "Tulungagung",
   "pusat": [
-    111.81098,
-    -8.21341
+    111.82446,
+    -8.14065
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    111.794643,
-    -8.222906,
-    111.827317,
-    -8.203914
+    111.808126,
+    -8.150146,
+    111.840794,
+    -8.131154
   ],
-  "tanggal_sebelum": "2026-09-11",
+  "tanggal_sebelum": "2026-08-02",
   "tanggal_sesudah": "2026-11-10",
   "jendela_hari": 6,
   "mode_label": "aturan",
@@ -27,22 +27,22 @@
   },
   "tanggal_citra": {
     "s2_sebelum": [
-      "2026-09-09",
-      "2026-09-11",
-      "2026-09-14"
+      "2026-07-31",
+      "2026-08-02",
+      "2026-08-05"
     ],
     "s2_sesudah": [
-      "2026-11-08",
-      "2026-11-10"
+      "2026-11-10",
+      "2026-11-13"
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 37.44380218368658,
-    "genang_sebelum_pct": 16.249197174052664,
-    "jumlah_petak": 1557,
-    "luas_sawah_ha": 542.9555825471034,
-    "tertanam_sesudah_pct": 36.28773281952473,
-    "tertinggal_pct": 0.06422607578676942
+    "belum_hijau_sebelum_pct": 39.853479853479854,
+    "genang_sebelum_pct": 0.43956043956043955,
+    "jumlah_petak": 1365,
+    "luas_sawah_ha": 465.67364148755786,
+    "tertanam_sesudah_pct": 9.597069597069599,
+    "tertinggal_pct": 0.43956043956043955
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }

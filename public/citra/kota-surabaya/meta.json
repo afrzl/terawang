@@ -2,28 +2,28 @@
   "folder": "kota-surabaya",
   "lokasi": "Kota Surabaya",
   "pusat": [
-    112.62755,
-    -7.3142
+    112.59701,
+    -7.2046
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    112.611248,
-    -7.323696,
-    112.643852,
-    -7.304704
+    112.580712,
+    -7.214096,
+    112.613308,
+    -7.195104
   ],
   "tanggal_sebelum": "2026-09-09",
-  "tanggal_sesudah": "2026-11-05",
+  "tanggal_sesudah": "2026-11-23",
   "jendela_hari": 6,
   "mode_label": "aturan",
   "jumlah_citra": {
     "s1_sebelum": 3,
     "s1_sesudah": 2,
-    "s2_sebelum": 12,
-    "s2_sesudah": 12
+    "s2_sebelum": 6,
+    "s2_sesudah": 4
   },
   "tanggal_citra": {
     "s2_sebelum": [
@@ -34,20 +34,17 @@
       "2026-09-14"
     ],
     "s2_sesudah": [
-      "2026-10-31",
-      "2026-11-03",
-      "2026-11-05",
-      "2026-11-08",
-      "2026-11-10"
+      "2026-11-17",
+      "2026-11-23"
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 49.763353617308994,
-    "genang_sebelum_pct": 0.47329276538201487,
-    "jumlah_petak": 1479,
-    "luas_sawah_ha": 517.9745159910896,
-    "tertanam_sesudah_pct": 2.0960108181203516,
-    "tertinggal_pct": 0.0676132521974307
+    "belum_hijau_sebelum_pct": 64.63195691202873,
+    "genang_sebelum_pct": 9.874326750448834,
+    "jumlah_petak": 557,
+    "luas_sawah_ha": 190.537075801986,
+    "tertanam_sesudah_pct": 1.9748653500897666,
+    "tertinggal_pct": 9.874326750448834
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }

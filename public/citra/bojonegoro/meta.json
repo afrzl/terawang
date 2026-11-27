@@ -2,34 +2,35 @@
   "folder": "bojonegoro",
   "lokasi": "Bojonegoro",
   "pusat": [
-    111.83614,
-    -7.16418
+    112.09036,
+    -7.10579
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    111.819843,
-    -7.173676,
-    111.852437,
-    -7.154684
+    112.074065,
+    -7.115286,
+    112.106655,
+    -7.096294
   ],
-  "tanggal_sebelum": "2026-09-09",
+  "tanggal_sebelum": "2026-09-29",
   "tanggal_sesudah": "2026-11-13",
   "jendela_hari": 6,
   "mode_label": "aturan",
   "jumlah_citra": {
-    "s1_sebelum": 3,
-    "s1_sesudah": 2,
+    "s1_sebelum": 2,
+    "s1_sesudah": 3,
     "s2_sebelum": 4,
     "s2_sesudah": 3
   },
   "tanggal_citra": {
     "s2_sebelum": [
-      "2026-09-09",
-      "2026-09-11",
-      "2026-09-14"
+      "2026-09-24",
+      "2026-09-29",
+      "2026-10-01",
+      "2026-10-04"
     ],
     "s2_sesudah": [
       "2026-11-08",
@@ -38,12 +39,12 @@
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 71.04325699745547,
-    "genang_sebelum_pct": 37.76081424936387,
-    "jumlah_petak": 1965,
-    "luas_sawah_ha": 678.9727581505192,
-    "tertanam_sesudah_pct": 82.64631043256998,
-    "tertinggal_pct": 0
+    "belum_hijau_sebelum_pct": 84.2250922509225,
+    "genang_sebelum_pct": 0.27675276752767525,
+    "jumlah_petak": 2168,
+    "luas_sawah_ha": 750.0891464233046,
+    "tertanam_sesudah_pct": 1.014760147601476,
+    "tertinggal_pct": 0.27675276752767525
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }
