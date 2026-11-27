@@ -297,3 +297,138 @@ export const angkaKunci = (f: FaktaPekan) => ({
   harga_medium_rata_rata_rp: ((f.langkah[4].fakta.harga_medium_rata_rata_rp as { pekan_ini: number }) ?? { pekan_ini: null }).pekan_ini,
 })
 
+
+/**
+ * Versi "data yang sudah terjadi" untuk peran tanpa hak estimasi (tamu): tiga bulan lengkap terakhir, tanpa prakiraan
+ * dan tanpa rekomendasi SPHP. Langkah harga hanya memakai harga yang sudah tercatat (disertakan bila `denganHarga`).
+ */
+export function susunFaktaRiwayat(denganHarga: boolean): FaktaPekan {
+  const AKHIR = BULAN_KINI - 1
+  const AWAL = AKHIR - 2
+  const TENGAH = AWAL + 1
+  const periode = `${BLN[AWAL % 12]}–${BLN[AKHIR % 12]}`
+  const periodePanjang = `${namaBulan(AWAL)} sampai ${namaBulan(AKHIR)}`
+
+  const prodT = sum(WILAYAH, (k) => produksiRentang(k, AWAL, AKHIR)) / 1000
+  const prevT = sum(WILAYAH, (k) => produksiPrevRentang(k, AWAL, AKHIR)) / 1000
+  const yoy = prevT > 0 ? (prodT / prevT - 1) * 100 : 0
+  const luasRb = sum(WILAYAH, (k) => luasPanen(k, AWAL) + luasPanen(k, TENGAH) + luasPanen(k, AKHIR)) / 1000
+  const lumbung = WILAYAH.slice().sort((a, b) => produksiRentang(b, AWAL, AKHIR) - produksiRentang(a, AWAL, AKHIR)).slice(0, 3)
+  const petaProduksi: PetaLangkah = {
+    layer: "produksi",
+    nilai: petakan((k) => produksiRentang(k, AWAL, AKHIR) / 1000, 2),
+    valueLabel: `Produksi beras ${periode}`,
+    legend: `Produksi beras ${labelBulan(AWAL)} sampai ${labelBulan(AKHIR)}, ribu ton`,
+  }
+
+  const nDef = WILAYAH.filter((k) => covBulan(k, AKHIR) < 0.75)
+  const nTip = WILAYAH.filter((k) => covBulan(k, AKHIR) >= 0.75 && covBulan(k, AKHIR) < 1)
+  const terendah = WILAYAH.slice().sort((a, b) => covBulan(a, AKHIR) - covBulan(b, AKHIR))[0]
+
+  const arusBulan = tradeFor(AKHIR)
+  const arusTotal = arusBulan.reduce((a, t) => a + t.ton, 0)
+  const arusAtas = arusBulan.slice(0, 3)
+
+  const hKini = rataHarga(0)
+  const hLalu = rataHarga(1)
+  const h4 = rataHarga(4)
+  const hargaKini = (k: Wilayah) => {
+    const s = seriHarga(k, "medium")
+    return s[s.length - 1] ?? 0
+  }
+  const termahal = WILAYAH.slice().sort((a, b) => hargaKini(b) - hargaKini(a))[0]
+
+  const langkah: LangkahFakta[] = [
+    {
+      key: "sawah",
+      k: "01 Sawah",
+      judul: `Luas panen ${periode} ${nf(luasRb, 0)} ribu ha`,
+      teks:
+        `Sepanjang ${periodePanjang}, sawah yang dipanen di Jawa Timur mencapai sekitar ${nf(luasRb, 0)} ribu ha, terluas di ${gabung(lumbung.map((k) => short(k.n)))}. ` +
+        "Luas panen dibaca dari citra Sentinel-2 tiap 12 hari, dengan radar Sentinel-1 untuk celah awan.",
+      stat: { v: luasRb, teks: nf(luasRb, 0), unit: `ribu ha luas panen ${periode}` },
+      peta: petaProduksi,
+      fakta: {},
+    },
+    {
+      key: "panen",
+      k: "02 Panen",
+      judul: yoy < 0 ? `Panen ${periode} lebih kecil dari tahun lalu` : `Panen ${periode} lebih besar dari tahun lalu`,
+      teks:
+        `Produksi beras ${periodePanjang} sebesar ${nf(prodT / 1000, 2)} juta ton, ${yoy < 0 ? "turun" : "naik"} ${nf(Math.abs(yoy), 1)}% dari periode yang sama tahun lalu menurut BPS. ` +
+        `Penyumbang terbesarnya ${gabung(lumbung.map((k) => short(k.n)))}.`,
+      stat: { v: Math.abs(yoy), teks: tanda(yoy) + nf(Math.abs(yoy), 1) + "%", unit: "produksi dibanding setahun lalu" },
+      peta: petaProduksi,
+      fakta: {},
+    },
+    {
+      key: "stok",
+      k: "03 Stok",
+      judul: nDef.length > 0 ? `${nf(nDef.length)} wilayah defisit akhir ${namaBulan(AKHIR)}` : `Stok akhir ${namaBulan(AKHIR)} di atas batas defisit`,
+      teks:
+        `Pada akhir ${namaBulan(AKHIR)}, ${nDef.length} wilayah berada di bawah 0,75 bulan konsumsi (defisit) dan ${nTip.length} lainnya di bawah satu bulan (tipis). ` +
+        `Yang paling rendah ${terendah?.n ?? "-"}, ${nf(terendah ? covBulan(terendah, AKHIR) : 0, 2)} bulan konsumsi.`,
+      stat: { v: nDef.length, teks: nf(nDef.length), unit: `wilayah defisit akhir ${namaBulan(AKHIR)}` },
+      peta: {
+        layer: "stokK2",
+        nilai: petakan((k) => covBulan(k, AKHIR), 3),
+        valueLabel: `Cakupan stok akhir ${BLN[AKHIR % 12]}`,
+        legend: `Cakupan stok non-Bulog, akhir ${labelBulan(AKHIR)}`,
+      },
+      fakta: {},
+    },
+    {
+      key: "arus",
+      k: "04 Arus",
+      judul: `Arus antarwilayah ${nf(arusTotal / 1000, 1)} ribu ton`,
+      teks:
+        `Pada ${namaBulan(AKHIR)}, sekitar ${nf(arusTotal / 1000, 1)} ribu ton beras berpindah antarkabupaten dari wilayah surplus ke wilayah yang kekurangan, ` +
+        `terbesar dari ${arusAtas[0] ? `${short(arusAtas[0].from.n)} ke ${short(arusAtas[0].to.n)}` : "-"}.`,
+      stat: { v: arusTotal / 1000, teks: nf(arusTotal / 1000, 1), unit: `ribu ton beras, ${namaBulan(AKHIR)}` },
+      peta: {
+        layer: "stokK2",
+        nilai: petakan((k) => covBulan(k, AKHIR), 3),
+        valueLabel: `Cakupan stok akhir ${BLN[AKHIR % 12]}`,
+        legend: `Cakupan stok non-Bulog, akhir ${labelBulan(AKHIR)}`,
+        muted: true,
+        arcs: arusBulan.slice(0, 22).map((t) => ({ from: t.from.n, to: t.to.n, ton: t.ton })),
+      },
+      fakta: {},
+    },
+  ]
+  if (denganHarga) {
+    const beda = hKini - hLalu
+    langkah.push({
+      key: "harga",
+      k: "05 Pasar",
+      judul: `Harga medium rata-rata ${"Rp" + nf(hKini, 0)}`,
+      teks:
+        `Harga beras medium rata-rata pekan ini Rp${nf(hKini, 0)}/kg, ${Math.abs(beda) < 5 ? "sama dengan" : beda > 0 ? "naik dari" : "turun dari"} pekan lalu Rp${nf(hLalu, 0)} ` +
+        `dan Rp${nf(h4, 0)} empat pekan lalu. HET medium Rp${nf(HET, 0)}; harga tertinggi tercatat di ${termahal?.n ?? "-"} Rp${nf(termahal ? hargaKini(termahal) : 0, 0)}.`,
+      stat: { v: hKini, teks: nf(hKini, 0), unit: "Rp/kg harga medium pekan ini" },
+      peta: { layer: "harga", nilai: petakan(hargaKini, 0), valueLabel: "Harga medium pekan ini" },
+      fakta: {},
+    })
+  }
+  const kosong: LangkahFakta = { ...langkah[0], fakta: {} }
+
+  return {
+    data_per: ymd(NOW),
+    data_per_label: `${NOW.getDate()} ${BLN[NOW.getMonth()]} ${NOW.getFullYear()}`,
+    api_aktif: API_AKTIF,
+    periode: { awal: labelBulan(AWAL), akhir: labelBulan(AKHIR), label: periodePanjang },
+    run: { k1: K1?.meta.model_run_id ?? null, k2: K2?.meta.model_run_id ?? null, k3a: K3A?.meta.model_run_id ?? null, k3b: K3B?.meta.model_run_id ?? null },
+    judul: "Dari sawah ke pasar",
+    dek:
+      `Panen ${periodePanjang} ${yoy < 0 ? "lebih kecil" : "lebih besar"} dari tahun lalu, ` +
+      (nDef.length + nTip.length > 0 ? `stok di beberapa wilayah tipis pada akhir ${namaBulan(AKHIR)}, ` : `stok cukup di semua wilayah pada akhir ${namaBulan(AKHIR)}, `) +
+      `dan beras bergerak dari wilayah surplus ke wilayah yang kekurangan. ${langkah.length} bagian di bawah menelusuri rantainya.`,
+    tigaAngka: [
+      { teks: tanda(yoy) + nf(Math.abs(yoy), 1) + "%", label: `produksi ${periode} dibanding periode yang sama tahun lalu`, href: "#langkah-2" },
+      { teks: nf(nDef.length), label: `kabupaten/kota defisit stok pada akhir ${namaBulan(AKHIR)}`, href: "#langkah-3" },
+      { teks: nf(arusTotal / 1000, 1), label: `ribu ton beras berpindah antarkabupaten pada ${namaBulan(AKHIR)}`, href: "#langkah-4" },
+    ],
+    langkah,
+    aksiUmum: kosong,
+  }
+}

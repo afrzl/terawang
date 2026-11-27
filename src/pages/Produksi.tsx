@@ -12,7 +12,7 @@ import { PHASES, byName, type Wilayah } from "@/lib/data"
 import { dfmt, hash, nf, rng, scale, short, sum, ticks } from "@/lib/format"
 import { useSelection } from "@/lib/selection"
 import { useTooltip } from "@/lib/tooltip"
-import { BULAN_KINI, BULAN_NAMA, N_BULAN, SATUAN, bulanLabel, useFilter, useWilayah } from "@/lib/filter"
+import { BULAN_KINI, BULAN_NAMA, SATUAN, bulanLabel, useFilter, useWilayah } from "@/lib/filter"
 import { KpiPerWilayah, LegendaWilayah, usePerWilayah } from "@/lib/perWilayah"
 import { bul, useDataTafsir } from "@/lib/tafsir"
 import { K1 } from "@/lib/api"
@@ -169,8 +169,8 @@ function luasBatas(k: Wilayah, i: number) {
 /** Luas panen bulanan gabungan wilayah terpilih: K1 2026 + pita, dibanding BPS 2025 bulan yang sama. */
 function LuasBulanan() {
   const wil = useWilayah()
-  const { mulai, akhir } = useFilter()
-  const bulan = [...Array(N_BULAN)].map((_, i) => i)
+  const { mulai, akhir, bulanMaks, estimasi } = useFilter()
+  const bulan = [...Array(bulanMaks + 1)].map((_, i) => i)
   const dates = bulan.map(tglBulan)
   const ini = bulan.map((i) => sum(wil, (k) => luasPanen(k, i)) / 1000)
   const lalu = bulan.map((i) => sum(wil, (k) => luasPanenPrev(k, i)) / 1000)
@@ -184,7 +184,11 @@ function LuasBulanan() {
   return (
     <Panel
       title="Luas panen per bulan"
-      tafsir={`Luas panen padi (ribu ha) wilayah terpilih. Garis tegas = 2026 (Jan–Sep diselaraskan dengan angka BPS, sesudahnya taksiran citra Sentinel K1), putus-putus = BPS 2025 bulan yang sama. Area berlatar = bulan berjalan dan prakiraan, pita = selang P10–P90. Rentang terpilih ${rentang}: ${nf(jRentang, d)} ribu ha. Puncak panen ${bulanLabel(puncak)}.`}
+      tafsir={
+        estimasi
+          ? `Luas panen padi (ribu ha) wilayah terpilih. Garis tegas = 2026 (Jan–Sep diselaraskan dengan angka BPS, sesudahnya taksiran citra Sentinel K1), putus-putus = BPS 2025 bulan yang sama. Area berlatar = bulan berjalan dan prakiraan, pita = selang P10–P90. Rentang terpilih ${rentang}: ${nf(jRentang, d)} ribu ha. Puncak panen ${bulanLabel(puncak)}.`
+          : `Luas panen padi (ribu ha) wilayah terpilih sampai ${bulanLabel(bulanMaks)}. Garis tegas = 2026 (Jan–Sep diselaraskan dengan angka BPS, sesudahnya dari citra Sentinel K1), putus-putus = BPS 2025 bulan yang sama. Rentang terpilih ${rentang}: ${nf(jRentang, d)} ribu ha. Puncak panen ${bulanLabel(puncak)}.`
+      }
     >
       <div className="pb chart">
         <LineChart
@@ -194,9 +198,9 @@ function LuasBulanan() {
           yFmt={(v) => nf(v, 0)}
           W={480}
           H={250}
-          splitAt={BULAN_KINI}
+          splitAt={estimasi ? BULAN_KINI : undefined}
           splitLabel="taksiran"
-          bands={[{ lo: lo.slice(BULAN_KINI), hi: hi.slice(BULAN_KINI), off: BULAN_KINI, color: "var(--s4)", op: 0.16, nama: "2026 selang P10–P90" }]}
+          bands={estimasi ? [{ lo: lo.slice(BULAN_KINI), hi: hi.slice(BULAN_KINI), off: BULAN_KINI, color: "var(--s4)", op: 0.16, nama: "2026 selang P10–P90" }] : []}
           series={[
             { vals: lalu, color: "var(--ink-3)", dash: "4 3", w: 1.4, nama: "BPS 2025" },
             { vals: ini, color: "var(--s4)", w: 2.4, nama: "2026" },
@@ -206,7 +210,7 @@ function LuasBulanan() {
               <b>{bulanLabel(i)}</b>
               <br />
               Luas panen <span className="m">{nf(ini[i] * 1000)} ha</span>
-              {i >= BULAN_KINI && (
+              {estimasi && i >= BULAN_KINI && (
                 <>
                   <br />
                   Selang P10–P90{" "}
@@ -239,7 +243,8 @@ function LuasBulanan() {
 /** Luas panen bulanan, satu garis per wilayah terpilih (2 sampai 6 wilayah). BPS 2025 putus-putus bila paling banyak 3 wilayah. */
 function LuasBulananWil() {
   const { wil, warna } = usePerWilayah()
-  const bulan = [...Array(N_BULAN)].map((_, i) => i)
+  const { bulanMaks, estimasi } = useFilter()
+  const bulan = [...Array(bulanMaks + 1)].map((_, i) => i)
   const dates = bulan.map(tglBulan)
   const denganLalu = wil.length <= 3
   const data = wil.map((k) => ({ k, ini: bulan.map((i) => luasPanen(k, i) / 1000), lalu: bulan.map((i) => luasPanenPrev(k, i) / 1000) }))
@@ -248,7 +253,7 @@ function LuasBulananWil() {
   return (
     <Panel
       title="Luas panen per bulan per wilayah"
-      tafsir="Luas panen padi (ribu ha) tiap wilayah. Garis tegas = 2026 (Jan–Sep diselaraskan dengan angka BPS, sesudahnya taksiran citra Sentinel K1); putus-putus = BPS 2025 bulan yang sama. Area berlatar = bulan berjalan dan prakiraan."
+      tafsir={`Luas panen padi (ribu ha) tiap wilayah. Garis tegas = 2026 (Jan–Sep diselaraskan dengan angka BPS, sesudahnya dari citra Sentinel K1); putus-putus = BPS 2025 bulan yang sama.${estimasi ? " Area berlatar = bulan berjalan dan prakiraan." : ""}`}
     >
       <div className="pb chart">
         <LineChart
@@ -258,7 +263,7 @@ function LuasBulananWil() {
           yFmt={(v) => nf(v, d)}
           W={480}
           H={250}
-          splitAt={BULAN_KINI}
+          splitAt={estimasi ? BULAN_KINI : undefined}
           splitLabel="taksiran"
           sebarLabel
           series={data.flatMap((x) => [
@@ -413,15 +418,15 @@ function HarvestCalendar() {
   const { sel, select } = useSelection()
   const { show, hide } = useTooltip()
   const wil = useWilayah()
-  const { mulai, akhir } = useFilter()
+  const { mulai, akhir, bulanMaks } = useFilter()
   const { daftar: top, tombol } = useSemua([...wil].sort((a, b) => b.est - a.est), 14)
-  const bulan = [...Array(N_BULAN)].map((_, i) => i)
+  const bulan = [...Array(bulanMaks + 1)].map((_, i) => i)
   const cal = top.map((k) => bulan.map((i) => luasPanen(k, i) / 1000))
   const W = 720
   const rowH = 21
   const m = { l: 96, t: 22, r: 8 }
   const H = m.t + top.length * rowH + 8
-  const cw = (W - m.l - m.r) / N_BULAN
+  const cw = (W - m.l - m.r) / bulan.length
   const mx = Math.max(1e-6, ...cal.flat())
   useDataTafsir("kalender", {
     satuan: "ribu ha luas panen per bulan",
@@ -673,7 +678,7 @@ function ProfilIsi({ wilayah }: { wilayah: string }) {
 
 function EstimateBars() {
   const wil = useWilayah().map((k) => k)
-  const { mulai, akhir, satuan } = useFilter()
+  const { mulai, akhir, satuan, estimasi } = useFilter()
   const sat = SATUAN[satuan]
   const { sel, select } = useSelection()
   const { show, hide } = useTooltip()
@@ -726,7 +731,7 @@ function EstimateBars() {
                 <>
                   <b>{k.n}</b>
                   <br />
-                  Proyeksi <span className="m">{nf(k.est, 1)} rb ton {sat.lab}</span>
+                  {estimasi ? "Proyeksi" : "Produksi"} <span className="m">{nf(k.est, 1)} rb ton {sat.lab}</span>
                   <br />
                   Selang 90%{" "}
                   <span className="m">

@@ -1,4 +1,4 @@
-import { HET, HET_PREMIUM, HIST, binIndex, fcHarga, flowsBulan, statusDari, statusK3a, type HargaStatus, type Wilayah } from "@/lib/data"
+import { HET, HET_PREMIUM, HIST, binIndex, fcHarga, flowsBulan, statusDari, statusK3a, type HargaStatus, type StokStatus, type Wilayah } from "@/lib/data"
 import { BULAN_KINI, IDX_AKHIR, K1, K2 } from "@/lib/api"
 import { nf, rp, sum } from "@/lib/format"
 
@@ -151,6 +151,9 @@ export function covBulan(k: Wilayah, i: number) {
 /** Hasil K2 dari database tersedia (bukan simulasi). */
 export const dataK2 = K2 !== null
 
+/** Status stok dari cakupan (bulan konsumsi): batas sama dengan status `ss` wilayah. */
+export const statusStok = (v: number): StokStatus => (v < 0.75 ? "defisit" : v < 1 ? "tipis" : v < 1.5 ? "cukup" : "surplus")
+
 /** Pita P10 dan P90 cakupan stok bulan i (skenario RENDAH dan TINGGI K2); null bila tidak ada. */
 export const cakupanBatas = (k: Wilayah, i: number) => {
   if (!K2) return null
@@ -212,6 +215,9 @@ export const SPEC_LABEL: Record<SpecKey, string> = {
 }
 
 export const isHarga = (k: SpecKey) => k === "statusHarga" || k === "pAtasHet" || k === "hargaPrakiraan"
+
+/** Hak yang dibutuhkan lapisan peta. Lapisan harga memakai horizon pekan ke depan, jadi juga butuh hak estimasi. */
+export const hakLapisan = (k: SpecKey): string[] => (k === "sphp" ? ["dasbor_sphp"] : isHarga(k) ? ["dasbor_harga", "dasbor_estimasi"] : [])
 
 const ton = (v: number) => nf(v, 0) + " ton"
 

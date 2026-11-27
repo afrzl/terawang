@@ -3,7 +3,7 @@ import { BulogCabang } from "@/components/charts/BulogCabang"
 import { BulogStok } from "@/components/charts/BulogStok"
 import { TAHUN_STOK_BULOG } from "@/lib/bulog"
 import { DeficitCountdown } from "@/components/charts/DeficitCountdown"
-import { LineChart } from "@/components/charts/LineChart"
+import { LineChart, type Series } from "@/components/charts/LineChart"
 import { DataTable, type Column } from "@/components/ui/DataTable"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
@@ -23,7 +23,7 @@ const akhirBulan = (i: number) => new Date(2026, i + 1, 0)
 export default function Stok() {
   const wil = useWilayah()
   const { pisah, warna, wil: wilP } = usePerWilayah()
-  const { akhir } = useFilter()
+  const { akhir, estimasi } = useFilter()
   const cT = sum(wil, (k) => k.C)
   const covRata = cT ? sum(wil, (k) => covBulan(k, akhir) * k.C) / cT : 0
   const nDef = wil.filter((k) => statusOf(covBulan(k, akhir)) === "defisit").length
@@ -60,8 +60,12 @@ export default function Stok() {
         </div>
       ),
     },
-    { head: bulanLabel(BULAN_KINI + 1), right: true, num: true, cell: (k) => nf(covBulan(k, BULAN_KINI + 1), 2), sort: (k) => covBulan(k, BULAN_KINI + 1) },
-    { head: bulanLabel(BULAN_KINI + 2), right: true, num: true, cell: (k) => nf(covBulan(k, BULAN_KINI + 2), 2), sort: (k) => covBulan(k, BULAN_KINI + 2) },
+    ...(estimasi
+      ? [
+          { head: bulanLabel(BULAN_KINI + 1), right: true, num: true, cell: (k: Wilayah) => nf(covBulan(k, BULAN_KINI + 1), 2), sort: (k: Wilayah) => covBulan(k, BULAN_KINI + 1) },
+          { head: bulanLabel(BULAN_KINI + 2), right: true, num: true, cell: (k: Wilayah) => nf(covBulan(k, BULAN_KINI + 2), 2), sort: (k: Wilayah) => covBulan(k, BULAN_KINI + 2) },
+        ]
+      : []),
     { head: "Status", cell: (k) => <StokPill s={statusOf(covBulan(k, akhir))} />, sort: (k) => SS[statusOf(covBulan(k, akhir))] * 100 - covBulan(k, akhir) },
     {
       head: `Neraca ${bulanLabel(akhir)}`,
@@ -70,12 +74,16 @@ export default function Stok() {
       cell: (k) => `${surplusTon(k, akhir) >= 0 ? "+" : "−"}${nf(Math.abs(surplusTon(k, akhir)))}`,
       sort: (k) => surplusTon(k, akhir),
     },
-    {
-      head: "Defisit",
-      right: true,
-      sort: (k) => (mulaiDefisit(k) === -1 ? 99 : mulaiDefisit(k)),
-      cell: (k) => (mulaiDefisit(k) === -1 ? "—" : bulanLabel(mulaiDefisit(k))),
-    },
+    ...(estimasi
+      ? [
+          {
+            head: "Defisit",
+            right: true,
+            sort: (k: Wilayah) => (mulaiDefisit(k) === -1 ? 99 : mulaiDefisit(k)),
+            cell: (k: Wilayah) => (mulaiDefisit(k) === -1 ? "—" : bulanLabel(mulaiDefisit(k))),
+          },
+        ]
+      : []),
   ]
 
   return (
@@ -100,11 +108,13 @@ export default function Stok() {
       <Panel title="Stok dan Konsumsi per Wilayah">
         <DataTable rows={rows} columns={columns} rowKey={(k) => k.n} rowName={(k) => k.n} pageSize={10} />
       </Panel>
-      <Panel title="Estimasi Waktu Menuju Defisit">
-        <div className="pb">
-          <DeficitCountdown />
-        </div>
-      </Panel>
+      {estimasi && (
+        <Panel title="Estimasi Waktu Menuju Defisit">
+          <div className="pb">
+            <DeficitCountdown />
+          </div>
+        </Panel>
+      )}
       <div className="grid-21">
         <Panel title="Stok Bulog Jawa Timur" note={`Tingkat provinsi, ${TAHUN_STOK_BULOG}`}>
           <div className="pb chart">
@@ -143,12 +153,16 @@ function simpangan(k: Wilayah) {
 /** Satu garis cakupan per wilayah terpilih (2 sampai 6 wilayah), dengan pita P10–P90 tipis. */
 function KalmanPanelWil() {
   const { wil, warna } = usePerWilayah()
-  const dates = [...Array(N_BULAN)].map((_, i) => akhirBulan(i))
+  const { bulanMaks, estimasi } = useFilter()
+  const dates = [...Array(bulanMaks + 1)].map((_, i) => akhirBulan(i))
   const data = wil.map((k) => ({ k, c: dates.map((_, i) => covBulan(k, i)), sd: simpangan(k) }))
   const top = Math.max(1.6, ...data.flatMap((d) => d.c)) * 1.12
   const z = dataK2 ? 1.2816 : 0.674
   return (
-    <Panel title="Estimasi stok non-Bulog per wilayah" tafsir="Cakupan stok dalam bulan konsumsi (stok dibagi konsumsi bulanan); kolom Des–Jan = prakiraan; batas aman 1 bulan, defisit di bawah 0,75 bulan">
+    <Panel
+      title={estimasi ? "Estimasi stok non-Bulog per wilayah" : "Stok non-Bulog per wilayah"}
+      tafsir={`Cakupan stok dalam bulan konsumsi (stok dibagi konsumsi bulanan);${estimasi ? " kolom Des–Jan = prakiraan;" : ""} batas aman 1 bulan, defisit di bawah 0,75 bulan`}
+    >
       <div className="pb chart">
         <LineChart
           xDates={dates}
@@ -156,10 +170,10 @@ function KalmanPanelWil() {
           yFmt={(v) => nf(v, 1)}
           W={720}
           H={290}
-          splitAt={BULAN_KINI}
+          splitAt={estimasi ? BULAN_KINI : undefined}
           splitLabel="Des–Jan"
           sebarLabel
-          bands={data.map((d) => ({
+          bands={(estimasi ? data : []).map((d) => ({
             lo: d.c.slice(BULAN_KINI).map((v, j) => Math.max(0, v - z * d.sd[BULAN_KINI + j])),
             hi: d.c.slice(BULAN_KINI).map((v, j) => Math.min(top, v + z * d.sd[BULAN_KINI + j])),
             off: BULAN_KINI,
@@ -171,10 +185,14 @@ function KalmanPanelWil() {
             { v: 1, label: "batas aman", color: "var(--warn)", dy: -3 },
             { v: 0.75, label: "defisit", color: "var(--crit)", dy: 9 },
           ]}
-          series={data.flatMap((d) => [
-            { vals: d.c.slice(0, BULAN_KINI + 1), color: warna(d.k), w: 2, nama: d.k.n },
-            { vals: d.c.slice(BULAN_KINI), off: BULAN_KINI, color: warna(d.k), dash: "5 4", w: 2, label: short(d.k.n), nama: d.k.n },
-          ])}
+          series={data.flatMap((d): Series[] =>
+            estimasi
+              ? [
+                  { vals: d.c.slice(0, BULAN_KINI + 1), color: warna(d.k), w: 2, nama: d.k.n },
+                  { vals: d.c.slice(BULAN_KINI), off: BULAN_KINI, color: warna(d.k), dash: "5 4", w: 2, label: short(d.k.n), nama: d.k.n },
+                ]
+              : [{ vals: d.c, color: warna(d.k), w: 2, label: short(d.k.n), nama: d.k.n }],
+          )}
           tip={(i) => (
             <>
               <b>{bulanLabel(i)}</b>
@@ -197,7 +215,9 @@ function KalmanPanelWil() {
 }
 
 function KalmanPanel({ wil }: { wil: Wilayah[] }) {
-  const dates = [...Array(N_BULAN)].map((_, i) => akhirBulan(i))
+  const { bulanMaks, estimasi } = useFilter()
+  const n = bulanMaks + 1
+  const dates = [...Array(n)].map((_, i) => akhirBulan(i))
   const cT = sum(wil, (k) => k.C)
   if (!wil.length || !cT) {
     return (
@@ -216,7 +236,7 @@ function KalmanPanel({ wil }: { wil: Wilayah[] }) {
   // Label ujung garis digeser vertikal supaya tidak menimpa label "batas aman" dan "defisit" (posisi dihitung dalam piksel).
   const H_GRAFIK = 290
   const ppu = (H_GRAFIK - 14 - 28) / top
-  const akhirC = center[N_BULAN - 1]
+  const akhirC = center[n - 1]
   const labelRef = [-3, (1 - 0.75) * ppu + 9] // posisi dasar label "batas aman" dan "defisit" terhadap garis 1,0
   const lyAkhir = [4, -12, 20, -24, 32, -36, 44].find((ly) => labelRef.every((r) => Math.abs((1 - akhirC) * ppu + ly - r) >= 14)) ?? 4
   const band = (z: number, op: number) => ({
@@ -228,7 +248,10 @@ function KalmanPanel({ wil }: { wil: Wilayah[] }) {
   })
 
   return (
-    <Panel title="Estimasi stok non-Bulog" tafsir="Cakupan stok dalam bulan konsumsi, rata-rata tertimbang konsumsi wilayah terpilih; kolom Des–Jan = prakiraan; pita = selang ketidakpastian; batas aman 1 bulan, defisit di bawah 0,75 bulan">
+    <Panel
+      title={estimasi ? "Estimasi stok non-Bulog" : "Stok non-Bulog"}
+      tafsir={`Cakupan stok dalam bulan konsumsi, rata-rata tertimbang konsumsi wilayah terpilih;${estimasi ? " kolom Des–Jan = prakiraan;" : ""} pita = selang ketidakpastian; batas aman 1 bulan, defisit di bawah 0,75 bulan`}
+    >
       <div className="pb chart">
         <LineChart
           xDates={dates}
@@ -236,17 +259,21 @@ function KalmanPanel({ wil }: { wil: Wilayah[] }) {
           yFmt={(v) => nf(v, 1)}
           W={720}
           H={290}
-          splitAt={BULAN_KINI}
+          splitAt={estimasi ? BULAN_KINI : undefined}
           splitLabel="Des–Jan"
           bands={dataK2 ? [band(1.2816, 0.2)] : [band(0.674, 0.22)]}
           refs={[
             { v: 1, label: "batas aman", color: "var(--warn)", dy: -3 },
             { v: 0.75, label: "defisit", color: "var(--crit)", dy: 9 },
           ]}
-          series={[
-            { vals: center.slice(0, BULAN_KINI + 1), color: "var(--accent)", w: 2.2, nama: "cakupan stok" },
-            { vals: center.slice(BULAN_KINI), off: BULAN_KINI, color: "var(--accent)", dash: "5 4", w: 2, label: nf(center[N_BULAN - 1], 2) + " bln", ly: lyAkhir, nama: "cakupan stok" },
-          ]}
+          series={
+            estimasi
+              ? [
+                  { vals: center.slice(0, BULAN_KINI + 1), color: "var(--accent)", w: 2.2, nama: "cakupan stok" },
+                  { vals: center.slice(BULAN_KINI), off: BULAN_KINI, color: "var(--accent)", dash: "5 4", w: 2, label: nf(akhirC, 2) + " bln", ly: lyAkhir, nama: "cakupan stok" },
+                ]
+              : [{ vals: center, color: "var(--accent)", w: 2.2, label: nf(akhirC, 2) + " bln", ly: lyAkhir, nama: "cakupan stok" }]
+          }
           tip={(i) => (
             <>
               <b>{bulanLabel(i)}</b>
@@ -263,7 +290,7 @@ function KalmanPanel({ wil }: { wil: Wilayah[] }) {
         <div className="legend" style={{ padding: "6px 0 0" }}>
           <span>
             <span className="sw" style={{ background: "var(--accent)" }} />
-            estimasi stok
+            {estimasi ? "estimasi stok" : "cakupan stok"}
           </span>
         </div>
         <CatatanGabungan n={wil.length} total={WILAYAH.length} />
@@ -273,7 +300,7 @@ function KalmanPanel({ wil }: { wil: Wilayah[] }) {
 }
 
 function NeracaPanel({ wil }: { wil: Wilayah[] }) {
-  const { akhir } = useFilter()
+  const { akhir, estimasi } = useFilter()
   if (!wil.length) {
     return (
       <Panel title="Neraca">
@@ -290,7 +317,7 @@ function NeracaPanel({ wil }: { wil: Wilayah[] }) {
   const A = S1 - S0 - P + Kn
   // Sumber tiap batang. estimasi = keluaran model kita (K1, optimasi arus); BPS = data asli. Stok awal dan akhir tidak diberi tanda
   // (levelnya bertumpu pada jangkar asumsi K2).
-  const sumber = ["", akhir <= 8 ? "BPS + K1" : "estimasi", "BPS", "estimasi", ""]
+  const sumber = estimasi ? ["", akhir <= 8 ? "BPS + K1" : "estimasi", "BPS", "estimasi", ""] : ["", akhir <= 8 ? "BPS + K1" : "citra K1", "BPS", "model K2", ""]
   const warnaSumber = (t: string) => (t === "estimasi" ? "var(--warn)" : "var(--ink-3)")
   const steps: [string, number, "base" | "d"][] = [
     ["Stok awal", S0, "base"],

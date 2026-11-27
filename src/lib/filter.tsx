@@ -4,6 +4,7 @@ import { BULAN_KINI, N_BULAN } from "@/lib/api"
 import { REGIONS, type RegionKey } from "@/lib/arus"
 import { WILAYAH, byName, type HargaStatus, type StokStatus, type Wilayah } from "@/lib/data"
 import { statusHargaAt, type Komoditas } from "@/lib/petaLayers"
+import { useSesi } from "@/lib/sesi"
 
 export const HS_ALL: HargaStatus[] = ["aman", "waspada", "siaga"]
 export const SS_ALL: StokStatus[] = ["surplus", "cukup", "tipis", "defisit"]
@@ -68,6 +69,12 @@ interface FilterContextValue extends FilterState {
   /** Bulan awal dan akhir yang berlaku (sama bila bukan mode rentang). */
   mulai: number
   akhir: number
+  /** Bulan terakhir yang boleh dipilih: tanpa hak estimasi hanya sampai bulan lengkap terakhir (data yang sudah terjadi). */
+  bulanMaks: number
+  /** Bulan bawaan saat dibuka atau diatur ulang. */
+  bulanAwal: number
+  /** Peran ini boleh melihat estimasi dan prakiraan ke depan. */
+  estimasi: boolean
   panel: Panel
   setPanel: (p: Panel) => void
   /** Jenis beras untuk status dan harga. */
@@ -123,7 +130,14 @@ const toggle = <T,>(arr: T[], v: T) => (arr.includes(v) ? arr.filter((x) => x !=
 
 export function FilterProvider({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation()
-  const tersedia = RUTE[pathname] ?? TIDAK
+  const { boleh } = useSesi()
+  const estimasi = boleh("dasbor_estimasi")
+  // Status harga dihitung dari prakiraan 4 pekan, jadi filternya hanya untuk peran berhak harga dan estimasi.
+  const lihatHarga = estimasi && boleh("dasbor_harga")
+  const rute = RUTE[pathname] ?? TIDAK
+  const tersedia = useMemo(() => (lihatHarga || !rute.hs ? rute : { ...rute, hs: false }), [rute, lihatHarga])
+  const bulanMaks = estimasi ? N_BULAN - 1 : Math.max(0, BULAN_KINI - 1)
+  const bulanAwal = Math.min(BULAN_KINI, bulanMaks)
   const [st, setSt] = useState<FilterState>(muat)
   const [bulan, setBulanState] = useState(BULAN_KINI)
   const [bulan2, setBulan2State] = useState(BULAN_KINI)
@@ -132,39 +146,45 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
   const [jenisHarga, setJenisHargaState] = useState<Komoditas[]>(["medium", "premium"])
   const [satuan, setSatuan] = useState<Satuan>("gkg")
   const setJenisHarga = useCallback((j: Komoditas[]) => setJenisHargaState(j.length ? (["medium", "premium"] as Komoditas[]).filter((x) => j.includes(x)) : ["medium", "premium"]), [])
-  const klem = (i: number) => Math.min(N_BULAN - 1, Math.max(0, i))
+  const klem = useCallback((i: number) => Math.min(bulanMaks, Math.max(0, i)), [bulanMaks])
   const setBulan = useCallback(
     (i: number) => {
       const v = klem(i)
       setBulanState(v)
       setBulan2State((b) => Math.max(b, v))
     },
-    [],
+    [klem],
   )
-  const setBulan2 = useCallback((i: number) => {
-    const v = klem(i)
-    setBulan2State(v)
-    setBulanState((b) => Math.min(b, v))
-  }, [])
-  const setRange = useCallback((a: number, b: number) => {
-    const x = klem(Math.min(a, b))
-    const y = klem(Math.max(a, b))
-    setBulanState(x)
-    setBulan2State(y)
-    setRentangState(true)
-  }, [])
+  const setBulan2 = useCallback(
+    (i: number) => {
+      const v = klem(i)
+      setBulan2State(v)
+      setBulanState((b) => Math.min(b, v))
+    },
+    [klem],
+  )
+  const setRange = useCallback(
+    (a: number, b: number) => {
+      const x = klem(Math.min(a, b))
+      const y = klem(Math.max(a, b))
+      setBulanState(x)
+      setBulan2State(y)
+      setRentangState(true)
+    },
+    [klem],
+  )
   const setRentang = useCallback(
     (r: boolean) => {
       setRentangState(r)
       if (r) {
         // Awal rentang: 3 bulan berakhir di bulan terpilih.
-        setBulan2State(bulan)
+        setBulan2State(klem(bulan))
         setBulanState(klem(bulan - 2))
       } else {
-        setBulanState(bulan2)
+        setBulanState(klem(bulan2))
       }
     },
-    [bulan, bulan2],
+    [bulan, bulan2, klem],
   )
   const [panel, setPanelState] = useState<Panel>(() => {
     try {
@@ -193,6 +213,10 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // Sesi (dan batas bulan) baru diketahui setelah state awal dibuat, jadi bulan dijepit saat dibaca.
+  const b1 = Math.min(bulan, bulanMaks)
+  const b2 = Math.min(bulan2, bulanMaks)
+
   const value = useMemo<FilterContextValue>(() => {
     const lolos = (k: Wilayah) =>
       (!tersedia.wilayah || st.wilayah.includes(k.n)) &&
@@ -200,15 +224,18 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
       (!tersedia.ss || st.ss.includes(k.ss))
     return {
       ...st,
-      bulan,
+      bulan: b1,
       setBulan,
       rentang,
       setRentang,
-      bulan2,
+      bulan2: b2,
       setBulan2,
       setRange,
-      mulai: bulan,
-      akhir: rentang ? bulan2 : bulan,
+      mulai: b1,
+      akhir: rentang ? b2 : b1,
+      bulanMaks,
+      bulanAwal,
+      estimasi,
       panel,
       setPanel,
       kom,
@@ -232,8 +259,8 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
       reset: () => {
         simpan(kosong)
         setRentangState(false)
-        setBulanState(BULAN_KINI)
-        setBulan2State(BULAN_KINI)
+        setBulanState(bulanAwal)
+        setBulan2State(bulanAwal)
       },
       aktif:
         (tersedia.wilayah && st.wilayah.length < WILAYAH.length ? 1 : 0) +
@@ -242,7 +269,7 @@ export function FilterProvider({ children }: { children: React.ReactNode }) {
       lolos,
       W: WILAYAH.filter(lolos),
     }
-  }, [st, simpan, tersedia, pathname, jenisHarga, setJenisHarga, satuan, panel, setPanel, kom, bulan, setBulan, rentang, setRentang, bulan2, setBulan2, setRange])
+  }, [st, simpan, tersedia, pathname, jenisHarga, setJenisHarga, satuan, panel, setPanel, kom, b1, setBulan, rentang, setRentang, b2, setBulan2, setRange, bulanMaks, bulanAwal, estimasi])
 
   return <FilterContext.Provider value={value}>{children}</FilterContext.Provider>
 }
