@@ -21,7 +21,8 @@ interface Gee {
 export async function ingestSatelit(): Promise<void> {
   catat("== silver.satelit_wilayah")
   const sid = await sumberId("gee_terawang_wilayah")
-  const gee = bacaJson<Gee>("src/lib/gee_wilayah.json")
+  // Pipeline mode gee menulis hasil Earth Engine di luar repo dan mengarahkan ke sana lewat TERAWANG_GEE_JSON.
+  const gee = bacaJson<Gee>(process.env.TERAWANG_GEE_JSON ?? "src/lib/gee_wilayah.json")
   const w = new Map((await prisma.wilayah.findMany({ where: { level: "KABKOTA" }, select: { id: true, nama_repo: true } })).map((x) => [x.nama_repo, x.id]))
 
   const data = gee.wilayah.map((g) => {

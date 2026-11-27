@@ -37,6 +37,9 @@ def ambil(nama, pts, wins):
     cs = ee.ImageCollection("GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED")
     s2 = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED").filterBounds(aoi).linkCollection(cs, ["cs_cdf"])
           .map(lambda i: i.select(["B2", "B4", "B8", "B11"]).updateMask(i.select("cs_cdf").gte(0.6))))
+    # jendela tanpa citra (mis. jendela terbaru yang belum ada akuisisi): median koleksi kosong = image tanpa band dan
+    # select("B8") gagal. Satu image ter-mask penuh membuat koleksi tidak pernah kosong; hasilnya tetap kosong (None).
+    kosong = ee.ImageCollection([ee.Image.constant([0, 0, 0, 0]).rename(["B2", "B4", "B8", "B11"]).toUint16().updateMask(0)])
     n = len(wins)
     lswi = [[None] * n for _ in range(len(pts))]
     evi = [[None] * n for _ in range(len(pts))]
@@ -44,7 +47,7 @@ def ambil(nama, pts, wins):
         pita = []
         for k in range(c0, min(c0 + CHUNK, n)):
             t0 = ee.Date(wins[k].isoformat())
-            pita.append(indeks(s2.filterDate(t0, t0.advance(12, "day")).median()).rename([f"l{k:02d}", f"e{k:02d}"]))
+            pita.append(indeks(s2.filterDate(t0, t0.advance(12, "day")).merge(kosong).median()).rename([f"l{k:02d}", f"e{k:02d}"]))
         res = ee.Image.cat(pita).reduceRegions(collection=fc, reducer=ee.Reducer.first(), scale=10, tileScale=4).getInfo()["features"]
         for f in res:
             i = f["properties"]["i"]

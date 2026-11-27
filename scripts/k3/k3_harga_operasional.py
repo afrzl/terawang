@@ -1,15 +1,24 @@
 """TERAWANG K3a · Prediksi harga HARIAN per kab/kota (7, 14, 21, 28 hari) dan status terhadap HET.
 
-Model: harga hari terakhir (asal harian) + sebaran galat empiris jendela 365 hari terakhir (hanya galat yang targetnya sudah terjadi).
+Model: harga hari terakhir (asal harian) + sebaran galat empiris jendela 365 hari terakhir (hanya galat yang targetnya sudah terjadi),
+dibobot eksponensial dengan paruh waktu 60 hari (EW60; uji varian 25 Nov 2026: Brier lebih baik 4-11%).
   harga_prediksi = p0 x exp(median galat);  P10/P90 = kuantil galat;  P(harga > HET) = proporsi galat > log(HET/p0)
 Status (HET dari app.ambang_harga): SIAGA bila P(> 1,05 HET) >= ambang_siaga; WASPADA bila P(> HET) >= ambang_waspada; AMAN selainnya.
 Ambang per horizon dikalibrasi lewat backtest (sejak 22 Agu 2025, kab yang masih <= HET): ambang yang memaksimalkan F1 deteksi
 kejadian baru melewati HET (hasil dicetak dan disimpan di parameter model_run).
+Beras medium, kab yang masih <= HET: WASPADA dari peringatan gabungan EW60 + regresi logistik + harga penggilingan Panel Harga
+Bapanas (scripts/k3/k3_peringatan_gabungan.py, kejadian "melewati HET kapan saja dalam h hari"; 26 Nov 2026). Bila data Bapanas
+tidak ada, kembali ke aturan peluang di atas.
+Angka peluang melewati HET (p_di_atas_het) untuk beras medium kab <= HET: regresi logistik tanpa bobot kelas + kalibrasi Platt dari
+modul yang sama (27 Nov 2026; Brier 8-21% lebih baik daripada EW60). Kab di atas HET dan beras premium tetap EW60.
+Peluang per kab disimpan di parameter model_run "peluang_het" {medium|premium: {horizon: {kab: p}}} untuk API/dasbor.
+  Folder data: TERAWANG_HARGA_DIR (harga per pasar SISKAPERBAPO), TERAWANG_BAPANAS_DIR (Panel Harga Bapanas); kosong -> data/ di repo.
 
   python scripts/k3/k3_harga_operasional.py [--simpan]
 """
 import argparse
 import json
+import os
 import subprocess
 import sys
 
@@ -17,11 +26,39 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, "scripts/k2")
+sys.path.insert(0, "scripts/k3")
 import model_stok as ms  # noqa: E402
 
 HOR = (7, 14, 21, 28)
 JENDELA = 365
+PARUH = 60  # galat dibobot eksponensial (paruh waktu 60 hari)
+FOLDER_HARGA = os.environ.get("TERAWANG_HARGA_DIR") or "data/siskaperbapo/harga_beras"
+FOLDER_BAPANAS = os.environ.get("TERAWANG_BAPANAS_DIR") or "data/bapanas/panel_harga"
+
+
+def bobot(tgt, t):
+    """Bobot galat menurut umur targetnya terhadap tanggal asal t (EW60)."""
+    return np.exp(-np.log(2) * (t - tgt).dt.days.to_numpy() / PARUH)
+
+
+def sebaran(pool, t):
+    """Galat terurut + bobot kumulatif ternormalisasi."""
+    e, w = pool.y.to_numpy(), bobot(pool.tgt, t)
+    o = np.argsort(e)
+    return e[o], np.cumsum(w[o]) / w.sum()
+
+
+def p_lebih(e, cw, d):
+    """P(galat > d) dari sebaran berbobot."""
+    k = np.searchsorted(e, np.atleast_1d(d), side="right")
+    return 1 - np.where(k > 0, cw[np.maximum(k - 1, 0)], 0.0)
+
+
+def kuantil(e, cw, qs):
+    return np.array([e[min(np.searchsorted(cw, q), len(e) - 1)] for q in qs])
 MULAI_UJI = pd.Timestamp("2025-08-22")
+# komoditas_id -> (HET Rp/kg, ambang siaga % di atas HET), dipakai bila app.ambang_harga kosong. Sama dengan konstanta dasbor (src/lib/data.ts).
+HET_CADANGAN = {1: (13500, 5.0), 2: (14900, 5.0)}
 
 
 def harian(kom):
@@ -35,6 +72,15 @@ def galat(L, h):
     y.columns = ["tgl", "kab", "y"]
     y["tgt"] = y.tgl + pd.Timedelta(days=h)
     return y.dropna()
+
+
+def _auc(skor, label):
+    """AUC (Mann-Whitney, peringkat rata-rata untuk nilai seri). None bila hanya ada satu kelas."""
+    pos, neg = int(label.sum()), int(len(label) - label.sum())
+    if not pos or not neg:
+        return None
+    r = pd.Series(skor).rank().to_numpy()
+    return round(float((r[label == 1].sum() - pos * (pos + 1) / 2) / (pos * neg)), 3)
 
 
 def backtest(P, H, het):
@@ -53,8 +99,8 @@ def backtest(P, H, het):
         pe = np.zeros(len(te))
         for t, sub in te.groupby("tgl"):
             m = (kn.tgt <= t) & (kn.tgt > t - pd.Timedelta(days=JENDELA))
-            e = np.sort(kn[m].y.to_numpy())
-            pe[te.index.get_indexer(sub.index)] = 1 - np.searchsorted(e, sub.d.to_numpy(), side="right") / len(e)
+            e, cw = sebaran(kn[m], t)
+            pe[te.index.get_indexer(sub.index)] = p_lebih(e, cw, sub.d.to_numpy())
         ev = te.ev.to_numpy()
         best = (0, 0.3, 0, 0, 0)
         for th in np.arange(0.05, 0.75, 0.05):
@@ -63,8 +109,78 @@ def backtest(P, H, het):
             f1 = 2 * tp / max(2 * tp + fp + fn, 1)
             if f1 > best[0]:
                 best = (f1, th, tp, fp, fn)
-        hasil[h] = dict(ambang=round(float(best[1]), 2), f1=round(float(best[0]), 3), terdeteksi=int(best[2]), alarm_palsu=int(best[3]), kejadian=int(ev.sum()))
+        hasil[h] = dict(ambang=round(float(best[1]), 2), f1=round(float(best[0]), 3), terdeteksi=int(best[2]), alarm_palsu=int(best[3]), kejadian=int(ev.sum()),
+                        auc=_auc(pe, ev))
     return hasil
+
+
+def hitung(cetak=True):
+    """Prakiraan K3a untuk tanggal harga terakhir di database. Kembalikan (R, het, kalibrasi): R = satu baris per komoditas x kab x horizon."""
+    log = print if cetak else (lambda *a, **k: None)
+    het = ms.sql("select komoditas_id k, het_rp_kg het, ambang_siaga_pct sg from app.ambang_harga where wilayah_id is null order by berlaku_dari").groupby("k").last()
+    for kom, (h, sg) in HET_CADANGAN.items():  # app.ambang_harga belum terisi: pakai HET cadangan (belum diverifikasi ke teks resmi)
+        if kom not in het.index:
+            het.loc[kom] = [h, sg]
+            log(f"HET komoditas {kom} tidak ada di app.ambang_harga; dipakai cadangan Rp{h:,} (siaga +{sg}%)")
+    rows, kal_all, kal_peluang, gab = [], {}, {}, None
+    for kom, nm in ((1, "medium"), (2, "premium")):
+        P = harian(kom)
+        L = np.log(P)
+        H = float(het.loc[kom, "het"])
+        siaga = H * (1 + het.loc[kom, "sg"] / 100)
+        kal = backtest(P, None, H)
+        kal_peluang[nm] = kal
+        log(f"\nKalibrasi ambang peluang, beras {nm} (HET Rp{H:,.0f}):")
+        for h, v in kal.items():
+            log(f"  {h:2d} hari: ambang {v['ambang']:.2f} | F1 {v['f1']:.2f} | terdeteksi {v['terdeteksi']}/{v['kejadian']}, alarm palsu {v['alarm_palsu']}")
+        kal_all[nm] = kal
+        wsp, plg = {}, {}
+        if kom == 1:
+            try:
+                import k3_peringatan_gabungan as pg
+                S, kal_gab = pg.hitung(P, H, FOLDER_HARGA, FOLDER_BAPANAS, HOR, log=log)
+                gab = {"kalibrasi": kal_gab, "folder_bapanas": FOLDER_BAPANAS,
+                       "skor_kini": {int(h): {r.kab: round(float(r.skor), 3) for r in g.itertuples()} for h, g in S.groupby("horizon_hari")}}
+                wsp = {(r.kab, int(r.horizon_hari)): bool(r.waspada) for r in S.itertuples()}
+                plg = {(r.kab, int(r.horizon_hari)): float(r.p_het) for r in S.itertuples()}
+                kal_all[nm] = kal_gab  # dasbor menampilkan kalibrasi WASPADA beras medium
+            except Exception as e:  # noqa: BLE001  data Bapanas/pasar tidak ada: aturan peluang saja
+                gab = {"galat": f"{type(e).__name__}: {e}"[:300]}
+                log(f"  peringatan gabungan tidak dipakai ({gab['galat']}); WASPADA medium dari aturan peluang")
+        tgl_acuan = P.index.max()
+        p0 = P.ffill().iloc[-1]
+        for h in HOR:
+            kn = galat(L, h)
+            e, cw = sebaran(kn[(kn.tgt <= tgl_acuan) & (kn.tgt > tgl_acuan - pd.Timedelta(days=JENDELA))], tgl_acuan)
+            q10, q50, q90 = kuantil(e, cw, (0.1, 0.5, 0.9))
+            th_w = kal[h]["ambang"]
+            for kab, p in p0.items():
+                pw = plg.get((kab, h), float(p_lebih(e, cw, np.log(H / p))[0]))  # medium kab <= HET: logistik terkalibrasi
+                ps = float(p_lebih(e, cw, np.log(siaga / p))[0])
+                waspada = wsp[(kab, h)] if (kab, h) in wsp else pw >= th_w  # kab <= HET (medium): peringatan gabungan
+                st = "SIAGA" if ps >= max(th_w, 0.5) else ("WASPADA" if waspada else "AMAN")
+                rows.append((kom, kab, str(tgl_acuan.date()), h, p * np.exp(q50), p * np.exp(q10), p * np.exp(q90), st, pw))
+    R = pd.DataFrame(rows, columns=["komoditas", "kab", "tanggal_acuan", "horizon_hari", "harga", "p10", "p90", "status", "p_di_atas_het"])
+    kal_all["_peluang"] = kal_peluang
+    nama = {1: "medium", 2: "premium"}
+    kal_all["_peluang_het"] = {nama[k]: {int(h): {r.kab: round(float(r.p_di_atas_het), 4) for r in g2.itertuples()} for h, g2 in g.groupby("horizon_hari")}
+                               for k, g in R.groupby("komoditas")}
+    kal_all["_gabungan"] = gab
+    return R, het, kal_all
+
+
+def parameter_run(het, kal_all):
+    kal = {k: v for k, v in kal_all.items() if not k.startswith("_")}
+    gab = kal_all.get("_gabungan") or {}
+    return {"model": "harga hari terakhir + sebaran galat empiris jendela 365 hari, bobot paruh 60 hari (EW60)", "asal": "harian", "horizon_hari": list(HOR),
+            "kalibrasi_ambang": kal, "kalibrasi_peluang": kal_all.get("_peluang"),
+            "peringatan_medium": ("gabungan EW60 + logit + harga penggilingan Bapanas, kejadian melewati HET kapan saja dalam h hari"
+                                  if "kalibrasi" in gab else "aturan peluang (data Bapanas tidak tersedia)"),
+            "peringatan_gabungan": gab or None,
+            "uji": "backtest sejak 22 Agu 2025 (kab <= HET), ambang maks F1", "het": {int(k): int(v) for k, v in het.het.items()},
+            "peluang_het": kal_all.get("_peluang_het"),
+            "sumber_peluang": "beras medium kab <= HET: regresi logistik terkalibrasi (Platt), kejadian melewati HET kapan saja dalam h hari; "
+                              "lainnya: EW60, harga di atas HET tepat pada t+h"}
 
 
 def main():
@@ -72,31 +188,7 @@ def main():
     ap.add_argument("--simpan", action="store_true")
     a = ap.parse_args()
     ids = ms.sql("select id, nama_repo kab from ref.wilayah where level='KABKOTA'").set_index("kab").id
-    het = ms.sql("select komoditas_id k, het_rp_kg het, ambang_siaga_pct sg from app.ambang_harga where wilayah_id is null order by berlaku_dari").groupby("k").last()
-    rows, kal_all = [], {}
-    for kom, nm in ((1, "medium"), (2, "premium")):
-        P = harian(kom)
-        L = np.log(P)
-        H = float(het.loc[kom, "het"])
-        siaga = H * (1 + het.loc[kom, "sg"] / 100)
-        kal = backtest(P, None, H)
-        kal_all[nm] = kal
-        print(f"\nKalibrasi ambang WASPADA, beras {nm} (HET Rp{H:,.0f}):")
-        for h, v in kal.items():
-            print(f"  {h:2d} hari: ambang {v['ambang']:.2f} | F1 {v['f1']:.2f} | terdeteksi {v['terdeteksi']}/{v['kejadian']}, alarm palsu {v['alarm_palsu']}")
-        tgl_acuan = P.index.max()
-        p0 = P.ffill().iloc[-1]
-        for h in HOR:
-            kn = galat(L, h)
-            e = kn[(kn.tgt <= tgl_acuan) & (kn.tgt > tgl_acuan - pd.Timedelta(days=JENDELA))].y.to_numpy()
-            q10, q50, q90 = np.quantile(e, [0.1, 0.5, 0.9])
-            th_w = kal[h]["ambang"]
-            for kab, p in p0.items():
-                pw = float((e > np.log(H / p)).mean())
-                ps = float((e > np.log(siaga / p)).mean())
-                st = "SIAGA" if ps >= max(th_w, 0.5) else ("WASPADA" if pw >= th_w else "AMAN")
-                rows.append((kom, kab, str(tgl_acuan.date()), h, p * np.exp(q50), p * np.exp(q10), p * np.exp(q90), st, pw))
-    R = pd.DataFrame(rows, columns=["komoditas", "kab", "tanggal_acuan", "horizon_hari", "harga", "p10", "p90", "status", "p_di_atas_het"])
+    R, het, kal_all = hitung()
     for kom, nm in ((1, "medium"), (2, "premium")):
         d = R[R.komoditas == kom]
         print(f"\nBeras {nm}: jumlah kab per status")
@@ -105,8 +197,7 @@ def main():
         print("  peluang melewati HET tertinggi (28 hari):", ", ".join(f"{r.kab} {r.p_di_atas_het * 100:.0f}%" for r in d28.itertuples()))
     R.to_csv("data/satelit/k3_harga_operasional.csv", index=False)
     if a.simpan:
-        par = {"model": "harga hari terakhir + sebaran galat empiris jendela 365 hari", "asal": "harian", "horizon_hari": list(HOR), "kalibrasi_ambang": kal_all,
-               "uji": "backtest sejak 22 Agu 2025 (kab <= HET), ambang maks F1", "het": {int(k): int(v) for k, v in het.het.items()}}
+        par = parameter_run(het, kal_all)
         rid = int(ms.sql(f"insert into app.model_run (jenis, nama_versi, parameter, selesai_pada) values ('K3_HARGA','k3_harga_harian_365_2026_11','{json.dumps(par)}'::jsonb, now()) returning id").iloc[0, 0])
         vals = [f"({rid},{ids[r.kab]},{r.komoditas},'{r.tanggal_acuan}',{r.horizon_hari},{r.harga},{r.p10},{r.p90},'{r.status}','MODEL')" for r in R.itertuples()]
         res = subprocess.run(["psql", "-d", "terawang", "-v", "ON_ERROR_STOP=1", "-c", "insert into app.prediksi_harga (model_run_id,wilayah_id,komoditas_id,tanggal_acuan,horizon_hari,harga_prediksi,batas_bawah,batas_atas,status,jenis_data) values " + ",".join(vals)], capture_output=True, text=True)

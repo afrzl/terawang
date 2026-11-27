@@ -5,25 +5,35 @@ import { fileURLToPath } from "node:url"
 import { parse } from "csv-parse/sync"
 import { prisma } from "../db.js"
 
-/** Akar repo (folder terawang/). */
+/** Akar repo (folder terawang/). Path relatif dibaca dari sini; path absolut dipakai apa adanya. */
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..")
 
 export type Baris = Record<string, string>
+
+/** Lapisan data dari konektor (mis. BPS WebAPI): berkas `data/...` dibaca dari TERAWANG_DATA_DIR bila ada di sana, selain itu dari repo. */
+export function lokasi(relPath: string): string {
+  const lapis = process.env.TERAWANG_DATA_DIR
+  if (lapis && relPath.startsWith("data/")) {
+    const p = path.resolve(lapis, relPath.slice("data/".length))
+    if (fs.existsSync(p)) return p
+  }
+  return path.resolve(ROOT, relPath)
+}
 
 function parseCsv(teks: string): Baris[] {
   return parse(teks, { columns: true, skip_empty_lines: true, bom: true }) as Baris[]
 }
 
 export function bacaCsv(relPath: string): Baris[] {
-  return parseCsv(fs.readFileSync(path.join(ROOT, relPath), "utf-8"))
+  return parseCsv(fs.readFileSync(lokasi(relPath), "utf-8"))
 }
 
 export function bacaCsvGz(relPath: string): Baris[] {
-  return parseCsv(zlib.gunzipSync(fs.readFileSync(path.join(ROOT, relPath))).toString("utf-8"))
+  return parseCsv(zlib.gunzipSync(fs.readFileSync(lokasi(relPath))).toString("utf-8"))
 }
 
 export function bacaJson<T>(relPath: string): T {
-  return JSON.parse(fs.readFileSync(path.join(ROOT, relPath), "utf-8")) as T
+  return JSON.parse(fs.readFileSync(lokasi(relPath), "utf-8")) as T
 }
 
 /** Angka dari teks CSV; kosong menjadi null. */

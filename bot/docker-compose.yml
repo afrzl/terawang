@@ -1,0 +1,18 @@
+# Bot WhatsApp TERAWANG. GoWA berjalan terpisah (~/terawang-wa) di network "proxy".
+services:
+  bot:
+    build: .
+    image: terawang-bot:latest
+    container_name: terawang-bot
+    restart: unless-stopped
+    env_file: .env
+    networks: [proxy, db]
+    # GoWA memanggil http://terawang-bot:8080/webhook/wa lewat network proxy.
+    # Port hanya di 127.0.0.1 supaya halaman admin (di host) bisa membaca /api/status.
+    ports: ["127.0.0.1:8091:8080"]
+
+networks:
+  proxy:
+    external: true
+  db:
+    external: true

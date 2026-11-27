@@ -14,6 +14,7 @@ Langkah:
 """
 import datetime as dt
 import io
+import os
 import subprocess
 import sys
 
@@ -43,12 +44,18 @@ def wape(a, p):
     return np.abs(p - a).sum() / a.sum() * 100
 
 
-def muat():
-    """Kembalikan kab, lon/lat, tanggal jendela, dan matriks VH, VV, LSWI, EVI (N x W, NaN = kosong)."""
-    S = "data/satelit/"
-    old_vh = pd.read_csv(S + "vh_titik_12harian_kabkota.csv.gz")
-    old_vv = pd.read_csv(S + "vv_titik_12harian_kabkota.csv.gz")
-    old_s2 = pd.read_csv(S + "s2_titik_12harian_kabkota.csv.gz")
+def data_bps(rel):
+    """Berkas data/... dari lapisan konektor (TERAWANG_DATA_DIR, mis. BPS WebAPI) bila ada, selain itu dari repo."""
+    lapis = os.environ.get("TERAWANG_DATA_DIR")
+    p = os.path.join(lapis, rel[len("data/"):]) if lapis and rel.startswith("data/") else None
+    return p if p and os.path.exists(p) else rel
+
+
+def muat_folder(S, T):
+    """Deret riwayat dari folder S dan deret 12-harian dari folder T (titik yang sama, urutan yang sama)."""
+    old_vh = pd.read_csv(T + "vh_titik_12harian_kabkota.csv.gz")
+    old_vv = pd.read_csv(T + "vv_titik_12harian_kabkota.csv.gz")
+    old_s2 = pd.read_csv(T + "s2_titik_12harian_kabkota.csv.gz")
     new = {k: pd.read_csv(S + f"{k}_titik_riwayat_2018_2024.csv.gz") for k in ("vh", "vv", "lswi", "evi")}
     kab = old_vh.kabkota.to_numpy()
     for d in (old_vv, old_s2, *new.values()):
@@ -62,6 +69,20 @@ def muat():
     vv = np.hstack([new["vv"].iloc[:, 3:].to_numpy(float), old_vv.iloc[:, 3:].to_numpy(float)])
     lswi = np.hstack([new["lswi"].iloc[:, 3:].to_numpy(float), old_s2[[c for c in old_s2.columns if c.startswith("lswi_")]].to_numpy(float)])
     evi = np.hstack([new["evi"].iloc[:, 3:].to_numpy(float), old_s2[[c for c in old_s2.columns if c.startswith("evi_")]].to_numpy(float)])
+    return kab, tgl, vh, vv, lswi, evi
+
+
+def muat():
+    """Kembalikan kab, lon/lat, tanggal jendela, dan matriks VH, VV, LSWI, EVI (N x W, NaN = kosong)."""
+    S = "data/satelit/"
+    T = os.environ.get("TERAWANG_TITIK_DIR", "data/satelit").rstrip("/") + "/"  # pipeline: deret 12-harian yang diperpanjang otomatis
+    kab, tgl, vh, vv, lswi, evi = muat_folder(S, T)
+    tam = os.environ.get("TERAWANG_TITIK_TAMBAHAN")  # titik sampel tambahan (scripts/gee/tambah_titik.py), digabung sebagai baris
+    if tam and os.path.exists(os.path.join(tam, "vh_titik_12harian_kabkota.csv.gz")):
+        t = muat_folder(tam.rstrip("/") + "/", tam.rstrip("/") + "/")
+        assert t[1] == tgl, "jendela titik tambahan harus sama dengan titik lama (jalankan perpanjang_titik.py untuk keduanya)"
+        kab = np.concatenate([kab, t[0]])
+        vh, vv, lswi, evi = (np.vstack([x, y]) for x, y in zip((vh, vv, lswi, evi), t[2:]))
     return kab, tgl, vh, vv, lswi, evi
 
 
@@ -150,8 +171,8 @@ def main():
     est["bulan"] = (est.t - 1) % 12 + 1
 
     # ----- target BPS
-    b = pd.read_csv("data/bps/produksi_padi/kabkota/bulanan/bps_jatim_padi_kabkota_bulanan_luas_panen_2019_2024.csv")
-    b25 = pd.read_csv("data/bps/produksi_padi/kabkota/bulanan/bps_jatim_padi_kabkota_bulanan_2025.csv")
+    b = pd.read_csv(data_bps("data/bps/produksi_padi/kabkota/bulanan/bps_jatim_padi_kabkota_bulanan_luas_panen_2019_2024.csv"))
+    b25 = pd.read_csv(data_bps("data/bps/produksi_padi/kabkota/bulanan/bps_jatim_padi_kabkota_bulanan_2025.csv"))
     y = pd.concat([b[["nama_repo", "tahun", "bulan", "luas_panen_ha"]], b25[["nama_repo", "tahun", "bulan", "luas_panen_ha"]]]).rename(
         columns={"nama_repo": "kabkota", "luas_panen_ha": "y"})
     kk = sorted(y.kabkota.unique())

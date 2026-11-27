@@ -10,6 +10,7 @@ Keluaran: est (nilai harapan), est_ver (hanya yang terverifikasi), est_pend (kon
 """
 import argparse
 import datetime as dt
+import os
 import sys
 import time
 
@@ -96,6 +97,7 @@ def main():
     ap.add_argument("--mulai", default="2019-04")
     ap.add_argument("--akhir", default="2026-09")
     ap.add_argument("--sufiks", default="")
+    ap.add_argument("--akhir-latih", default="", help="batas data latih fusi dan peluang verifikasi (bawaan: 31 Des tahun sebelum citra terakhir)")
     a = ap.parse_args()
 
     kab, tgl, vh_raw, vv_raw, L0, E0 = muat()
@@ -106,9 +108,10 @@ def main():
     vh = np.vstack([x if (x := st.bersihkan(r)) is not None else np.full(W, np.nan) for r in vh_raw])
     doy = np.array([(t + dt.timedelta(days=HARI // 2)).timetuple().tm_yday for t in tgl], float)
     t0 = time.time()
-    me, ml, mu_e, mu_l = latih_fusi(E0, L0, vh, doy, tgl)
+    akhir_latih = dt.date.fromisoformat(a.akhir_latih) if a.akhir_latih else dt.date(tgl[-1].year - 1, 12, 31)
+    me, ml, mu_e, mu_l = latih_fusi(E0, L0, vh, doy, tgl, akhir=akhir_latih)
     Ef, Lf = isi_penuh(E0, L0, vh, doy, me, ml, mu_e, mu_l)
-    batas = max(i for i, t in enumerate(tgl) if t <= dt.date(2025, 12, 31)) + 1
+    batas = max(i for i, t in enumerate(tgl) if t <= akhir_latih) + 1
     p, n_kasus = hitung_p(Lf, Ef, batas)
     print(f"fusi dilatih dan peluang dihitung ({time.time() - t0:.0f} detik)")
     print("  peluang terverifikasi | p0 (belum ada jendela) %.2f (n=%d) | p1 %.2f (n=%d) | p2 %.2f (n=%d) | p3 %.2f (n=%d)" % (
@@ -138,8 +141,9 @@ def main():
             continue
         c = max(sel)
         e_lo, e_hi = Wt.min() - LAG - 1, Wt.max() - LAG + 1
-        if c < e_lo:
-            hasil += [(k, t_abs, 0.0, 0.0, 0.0) for k in kab_u]
+        if c < e_lo:  # citra belum menjangkau jendela tanam yang relevan (data basi): JANGAN isi 0, biarkan kosong
+            print(f"  PERINGATAN {y}-{m:02d}: jendela citra terakhir {tgl[c]} belum mencakup masa tanam bulan target; taksiran dikosongkan", flush=True)
+            hasil += [(k, t_abs, np.nan, np.nan, np.nan) for k in kab_u]
             continue
         s0 = max(0, e_lo - 12)
         seg0 = max(0, min(s0, c) - 12)
@@ -170,7 +174,7 @@ def main():
         if m == 12 or (y, m) == bulan[-1]:
             print(f"  lead {a.lead}: sampai {y}-{m:02d} ({time.time() - t0:.0f} detik)", flush=True)
     out = pd.DataFrame(hasil, columns=["kabkota", "t", "est", "est_ver", "est_pend"])
-    path = f"data/satelit/est_nowcast2_lead{a.lead}{a.sufiks}.csv"
+    path = os.path.join(os.environ.get("TERAWANG_K1_DIR", "data/satelit"), f"est_nowcast2_lead{a.lead}{a.sufiks}.csv")  # pipeline: di luar repo
     out.to_csv(path, index=False)
     print("tersimpan", path, len(out), "baris", flush=True)
 

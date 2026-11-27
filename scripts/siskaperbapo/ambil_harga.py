@@ -100,7 +100,19 @@ def tulis_cache(path, cache):
             f.write(json.dumps(cache[t], ensure_ascii=False) + "\n")
 
 
+def tanggal_terakhir_tersedia(komoditas, akhir):
+    """Sumber membalas jendela yang berakhir di data terakhir kalau tanggal yang diminta belum terbit (tanpa galat)."""
+    op, tok = sesi()
+    jud, _ = parse(ambil_html(op, tok, komoditas, akhir))
+    m = re.search(r"sampai (\d{4}-\d{2}-\d{2})", jud or "")
+    return min(akhir, m.group(1)) if m else akhir
+
+
 def unduh(args, cache, cpath):
+    tersedia = tanggal_terakhir_tersedia(args.komoditas, args.akhir)
+    if tersedia != args.akhir:
+        print(f"data {args.akhir} belum terbit di sumber; memakai sampai {tersedia}", flush=True)
+        args.akhir = tersedia
     mulai, akhir = dt.date.fromisoformat(args.mulai), dt.date.fromisoformat(args.akhir)
     batas = (akhir - dt.timedelta(days=args.segarkan)).isoformat()
     for t in [t for t in cache if t >= batas]:
@@ -193,7 +205,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--komoditas", required=True, help="kode komoditas SISKAPERBAPO (4 = Beras Medium, 2 = Beras Premium)")
     ap.add_argument("--nama", required=True, help="nama untuk berkas keluaran, contoh beras_medium")
-    ap.add_argument("--mulai", default="2022-01-01")
+    ap.add_argument("--mulai", default="2021-12-29", help="awal riwayat (tetap, agar riwayat bertambah, bukan bergeser)")
     ap.add_argument("--akhir", default=dt.date.today().isoformat())
     ap.add_argument("--keluar", default="data/siskaperbapo/harga_beras")
     ap.add_argument("--cache", default=str(pathlib.Path.home() / ".cache" / "terawang-siskaperbapo"))

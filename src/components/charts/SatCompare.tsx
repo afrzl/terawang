@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { MoveHorizontal } from "lucide-react"
-import { byName, type Wilayah } from "@/lib/data"
+import { WILAYAH, byName, type Wilayah } from "@/lib/data"
 import { hash, nf, rng } from "@/lib/format"
-import { Bacaan } from "@/components/ui/Bacaan"
-import { bacaCitra } from "@/lib/bacaan"
 import { useSelection } from "@/lib/selection"
 
 const W = 720
@@ -171,6 +169,7 @@ interface CitraMeta {
   folder: string
   lokasi: string
   bbox: [number, number, number, number]
+  kotak_km?: [number, number]
   tanggal_sebelum: string
   tanggal_sesudah: string
   mode_label: "aturan" | "dummy"
@@ -206,18 +205,26 @@ function muatIndeks() {
   return indeksCache
 }
 
-/** Pembanding citra sebelum/sesudah tanam yang bisa digeser.
- *  Bila public/citra/index.json punya entri untuk kabupaten terpilih, dipakai citra Sentinel asli dari GEE;
- *  selain itu tampil ilustrasi simulasi. */
-export function SatCompare() {
-  const { sel } = useSelection()
-  const k = byName[sel]
-  const [pos, setPos] = useState(50)
+/** Daftar citra GEE (kosong sampai termuat). */
+export function useCitraIndeks() {
   const [daftar, setDaftar] = useState<CitraMeta[]>([])
-  const [mode, setMode] = useState<Tampilan>("alami")
   useEffect(() => {
     muatIndeks().then(setDaftar)
   }, [])
+  return daftar
+}
+
+/** Pembanding citra sebelum/sesudah tanam yang bisa digeser.
+ *  Bila public/citra/index.json punya entri untuk kabupaten terpilih, dipakai citra Sentinel asli dari GEE;
+ *  selain itu tampil ilustrasi simulasi. */
+export function SatCompare({ wilayah, onPilih, kandidat }: { wilayah?: string; onPilih?: (n: string) => void; kandidat?: string[] } = {}) {
+  const g = useSelection()
+  const sel = wilayah ?? g.sel
+  const select = onPilih ?? g.select
+  const k = byName[sel]
+  const [pos, setPos] = useState(50)
+  const daftar = useCitraIndeks()
+  const [mode, setMode] = useState<Tampilan>("alami")
   const asli = daftar.find((m) => m.lokasi.toLowerCase() === sel.toLowerCase())
   const scene = useMemo(() => buildScene(k), [k])
   const clip = `inset(0 0 0 ${pos}%)`
@@ -228,8 +235,25 @@ export function SatCompare() {
     ? { before: asli.stat.genang_sebelum_pct, after: asli.stat.tertanam_sesudah_pct, lag: asli.stat.tertinggal_pct }
     : scene.stat
 
+  // Pintasan wilayah: bila semua wilayah terpilih, tampilkan yang sudah banyak tertanam (perubahan paling terlihat); bila disaring, tampilkan wilayah terpilih.
+  const semua = !kandidat || kandidat.length >= WILAYAH.length
+  const contoh = daftar
+    .filter((m) => (!kandidat || kandidat.includes(m.lokasi)) && (!semua || m.stat.tertanam_sesudah_pct >= 25))
+    .sort((a, b) => b.stat.tertanam_sesudah_pct - a.stat.tertanam_sesudah_pct)
+    .slice(0, 6)
+
   return (
     <div className="sat">
+      {contoh.length > 1 && (
+        <div className="wt-chips sat-contoh" role="group" aria-label="Wilayah yang sudah tertanam">
+          <span className="sat-contoh-t">{semua ? "Sudah tanam" : "Wilayah"}</span>
+          {contoh.map((m) => (
+            <button key={m.folder} type="button" className={`wt-chip${m.lokasi === sel ? " on" : ""}`} onClick={() => select(m.lokasi)}>
+              {m.lokasi} · {nf(m.stat.tertanam_sesudah_pct, 0)}%
+            </button>
+          ))}
+        </div>
+      )}
       {asli ? (
         <div className="seg" style={{ marginBottom: 8 }} role="group" aria-label="Jenis tampilan citra">
           {TAMPILAN.map(([m, t]) => (
@@ -274,16 +298,12 @@ export function SatCompare() {
       </div>
       <div className="sat-stats">
         <div>
-          <span>Petak tergenang (siap tanam)</span>
+          <span>Petak tergenang</span>
           <b>{nf(stat.before, 0)}%</b>
         </div>
         <div>
-          <span>Petak sudah tertanam sebulan kemudian</span>
+          <span>Petak tertanam</span>
           <b>{nf(stat.after, 0)}%</b>
-        </div>
-        <div>
-          <span>Petak tertinggal (garis merah)</span>
-          <b className="crit">{nf(stat.lag, 0)}%</b>
         </div>
       </div>
       <div className="legend" style={{ padding: "8px 0 0" }}>
@@ -297,8 +317,7 @@ export function SatCompare() {
           : asli
             ? (
                 <span>
-                  <span className="sw" style={{ background: "transparent", outline: "1.8px solid #E5484D", outlineOffset: -2 }} />
-                  Petak tertinggal (pada citra sesudah)
+                  Kotak contoh {asli.kotak_km?.join(" × ")} km{asli.stat.jumlah_petak ? ` · ${nf(asli.stat.jumlah_petak, 0)} petak` : ""}
                 </span>
               )
             : (
@@ -316,7 +335,6 @@ export function SatCompare() {
                 </>
               )}
       </div>
-      <Bacaan inset>{bacaCitra(k, { ...stat, petak: asli?.stat.jumlah_petak, asli: !!asli })}</Bacaan>
     </div>
   )
 }

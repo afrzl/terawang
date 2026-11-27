@@ -1,6 +1,12 @@
 export const DAY = 864e5
 /** Tanggal acuan laporan: Minggu, 1 November 2026 (pekan 44). */
-export const NOW = new Date(2026, 10, 1)
+import { K3A } from "./api"
+
+/** Tanggal acuan data: tanggal harga terakhir pada hasil K3a bila API tersambung; selain itu 1 Nov 2026 (simulasi). */
+export const NOW = (() => {
+  const m = K3A?.meta.tanggal_acuan.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(2026, 10, 1)
+})()
 
 const BLN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
 

@@ -1,0 +1,29 @@
+[project]
+name = "terawang-pipeline"
+version = "0.1.0"
+description = "Pipeline data TERAWANG (Dagster): sumber -> bronze -> silver -> model -> app"
+requires-python = ">=3.10"
+dependencies = [
+  "dagster>=1.9",
+  "dagster-webserver>=1.9",
+  "pandas>=2.0",
+  "sqlalchemy>=2.0",
+  "psycopg2-binary>=2.9",
+  "pdfplumber>=0.11",  # konektor Bulog: tabel PDF Jatim Dalam Angka
+  "scikit-learn>=1.3",  # K3a: regresi logistik peringatan gabungan
+]
+
+[project.optional-dependencies]
+postgres = ["dagster-postgres"]
+gee = ["earthengine-api>=1.0"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["terawang_pipeline*"]
+
+[tool.dagster]
+module_name = "terawang_pipeline.definitions"
+code_location_name = "terawang"

@@ -241,6 +241,21 @@ enum ArahPesan {
   @@schema("app")
 }
 
+enum PeranPelapor {
+  PENJUAL
+  PEMBELI
+
+  @@schema("app")
+}
+
+enum StatusLaporan {
+  MENUNGGU
+  VALID
+  DITOLAK
+
+  @@schema("app")
+}
+
 enum StatusLangganan {
   AKTIF
   BERHENTI
@@ -407,6 +422,7 @@ model KontakWarga {
   langganan  LanggananPeringatan[]
   percakapan PercakapanBot[]
   notifikasi Notifikasi[]
+  laporan    LaporanHargaWarga[]
 
   @@map("kontak_warga")
   @@schema("app")
@@ -463,6 +479,29 @@ model PercakapanBot {
 
   @@index([kontak_id, dibuat_pada])
   @@map("percakapan_bot")
+  @@schema("app")
+}
+
+// Laporan harga dari warga lewat perintah LAPOR di bot. Dipakai model hanya setelah divalidasi.
+model LaporanHargaWarga {
+  id                Int           @id @default(autoincrement())
+  kontak_id         Int
+  wilayah_id        Int?
+  komoditas_id      Int
+  nama_pasar        String
+  harga_rp_kg       Int
+  selisih_panel_pct Float? // dibanding harga Panel/SISKAPERBAPO terkini wilayah itu
+  status            StatusLaporan @default(MENUNGGU)
+  peran_pelapor     PeranPelapor? // penjual (pedagang) atau pembeli; laporan lama kosong
+  pesan_laporan     String? // pesan asli warga (gabungan jawaban), untuk petugas & ringkasan saran
+  dibuat_pada       DateTime      @default(now())
+
+  kontak    KontakWarga @relation(fields: [kontak_id], references: [id])
+  wilayah   Wilayah?    @relation(fields: [wilayah_id], references: [id], onDelete: SetNull)
+  komoditas Komoditas   @relation(fields: [komoditas_id], references: [id])
+
+  @@index([wilayah_id, dibuat_pada])
+  @@map("laporan_harga_warga")
   @@schema("app")
 }
 

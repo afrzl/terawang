@@ -32,9 +32,9 @@ LAG = 8
 KERNEL = ((-1, 0.25), (0, 0.5), (1, 0.25))
 
 
-def latih_fusi(E0, L0, vh, doy, tgl, chunk=1900):
+def latih_fusi(E0, L0, vh, doy, tgl, chunk=1900, akhir=dt.date(2025, 12, 31)):
     N, W = E0.shape
-    cut = max(i for i, t in enumerate(tgl) if t <= dt.date(2025, 12, 31))
+    cut = max(i for i, t in enumerate(tgl) if t <= akhir)
     rng = np.random.default_rng(11)
     win = np.tile(np.arange(W), chunk)
     mu_e, mu_l = np.nanmean(E0[:, :cut]), np.nanmean(L0[:, :cut])

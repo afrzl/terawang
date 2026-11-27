@@ -18,3 +18,7 @@ Data resmi Badan Pusat Statistik, dikelompokkan **per topik**. Satu topik satu f
 - **Berkas:** `bps_<provinsi>_<komoditas>_<tingkat>_<periode>_<tahun>.csv`. Akhiran pada tahun: `s` = angka sementara, `p` = angka potensi, tanpa akhiran = angka tetap.
 - **Nama kolom:** satuan di akhir (`_ha`, `_ton`, `_jiwa`, `_kg_kapita_bulan`). Angka proyeksi memakai kata `proyeksi` di nama kolom.
 - Setiap topik wajib punya `README.md` berisi sumber (nomor BRS atau tabel), arti kolom, dan hasil validasi.
+
+## Pembaruan otomatis
+
+Pipeline Dagster (mode `TERAWANG_SUMBER_BPS=webapi`) mengambil luas panen dan produksi beras bulanan per kab/kota serta konsumsi beras per kapita lewat WebAPI BPS (`scripts/bps/ambil_webapi.py`, var 578, 580, 2094), dengan koreksi salah ketik yang sama seperti berkas manual. Penduduk dan angka sementara/potensi tidak tersedia di WebAPI dan tetap dari folder ini atau unggahan manual. Berkas di folder ini menjadi cadangan.

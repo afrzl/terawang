@@ -124,3 +124,12 @@ https://jatim.bps.go.id/id/statistics-table/3/WmpaNk1YbGFjR0pOUjBKYWFIQlBSU3MwVH
 - Angka 2023 dan sebelumnya per kab/kota (ada di Tabel 2 dan 3 rilis 2024, [PDF](https://jatim.bps.go.id/en/pressrelease/2025/03/03/1482/luas-panen-dan-produksi-padi-di-provinsi-jawa-timur-2024--angka-tetap-.html)).
 - Realisasi Okt–Des 2026 dan angka final 2026 (dijadwalkan Februari 2027).
 - Data ubinan, stok Bulog, dan harga (sumber lain).
+
+## Arsip angka potensi luas panen per edisi BRS (vintage)
+
+Untuk uji prakiraan tanpa kebocoran: angka **persis seperti terbit** di tiap BRS KSA Jatim (bukan revisi). Arsip BRS di jatim.bps.go.id mulai 2020. Edisi hanya Feb/Mar (Jan sementara, Feb–Apr potensi) dan Okt/Nov (Okt–Des potensi); tidak ada edisi Jul/Agu.
+
+- `provinsi/bulanan/bps_jatim_luas_panen_potensi_vintage.csv` (`tanggal_rilis,tahun,bulan,status,luas_panen_ha,sumber_url`): hanya angka dengan ketelitian ≥ 1.000 ha yang tercetak di teks/label grafik. 7 baris: Jan 2021–2024 (sementara; status dibaca dari teks, tidak tercetak) dan Feb–Apr 2021 (potensi, label grafik ribu ha). **Tidak ada edisi yang memuat tabel bulanan provinsi**; semua tabel per kab/kota tahunan atau per periode.
+- `provinsi/bulanan/bps_jatim_luas_panen_potensi_vintage_grafik.csv`: angka potensi bulanan dari label Gambar 1 dalam **juta ha 2 desimal** (±5.000 ha; galat relatif 4–8% di bulan panen kecil). Kolom `luas_panen_juta_ha_terbit` = angka asli; `luas_panen_ha` = ×10⁶. 11 edisi Okt 2020–Nov 2026 (33 bulan). Edisi 2023-10-16 dan 2026-11-02: label dibaca dari halaman PDF yang dirender. Edisi 2021-03-01 ada di berkas utama; edisi 2024-03-01: grafik tidak diekstrak (total Feb–Apr 629,41 ribu ha).
+- Total periode potensi dengan ketelitian lebih baik: 2024-03 Feb–Apr 629,41 ribu ha; 2024-11 Okt–Des 208,48 ribu ha; 2021-03 Feb–Apr 805,61 ribu ha.
+- `sumber_url` memakai ID rilis; slug URL tidak berpengaruh (halaman terbuka dengan slug apa pun).

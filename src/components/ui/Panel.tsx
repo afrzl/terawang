@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface PanelProps {
@@ -23,12 +24,16 @@ export function Panel({ title, note, actions, className, children }: PanelProps)
   )
 }
 
-export function ViewHeader({ eyebrow, title, children }: { eyebrow: string; title: string; children?: React.ReactNode }) {
+export function ViewHeader({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children?: React.ReactNode }) {
   return (
     <div className="vh">
       <div>
-        <div className="eyebrow">{eyebrow}</div>
-        <h2>{title}</h2>
+        <h2>
+          <span className="vh-ico">
+            <Icon size={19} />
+          </span>
+          {title}
+        </h2>
         {children && <p>{children}</p>}
       </div>
     </div>

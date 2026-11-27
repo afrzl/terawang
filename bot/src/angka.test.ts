@@ -1,0 +1,23 @@
+import assert from "node:assert/strict"
+import { test } from "node:test"
+import { angkaDariTeks, angkaTakCocok } from "./angka.ts"
+
+test("angka format Indonesia", () => {
+  assert.deepEqual(angkaDariTeks("Rp12.550/kg, cukup 1,3 bulan, naik 0,5%"), [12550, 1.3, 0.5])
+})
+
+test("angka jawaban harus dari data", () => {
+  const data = [{ medium_rp_kg: 12550, premium_rp_kg: 15933, prediksi: [{ batas_atas: 12616 }], tanggal_data: "2026-11-25" }]
+  assert.deepEqual(angkaTakCocok("Harga medium Rp12.550/kg (25 Nov 2026), prakiraan 2 pekan sampai Rp12.616.", data, "harga malang"), [])
+  assert.deepEqual(angkaTakCocok("Selisih premium dan medium Rp3.383/kg.", data, ""), []) // selisih dua angka data
+  assert.deepEqual(angkaTakCocok("Harga medium Rp13.200/kg.", data, ""), [13200])
+})
+
+test("jumlah kab/kota dan nomor urut tidak dianggap asing", () => {
+  assert.deepEqual(angkaTakCocok("Urutan 38 kab/kota: 1. Kota Madiun 0,6 bulan", [{ daftar: [{ nilai: 0.6 }] }], ""), [])
+})
+
+test("desimal 3 digit tidak dianggap ribuan", () => {
+  assert.deepEqual(angkaTakCocok("Konsumsi 1,413 kg per kapita per minggu (sekitar 6,1 kg/bulan).", [{ kg_per_kapita: 1.413, kg_per_kapita_per_bulan: 6.1 }], ""), [])
+  assert.deepEqual(angkaTakCocok("Harga Rp12.550/kg.", [{ harga: 12550 }], ""), [])
+})
