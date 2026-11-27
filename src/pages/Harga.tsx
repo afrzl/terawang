@@ -41,6 +41,22 @@ function ujiHet() {
   }
 }
 
+const KET_SPHP =
+  "Rekomendasi penyaluran beras SPHP (model K3b) dari cabang Bulog ke kab/kota tujuan; volume dalam ton; km = jarak tempuh, 0 = disalurkan di wilayah cabang sendiri; warna peta = cakupan stok non-Bulog (bulan konsumsi) akhir periode, < 0,75 defisit, 0,75–1 tipis, 1–1,5 cukup, ≥ 1,5 surplus"
+
+/** Data interpretasi peta SPHP: rute persis seperti di peta, total per tujuan, dan cakupan stok wilayah terpilih. */
+function dataSphp(flows: Flow[], wil: { n: string }[], akhir: number) {
+  const perTujuan = new Map<string, number>()
+  for (const f of flows) perTujuan.set(f.to.n, (perTujuan.get(f.to.n) ?? 0) + f.ton)
+  return {
+    total_ton: Math.round(sum(flows, (f) => f.ton)),
+    jumlah_rute: flows.length,
+    rute: flows.map((f) => ({ bulan: bulanLabel(f.bulan), tujuan: f.to.n, asal_cabang_bulog: f.from.n, ton: Math.round(f.ton), km: Math.round(f.km) })),
+    total_per_tujuan: [...perTujuan].sort((a, b) => b[1] - a[1]).map(([tujuan, ton]) => ({ tujuan, ton: Math.round(ton) })),
+    cakupan_stok_bulan: WILAYAH.filter((k) => wil.some((w) => w.n === k.n)).map((k) => ({ wilayah: k.n, cakupan: Math.round(covBulan(k, akhir) * 100) / 100 })),
+  }
+}
+
 export default function Harga() {
   const wil = useWilayah()
   const { mulai, akhir, jenisHarga } = useFilter()
@@ -116,10 +132,13 @@ export default function Harga() {
           {ganda && <LegendaJenis />}
         </Panel>
       </div>
-      {GKP && <PanelGkp />}
-      <div className="grid-2">
-        <Panel title="Peta rekomendasi SPHP">
-          <Terkunci judul="Rekomendasi penyaluran SPHP">
+      <Panel
+        title="Peta rekomendasi SPHP"
+        note={sphp && flows.length ? `${nf(sum(flows, (f) => f.ton))} ton, ${flows.length} rute, ${periode}` : undefined}
+        tafsir={sphp ? KET_SPHP : false}
+        dataTafsir={sphp ? dataSphp(flows, wil, akhir) : undefined}
+      >
+        <Terkunci judul="Rekomendasi penyaluran SPHP">
           <div className="map">
             <PetaJatim layer="stokK2" getValue={(k) => covBulan(k, akhir)} valueLabel="Cakupan stok" flows flowList={flows} muted labels={false} />
           </div>
@@ -155,14 +174,14 @@ export default function Harga() {
               </>
             }
           />
-          </Terkunci>
-        </Panel>
-        <Panel title="Rute rekomendasi SPHP">
-          <Terkunci judul="Rute rekomendasi SPHP">
+        </Terkunci>
+      </Panel>
+      <Panel title="Rute rekomendasi SPHP">
+        <Terkunci judul="Rute rekomendasi SPHP">
           <DataTable rows={flows} columns={flowColumns} rowKey={(f, i) => `${f.bulan}-${f.to.n}-${f.from.n}-${i}`} rowName={(f) => f.to.n} pageSize={10} />
-          </Terkunci>
-        </Panel>
-      </div>
+        </Terkunci>
+      </Panel>
+      {GKP && <PanelGkp />}
       <PanelPeta jenis={jenis} />
     </section>
   )
