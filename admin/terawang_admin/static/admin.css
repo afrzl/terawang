@@ -340,3 +340,8 @@ label input{font-weight:400}
 #form-uji-wa input{flex:1}
 @media (max-width:560px){.qr-wa{grid-template-columns:minmax(0,1fr)}.qr-wa img{width:200px;height:200px}}
 .ket-sumber:empty{display:none}.ket-sumber .pill{text-decoration:none}
+
+/* jumlah laporan menunggu di menu */
+.jumlah-menu{flex:none;margin-left:auto;font-style:normal;font-family:var(--f-mono);font-size:11px;font-weight:600;min-width:18px;padding:1px 6px;border-radius:999px;background:var(--warn-bg);color:var(--warn);text-align:center}
+@media (min-width:701px){#tabel-laporan td.aksi{display:table-cell;white-space:nowrap}}
+#tabel-laporan td.aksi .tombol+.tombol{margin-left:6px}

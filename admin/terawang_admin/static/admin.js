@@ -83,8 +83,8 @@ const lencana = (st) => { const [t, k] = STATUS[st] || [st ? st.toLowerCase() : 
 // ---------- navigasi & sesi ----------
 let halAktif = "pipeline";
 const pemuat = {};
-const JUDUL_HAL = { pipeline: "Ringkasan pipeline", whatsapp: "Bot WhatsApp", konfigurasi: "Konfigurasi & secret", akun: "Akun & peran", jejak: "Jejak admin" };
-const HAK_HAL = { pipeline: "pipeline", whatsapp: "pipeline", konfigurasi: "konfigurasi", akun: "akun", jejak: "jejak" };
+const JUDUL_HAL = { pipeline: "Ringkasan pipeline", laporan: "Laporan harga warga", whatsapp: "Bot WhatsApp", konfigurasi: "Konfigurasi & secret", akun: "Akun & peran", jejak: "Jejak admin" };
+const HAK_HAL = { pipeline: "pipeline", laporan: "laporan", whatsapp: "pipeline", konfigurasi: "konfigurasi", akun: "akun", jejak: "jejak" };
 
 let sesi = null;
 let daftarSumber = [];
@@ -203,6 +203,7 @@ async function masukBerhasil(d, baruMasuk = false) {
     gambarMenuSumber();
     if (!dataPipeline) api("/pipeline").then((x) => { dataPipeline = x; perbaruiTitik(); }).catch(() => {});
   }
+  if (punya("laporan")) api("/laporan?status=MENUNGGU").then((x) => tandaiJumlahLaporan(x.jumlah.MENUNGGU)).catch(() => {});
   const [awal, sub] = location.hash.slice(1).split("/");
   pilihHal(awal || "pipeline", sub);
   clearInterval(intervalPipeline);
@@ -845,8 +846,54 @@ function aturIntervalWa() {
 
 pemuat.whatsapp = () => { muatWa(); aturIntervalWa(); };
 
+// ---------- laporan harga warga ----------
+let statusLaporan = "MENUNGGU";
+const fmtRp = new Intl.NumberFormat("id-ID");
+const ST_LAPORAN = { MENUNGGU: ["Menunggu", "waspada"], VALID: ["Diterima", "ok"], DITOLAK: ["Ditolak", "gagal"] };
+function tandaiJumlahLaporan(n) {
+  const t = $("#jumlah-laporan");
+  if (!t) return;
+  t.hidden = !n;
+  t.textContent = n > 99 ? "99+" : String(n || "");
+}
+async function aksiLaporan(tombol, id, aksi) {
+  await sibuk(tombol, async () => {
+    toast((await api(`/laporan/${id}/${aksi}`, { method: "POST" })).pesan);
+    await pemuat.laporan();
+  });
+}
+pemuat.laporan = async () => {
+  try {
+    const d = await api("/laporan" + (statusLaporan ? "?status=" + statusLaporan : ""));
+    const j = d.jumlah;
+    tandaiJumlahLaporan(j.MENUNGGU);
+    const kpi = (v, k, kelas = "") => el("div", { class: "kpi " + kelas }, el("div", { class: "v" }, v), el("div", { class: "k" }, k));
+    $("#kpi-laporan").replaceChildren(
+      kpi(String(j.MENUNGGU), "menunggu diperiksa", j.MENUNGGU ? "warn" : ""),
+      kpi(String(j.VALID), "diterima"),
+      kpi(String(j.DITOLAK), "ditolak"));
+    const kosong = { MENUNGGU: "Tidak ada laporan yang menunggu.", VALID: "Belum ada laporan yang diterima.", DITOLAK: "Belum ada laporan yang ditolak.", "": "Belum ada laporan." }[statusLaporan];
+    const baris = d.laporan.map((l) => {
+      const [stT, stK] = ST_LAPORAN[l.status] || [l.status, ""];
+      const s = l.selisih;
+      const selisih = s == null ? "–" : `${s > 0 ? "+" : ""}${String(s).replace(".", ",")}%`;
+      const jauh = s != null && Math.abs(s) >= 25;
+      const tombol = (teks, aksi, kelas = "") => el("button", { class: "tombol kecil " + kelas, type: "button", onclick: (e) => aksiLaporan(e.currentTarget, l.id, aksi) }, teks);
+      const aksi = l.status === "MENUNGGU" ? [tombol("Terima", "terima", "utama"), tombol("Tolak", "tolak", "bahaya")] : [tombol("Batalkan", "kembalikan")];
+      return el("tr", { class: jauh && l.status === "MENUNGGU" ? "waspada" : "" },
+        el("td", { class: "waktu" }, waktu(l.waktu)), el("td", {}, l.wilayah || "–"), el("td", {}, l.pasar),
+        el("td", {}, (l.komoditas || "").replace(/^Beras\s*/i, "")), el("td", { class: "id" }, "Rp" + fmtRp.format(l.harga)),
+        el("td", { class: "id", title: jauh ? "Selisih dari panel harga 25% atau lebih" : "" }, selisih),
+        el("td", { class: "ket", title: `${l.laporanPelapor} laporan dari nomor ini` }, `${l.pelapor} · ${l.laporanPelapor} laporan`),
+        el("td", {}, el("span", { class: "pill st-" + stK }, stT)), el("td", { class: "aksi" }, ...aksi));
+    });
+    $("#tabel-laporan tbody").replaceChildren(...(baris.length ? baris : [el("tr", {}, el("td", { colspan: "9", class: "ket" }, kosong))]));
+    labeli($("#tabel-laporan"));
+  } catch (e) { toast(e.message, true); }
+};
+
 // ---------- akun ----------
-const NAMA_HAK = { dasbor_sphp: "Dasbor lengkap termasuk SPHP", pipeline: "Pantau pipeline", jalankan: "Jalankan job",
+const NAMA_HAK = { dasbor_sphp: "Dasbor lengkap termasuk SPHP", pipeline: "Pantau pipeline", laporan: "Validasi laporan warga", jalankan: "Jalankan job",
   unggah: "Unggah data manual", konfigurasi: "Konfigurasi & secret", akun: "Kelola akun", jejak: "Jejak admin" };
 pemuat.akun = async () => {
   try {
@@ -887,7 +934,7 @@ pemuat.akun = async () => {
 };
 
 // ---------- jejak ----------
-const NAMA_TINDAKAN = { wa_buat_device: "Buat device WA", wa_login: "Hubungkan WA", wa_reconnect: "Sambung ulang WA", wa_logout: "Keluarkan WA", wa_lepas: "Lepas device WA", wa_uji_alur: "Uji bot",
+const NAMA_TINDAKAN = { wa_buat_device: "Buat device WA", wa_login: "Hubungkan WA", wa_reconnect: "Sambung ulang WA", wa_logout: "Keluarkan WA", wa_lepas: "Lepas device WA", wa_uji_alur: "Uji bot", validasi_laporan: "Validasi laporan warga",
   buat_akun: "Buat akun", ubah_akun: "Ubah akun", hapus_akun: "Hapus akun", ganti_sandi: "Ganti sandi sendiri", login: "Masuk", login_gagal: "Gagal masuk", ubah_konfigurasi: "Ubah konfigurasi", uji_konfigurasi: "Uji key",
   muat_ulang: "Muat ulang layanan", unggah_manual: "Unggah manual", tarik_unggahan: "Tarik unggahan", jalankan_job: "Jalankan job" };
 pemuat.jejak = async () => {
@@ -906,6 +953,8 @@ pemuat.jejak = async () => {
 // ---------- awal ----------
 document.addEventListener("DOMContentLoaded", async () => {
   document.querySelectorAll("#menu a[data-hal]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); pilihHal(a.dataset.hal); }));
+  document.querySelectorAll("#seg-laporan button").forEach((b) => b.addEventListener("click", (e) => { pilihSeg(e); statusLaporan = b.dataset.status; pemuat.laporan(); }));
+  $("#segarkan-laporan").addEventListener("click", () => pemuat.laporan());
   document.querySelectorAll("#sub-tab-sumber button").forEach((b) => b.addEventListener("click", () => pilihSub(b.dataset.sub)));
   for (const id of ["#jumlah-baris", "#urut-baris"]) $(id).addEventListener("change", () => { if (pratinjauAktif != null) bukaPratinjau(pratinjauAktif, false); });
   $("#tombol-menu").addEventListener("click", () => laci(!document.body.classList.contains("laci-buka")));

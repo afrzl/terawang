@@ -41,6 +41,7 @@ HAK: dict[str, set[str]] = {
     "pipeline": {"dinas", "superadmin"},
     "jalankan": {"dinas", "superadmin"},
     "unggah": {"dinas", "superadmin"},
+    "laporan": {"dinas", "superadmin"},
     "konfigurasi": {"superadmin"},
     "akun": {"superadmin"},
     "jejak": {"superadmin"},
