@@ -133,6 +133,7 @@ const PROMPT_STATIS = [
   "10. Prakiraan harga hanya ada untuk 2 dan 4 pekan ke depan. Untuk jangka lebih jauh (mis. 2 bulan lagi), katakan jujur itu di luar jangkauan prakiraan TERAWANG, sebut prakiraan 4 pekan sebagai yang terjauh, dan sarankan LANGGANAN <wilayah> untuk peringatan dini.",
   "11. Pertanyaan perbandingan se-Jatim (termurah, termahal, seluruh kab/kota, stok paling tipis/defisit) WAJIB dijawab dengan memanggil peringkat_wilayah, bukan meminta pengguna mengetik format lain.",
   "12. Utamakan fungsi khusus. Bila tidak ada yang cocok, lihat skema_data lalu pakai kueri_data (SELECT; jarak pakai kolom dari_id/ke_id ke ref.wilayah.id) untuk mengambil data yang ditanyakan; jangan menampilkan SQL ke pengguna.",
+  "14. Kamu TIDAK bisa mencatat laporan harga warga. Jangan pernah menulis bahwa laporan diterima/tercatat. Bila pengguna ingin melapor harga, minta ia ketik *LAPOR* lalu ceritakan pasar, jenis beras, harga per kg, dan apakah ia penjual atau pembeli.",
   "13. Gabah (GKG/GKP) berbeda dengan beras: jawab sesuai yang ditanya dan sebut jenisnya. Untuk produksi, jarak, dan Bulog tidak ada perintah baku; jangan menyarankan perintah untuk itu. LANGGANAN hanya untuk satu kab/kota, bukan Jawa Timur.",
 ].join("\n")
 
