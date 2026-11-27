@@ -60,7 +60,18 @@ def main():
         yb = D.y[u].to_numpy().astype(int)
         e, b, k = np.clip(ew[u].to_numpy(), 0, 1), lb[u].to_numpy(), lk[u].to_numpy()
         gab = (pg._pct(e, e) + pg._pct(b, b)) / 2
-        for nm, s, peluang in (("EW60", e, True), ("LOGIT-BOBOT", b, True), ("LOGIT-KAL", k, True), ("GABUNGAN", gab, False)):
+        # kalibrasi Platt berjalan: tiap bulan, regresi logistik 1-d logit(p) -> y pada hasil backtest bulan-bulan SEBELUMNYA
+        # yang targetnya sudah terjadi (tgt < awal bulan); bulan tanpa riwayat >= 60 hari dibiarkan apa adanya
+        tgu, tgtu = tg[u], D.tgt[u].to_numpy()
+        z = np.log(np.clip(k, 1e-6, 1 - 1e-6) / (1 - np.clip(k, 1e-6, 1 - 1e-6)))
+        kp = k.copy()
+        for bm in pd.date_range(pg.MULAI_UJI.replace(day=1), P.index.max(), freq="MS"):
+            sel = np.asarray((tgu >= bm) & (tgu < bm + pd.offsets.MonthBegin(1)))
+            hist = tgtu < np.datetime64(bm)
+            if sel.any() and (tgu[hist].nunique() if hist.any() else 0) >= 60 and yb[hist].sum() >= 5:
+                c = LogisticRegression(C=1e6).fit(z[hist, None], yb[hist])
+                kp[sel] = c.predict_proba(z[sel, None])[:, 1]
+        for nm, s, peluang in (("EW60", e, True), ("LOGIT-BOBOT", b, True), ("LOGIT-KAL", k, True), ("LOGIT-KAL+PLATT", kp, True), ("GABUNGAN", gab, False)):
             rows.append(dict(h=h, model=nm, kejadian=int(yb.sum()), n=len(yb), prevalensi=yb.mean(),
                              rata_peluang=s.mean() if peluang else np.nan,
                              brier=brier_score_loss(yb, s) if peluang else np.nan,
