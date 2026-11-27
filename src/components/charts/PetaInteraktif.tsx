@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { curveCatmullRom, line as d3line } from "d3-shape"
-import { Map as MlMap, Marker, ScaleControl, setWorkerUrl, type GeoJSONSource, type MapLayerMouseEvent, type ImageSource, type StyleSpecification } from "maplibre-gl"
+import { Map as MlMap, Marker, ScaleControl, setWorkerUrl, type GeoJSONSource, type MapLayerMouseEvent, type ImageSource, type StyleSpecification, type ExpressionSpecification } from "maplibre-gl"
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { Box, ChevronDown, ChevronUp, Compass, Crosshair, Map as MapIcon, Minus, Plus, RotateCcw, RotateCw, Type } from "lucide-react"
@@ -20,8 +20,16 @@ import { BarisKini } from "@/components/charts/PetaJatim"
 setWorkerUrl(workerUrl)
 
 
-/** Tinggi menara 3D untuk kelas tertinggi (meter). */
-const TINGGI_MAKS = 24000
+/** Tinggi wilayah 3D (meter): nilai terendah di antara wilayah yang lolos filter = MIN, tertinggi = MAKS. */
+const TINGGI_MIN = 1200
+const TINGGI_MAKS = 16000
+/** Tinggi wilayah yang tidak lolos filter (meter). */
+const TINGGI_REDUP = 300
+/** Lama animasi naik (ms). */
+const LAMA_NAIK = 1100
+/** Kemiringan kamera mode 3D (derajat). */
+const PITCH_3D = 55
+const BEARING_3D = -14
 const JATIM_BOUNDS: [[number, number], [number, number]] = [
   [110.85, -8.85],
   [114.65, -6.65],
@@ -35,6 +43,61 @@ const IKON_GUDANG =
 const cssVar = (v: string) => {
   const m = /^var\((--[\w-]+)\)$/.exec(v)
   return m ? getComputedStyle(document.documentElement).getPropertyValue(m[1]).trim() || "#999" : v
+}
+
+/** Campur warna hex dengan putih (0 = tetap, 1 = putih). Warna non-hex dikembalikan apa adanya. */
+function terangkan(c: string, k: number) {
+  let h = c.trim().replace("#", "")
+  if (!/^[0-9a-f]{3}([0-9a-f]{3})?$/i.test(h)) return c
+  if (h.length === 3) h = h.replace(/./g, (x) => x + x)
+  const n = parseInt(h, 16)
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.round(v + (255 - v) * k))
+  return `rgb(${ch.join(",")})`
+}
+
+/** Poligon wilayah dikecilkan sedikit ke arah titik beratnya, agar di mode 3D ada celah tipis antarwilayah yang tingginya sama. */
+function susutkan(f: KabCollection["features"][number], k = 0.95): KabCollection["features"][number] {
+  const berat = (ring: [number, number][]): [number, number] => {
+    let a = 0, cx = 0, cy = 0
+    for (let i = 0; i < ring.length - 1; i++) {
+      const [x0, y0] = ring[i]
+      const [x1, y1] = ring[i + 1]
+      const q = x0 * y1 - x1 * y0
+      a += q
+      cx += (x0 + x1) * q
+      cy += (y0 + y1) * q
+    }
+    if (a === 0) return ring[0]
+    return [cx / (3 * a), cy / (3 * a)]
+  }
+  const skala = (ring: [number, number][], [ox, oy]: [number, number], s: number) => ring.map(([x, y]) => [ox + (x - ox) * s, oy + (y - oy) * s] as [number, number])
+  return {
+    ...f,
+    geometry: {
+      ...f.geometry,
+      coordinates: f.geometry.coordinates.map((poly) => {
+        const pusat = berat(poly[0] as [number, number][])
+        // Cincin luar mengecil ke pusatnya; lubang (mis. kota di dalam kabupaten) membesar agar celahnya juga terbentuk.
+        return poly.map((ring, i) => (i === 0 ? skala(ring as [number, number][], pusat, k) : skala(ring as [number, number][], berat(ring as [number, number][]), 2 - k)))
+      }),
+    },
+  } as KabCollection["features"][number]
+}
+
+/** Perkiraan pergeseran layar (px, ke atas) untuk titik setinggi `h` meter di atas titik tanah `c`. */
+function angkatPx(map: MlMap, c: [number, number], h: number) {
+  if (h <= 0) return 0
+  const pitch = (map.getPitch() * Math.PI) / 180
+  if (pitch < 0.01) return 0
+  const d = 0.01
+  const p0 = map.project(c)
+  const pe = map.project([c[0] + d, c[1]])
+  const pn = map.project([c[0], c[1] + d])
+  const luas = Math.abs((pe.x - p0.x) * (pn.y - p0.y) - (pe.y - p0.y) * (pn.x - p0.x))
+  const mE = d * 111320 * Math.cos((c[1] * Math.PI) / 180)
+  const mN = d * 110570
+  const pxPerM = Math.sqrt(luas / Math.max(0.05, Math.cos(pitch)) / (mE * mN))
+  return h * pxPerM * Math.sin(pitch)
 }
 
 const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services"
@@ -153,10 +216,18 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
   const [ready, setReady] = useState(false)
   const [bearing, setBearing] = useState(0)
   const [kab, setKab] = useState<KabCollection>(fallbackKab)
+  // Tinggi 3D: target per id wilayah, tinggi yang sedang tampil, dan kemajuan animasi.
+  const tinggiTarget = useRef<Map<number | string, number>>(new Map())
+  const tinggiKini = useRef<Map<number | string, number>>(new Map())
+  const animRef = useRef(0)
+  const arusK = useRef(1)
+  const tigaRef = useRef(false)
+  const geserLabel = useRef<(() => void) | null>(null)
   const peta = usePeta()
   const { basemap, fillOp, overlays, citra } = peta
   const arus = spec ? peta.arus : "off"
   const tiga = spec ? peta.dim === "3d" : false
+  tigaRef.current = tiga
   // Halaman Ringkasan Peta (spec) tidak memakai lapisan GEE dan citra kabupaten.
   const ov = spec ? "off" : peta.ov
   const citraMode = spec ? "off" : peta.citraMode
@@ -206,14 +277,37 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
     map.on("load", () => {
       map.addSource("kab", { type: "geojson", data: { type: "FeatureCollection", features: [] } })
       map.addLayer({ id: "kab-fill", type: "fill", source: "kab", paint: { "fill-color": ["get", "fill"], "fill-opacity": 0.7 } })
-      map.addSource("kab-bar", { type: "geojson", data: { type: "FeatureCollection", features: [] } })
+      map.addSource("kab3d", { type: "geojson", data: { type: "FeatureCollection", features: [] } })
+      // Bayangan semu: siluet wilayah digeser ke kanan bawah layar, terlihat di laut dan di celah antarwilayah.
+      map.addLayer({
+        id: "kab-bayang",
+        type: "fill",
+        source: "kab3d",
+        layout: { visibility: "none" },
+        paint: { "fill-color": "#000", "fill-opacity": 0.32, "fill-translate": [12, 16], "fill-translate-anchor": "viewport", "fill-antialias": false },
+      })
       map.addLayer({
         id: "kab-3d",
         type: "fill-extrusion",
-        source: "kab-bar",
+        source: "kab3d",
         layout: { visibility: "none" },
-        paint: { "fill-extrusion-color": ["get", "fill"], "fill-extrusion-height": ["get", "h"], "fill-extrusion-base": 0, "fill-extrusion-opacity": 1 },
+        paint: {
+          "fill-extrusion-color": [
+            "case",
+            ["boolean", ["feature-state", "sel"], false],
+            ["get", "fillSel"],
+            ["boolean", ["feature-state", "hover"], false],
+            ["get", "fillHi"],
+            ["get", "fill"],
+          ],
+          "fill-extrusion-height": ["get", "h1"],
+          "fill-extrusion-base": 0,
+          "fill-extrusion-opacity": 1,
+          "fill-extrusion-vertical-gradient": true,
+        },
       })
+      // Cahaya dari kiri atas layar agar sisi wilayah berbeda terang-gelapnya.
+      map.setLight({ anchor: "viewport", color: "#ffffff", intensity: 0.6, position: [1.5, 215, 62] })
       map.addLayer({
         id: "kab-line",
         type: "line",
@@ -240,9 +334,9 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
     const move = (e: MapLayerMouseEvent) => {
       const f = e.features?.[0]
       if (!f) return
-      if (hoverId !== undefined) map.setFeatureState({ source: "kab", id: hoverId }, { hover: false })
+      if (hoverId !== undefined) for (const source of ["kab", "kab3d"]) map.setFeatureState({ source, id: hoverId }, { hover: false })
       hoverId = f.id
-      if (hoverId !== undefined) map.setFeatureState({ source: "kab", id: hoverId }, { hover: true })
+      if (hoverId !== undefined) for (const source of ["kab", "kab3d"]) map.setFeatureState({ source, id: hoverId }, { hover: true })
       map.getCanvas().style.cursor = "pointer"
       const k = byName[f.properties.n as string]
       if (!k) return
@@ -258,7 +352,7 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
       )
     }
     const leave = () => {
-      if (hoverId !== undefined) map.setFeatureState({ source: "kab", id: hoverId }, { hover: false })
+      if (hoverId !== undefined) for (const source of ["kab", "kab3d"]) map.setFeatureState({ source, id: hoverId }, { hover: false })
       hoverId = undefined
       map.getCanvas().style.cursor = ""
       hide()
@@ -300,30 +394,36 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
         features: kab.features.map((f) => {
           const k = byName[f.properties.n]
           const fill = !k ? "#999" : !lolos(k) ? cssVar("var(--rule)") : cssVar(warna(k))
-          // Tinggi menara 3D mengikuti kelas nilai: kelas tertinggi = menara tertinggi.
-          const bins = spec ? spec.bins : d.bins
-          const v = k ? val(k) : 0
-          const bi = binIndex(bins, v)
-          const h = k && lolos(k) ? ((bi + 1) / bins.length) * TINGGI_MAKS : 400
-          return { ...f, properties: { ...f.properties, fill, h } }
+          return { ...f, properties: { ...f.properties, fill } }
         }),
       }
       ;(map.getSource("kab") as GeoJSONSource | undefined)?.setData(data as unknown as Parameters<GeoJSONSource["setData"]>[0])
-      // Mode 3D: satu batang (bar chart) per wilayah, diletakkan di daratan utama wilayah itu.
-      const bar = {
-        type: "FeatureCollection",
-        features: data.features.map((f) => {
-          const [cx, cy] = pusatDaratan(f)
-          const [[w, s], [e, n]] = bboxOf(f)
-          const r = Math.max(0.012, Math.min(0.05, 0.25 * Math.min(e - w, n - s)))
-          return {
-            type: "Feature",
-            properties: f.properties,
-            geometry: { type: "Polygon", coordinates: [[[cx - r, cy - r], [cx + r, cy - r], [cx + r, cy + r], [cx - r, cy + r], [cx - r, cy - r]]] },
-          }
-        }),
+      // Mode 3D: seluruh wilayah diangkat. Tinggi mengikuti kelas legenda (kelas lebih tinggi = lebih tinggi) ditambah posisi nilai di dalam kelasnya,
+      // jadi tinggi sejalan dengan warna dan wilayah sekelas tetap berbeda sedikit.
+      const nilai = kab.features.map((f) => byName[f.properties.n]).filter((k): k is Wilayah => !!k && lolos(k)).map((k) => val(k)).filter(Number.isFinite)
+      const lo = nilai.length ? Math.min(...nilai) : 0
+      const hi = nilai.length ? Math.max(...nilai) : 1
+      const target = new Map<number | string, number>()
+      for (const f of kab.features) {
+        const k = byName[f.properties.n]
+        let h = TINGGI_REDUP
+        if (k && lolos(k)) {
+          const v = val(k)
+          const bins = spec ? spec.bins : d.bins
+          const bi = binIndex(bins, v)
+          // Batas kelas terbuka (mis. ≥ 15.000) dipotong ke nilai data agar posisi di dalam kelas tetap bermakna.
+          const b0 = Math.max(bins[bi][0], lo)
+          const b1 = Math.min(bins[bi][1], hi)
+          const frac = !Number.isFinite(v) ? (v > 0 ? 1 : 0) : b1 > b0 ? Math.min(1, Math.max(0, (v - b0) / (b1 - b0))) : 0.5
+          const t = (bi + frac) / bins.length
+          h = TINGGI_MIN + t * (TINGGI_MAKS - TINGGI_MIN)
+        }
+        target.set(f.id, h)
       }
-      ;(map.getSource("kab-bar") as GeoJSONSource | undefined)?.setData(bar as unknown as Parameters<GeoJSONSource["setData"]>[0])
+      tinggiTarget.current = target
+      const isi = new Map(data.features.map((f) => [f.id, f.properties.fill as string]))
+      kab3dWarna.current = isi
+      naikkan(map, tigaRef.current ? tinggiKini.current : null)
       map.setPaintProperty("kab-sel", "line-color", cssVar("var(--ink)"))
       map.setPaintProperty("kab-line", "line-color", basemap === "satelit" ? "#ffffff" : cssVar("var(--panel)"))
     })
@@ -332,15 +432,96 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, kab, layer, spec?.key, dataKey, theme, basemap])
 
+  // Geometri 3D (poligon disusutkan) dihitung sekali per batas wilayah.
+  const kabSusut = useMemo(() => kab.features.map((f) => susutkan(f)), [kab])
+  const kab3dWarna = useRef<Map<number | string, string>>(new Map())
+
+  /** Pasang data 3D lalu animasikan tinggi dari `dari` (null = langsung ke target, 0 bila belum ada) menuju target. */
+  const naikkan = (map: MlMap, dari: Map<number | string, number> | null) => {
+    cancelAnimationFrame(animRef.current)
+    const target = tinggiTarget.current
+    const awal = new Map<number | string, number>()
+    for (const [id, h] of target) awal.set(id, dari ? (dari.get(id) ?? 0) : h)
+    const features = kabSusut.map((f) => {
+      const fill = kab3dWarna.current.get(f.id) ?? "#999"
+      return { ...f, properties: { ...f.properties, fill, fillHi: terangkan(fill, 0.28), fillSel: terangkan(fill, 0.45), h0: awal.get(f.id) ?? 0, h1: target.get(f.id) ?? 0 } }
+    })
+    ;(map.getSource("kab3d") as GeoJSONSource | undefined)?.setData({ type: "FeatureCollection", features } as unknown as Parameters<GeoJSONSource["setData"]>[0])
+    const pasang = (t: number) => {
+      const tinggi: ExpressionSpecification = ["+", ["get", "h0"], ["*", ["-", ["get", "h1"], ["get", "h0"]], t]]
+      map.setPaintProperty("kab-3d", "fill-extrusion-height", ["*", arusK.current, tinggi])
+      const kini = new Map<number | string, number>()
+      for (const [id, h] of target) {
+        const h0 = awal.get(id) ?? 0
+        kini.set(id, h0 + (h - h0) * t)
+      }
+      tinggiKini.current = kini
+      geserLabel.current?.()
+    }
+    const beda = [...target].some(([id, h]) => Math.abs((awal.get(id) ?? 0) - h) > 1)
+    const diam = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    if (!dari || !beda || diam) {
+      pasang(1)
+      return
+    }
+    const mulaiT = performance.now()
+    const langkah = (now: number) => {
+      const u = Math.min(1, (now - mulaiT) / LAMA_NAIK)
+      // easeOutBack ringan: naik cepat, sedikit melewati target, lalu turun ke tempatnya.
+      const c = 1.2
+      const e = 1 + (c + 1) * Math.pow(u - 1, 3) + c * Math.pow(u - 1, 2)
+      pasang(e)
+      if (u < 1) animRef.current = requestAnimationFrame(langkah)
+    }
+    animRef.current = requestAnimationFrame(langkah)
+  }
+  useEffect(() => () => cancelAnimationFrame(animRef.current), [])
+
   // 2D atau 3D: kemiringan kamera, menara, dan putar dengan seret klik kanan.
   useEffect(() => {
     const map = mapRef.current
     if (!map || !ready) return
-    map.setLayoutProperty("kab-3d", "visibility", tiga ? "visible" : "none")
+    for (const id of ["kab-3d", "kab-bayang"]) map.setLayoutProperty(id, "visibility", tiga ? "visible" : "none")
+    // Garis batas dan label peta dasar digambar di permukaan tanah, jadi disembunyikan agar tidak menimpa wilayah yang terangkat.
+    for (const id of ["kab-line", "kab-sel"]) map.setLayoutProperty(id, "visibility", tiga ? "none" : "visible")
+    aturLabelDasar(map)
     map.setPaintProperty("kab-fill", "fill-opacity", tiga ? Math.min(fillOp, 0.4) : fillOp)
     if (tiga) map.dragRotate.enable()
     else map.dragRotate.disable()
-    map.easeTo({ pitch: tiga ? 58 : 0, bearing: tiga ? -14 : 0, duration: 900 })
+    map.easeTo({ pitch: tiga ? PITCH_3D : 0, bearing: tiga ? BEARING_3D : 0, duration: 900 })
+    if (!tiga) {
+      cancelAnimationFrame(animRef.current)
+      tinggiKini.current = new Map()
+      return
+    }
+    // Wilayah naik dari tanah saat mode 3D dibuka.
+    naikkan(map, new Map())
+    // Kamera bergoyang pelan ke kiri-kanan sampai pengguna menyentuh peta. Tidak dijalankan di layar kecil atau bila pengguna memilih gerak minimal.
+    const hemat = window.matchMedia?.("(prefers-reduced-motion: reduce), (max-width: 720px), (pointer: coarse)").matches
+    if (hemat) return
+    let raf = 0
+    let t0 = 0
+    const berhenti = (e?: object) => {
+      if (e && (e as { goyang?: boolean }).goyang) return
+      cancelAnimationFrame(raf)
+      raf = -1
+      map.off("movestart", berhenti)
+    }
+    const goyang = (now: number) => {
+      if (raf === -1) return
+      if (!t0) t0 = now
+      const b = BEARING_3D + 10 * Math.sin(((now - t0) / 1000) * ((2 * Math.PI) / 36))
+      map.setBearing(b, { goyang: true })
+      raf = requestAnimationFrame(goyang)
+    }
+    const mulaiGoyang = window.setTimeout(() => {
+      map.on("movestart", berhenti)
+      raf = requestAnimationFrame(goyang)
+    }, 1000)
+    return () => {
+      window.clearTimeout(mulaiGoyang)
+      berhenti()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, tiga])
 
@@ -349,8 +530,16 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
     const map = mapRef.current
     if (!map || !ready) return
     map.setPaintProperty("kab-3d", "fill-extrusion-opacity", arus !== "off" ? 0.85 : 1)
-    map.setPaintProperty("kab-3d", "fill-extrusion-height", ["*", ["get", "h"], arus !== "off" ? 0.28 : 1])
+    arusK.current = arus !== "off" ? 0.28 : 1
+    naikkan(map, tigaRef.current ? tinggiKini.current : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, arus])
+
+  const aturLabelDasar = (map: MlMap) => {
+    const on = basemap === "satelit" ? "satelit" : theme === "dark" ? "jalanGelap" : "jalan"
+    const lbl = tigaRef.current ? "" : on === "jalan" ? "labelTerang" : "labelGelap"
+    for (const id of ["labelTerang", "labelGelap"]) map.setLayoutProperty(id, "visibility", id === lbl ? "visible" : "none")
+  }
 
   // Basemap.
   useEffect(() => {
@@ -358,8 +547,8 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
     if (!map || !ready) return
     const on = basemap === "satelit" ? "satelit" : theme === "dark" ? "jalanGelap" : "jalan"
     for (const id of ["jalan", "jalanGelap", "satelit"]) map.setLayoutProperty(id, "visibility", id === on ? "visible" : "none")
-    const lbl = on === "jalan" ? "labelTerang" : "labelGelap"
-    for (const id of ["labelTerang", "labelGelap"]) map.setLayoutProperty(id, "visibility", id === lbl ? "visible" : "none")
+    aturLabelDasar(map)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, basemap, theme])
 
   useEffect(() => {
@@ -376,6 +565,7 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
     const map = mapRef.current
     if (!map || !ready) return
     map.setFilter("kab-sel", ["==", ["get", "n"], fokus ? sel : ""])
+    for (const f of kab.features) map.setFeatureState({ source: "kab3d", id: f.id }, { sel: fokus && f.properties.n === sel })
     if (!fokus) {
       // Lepas fokus: kembali ke cakupan filter (atau seluruh Jawa Timur).
       // Pemuatan awal sudah selesai, jadi klik pertama sesudahnya tidak boleh dilewati.
@@ -431,7 +621,7 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
   useEffect(() => {
     const map = mapRef.current
     if (!map || !ready || !spec || !peta.labelNilai) return
-    const items: { el: HTMLElement; mk: Marker; c: [number, number]; prio: number }[] = []
+    const items: { el: HTMLElement; mk: Marker; c: [number, number]; prio: number; id: number | string }[] = []
     // Peringkat 3 tertinggi dan 3 terendah di antara wilayah yang lolos filter. Wilayah yang nilainya sama dengan batas peringkat dilewati agar tidak ada peringkat semu.
     const urut = kab.features.map((f) => byName[f.properties.n]).filter((k): k is Wilayah => !!k && lolos(k)).map((k) => ({ n: k.n, v: val(k) })).sort((a, b) => b.v - a.v)
     const peringkat = new Map<string, { atas: boolean; no: number }>()
@@ -446,8 +636,8 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
       const k = byName[f.properties.n]
       if (!k || !lolos(k)) continue
       const el = document.createElement("div")
-      el.className = "nilai-lbl"
-      const pk = peringkat.get(k.n)
+      el.className = "nilai-lbl" + (tiga ? " tiga" : "")
+      const pk = tiga ? undefined : peringkat.get(k.n)
       if (pk) {
         el.classList.add(pk.atas ? "atas" : "bawah")
         el.title = pk.atas ? `Peringkat ${pk.no} tertinggi` : `Peringkat ${pk.no} terendah`
@@ -457,17 +647,27 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
       }
       const nm = document.createElement("span")
       nm.textContent = short(k.n)
-      const v = document.createElement("b")
-      v.textContent = fmtVal(k)
-      el.append(nm, v)
+      // Mode 3D: cukup nama wilayah. Statusnya terbaca dari warna, detailnya muncul saat kursor di atas wilayah.
+      if (tiga) el.append(nm)
+      else {
+        const v = document.createElement("b")
+        v.textContent = fmtVal(k)
+        el.append(nm, v)
+      }
       const c = pusatDaratan(f)
-      const mk = new Marker({ element: el, anchor: "center" }).setLngLat(c).addTo(map)
-      items.push({ el, mk, c, prio: k.n === sel ? 0 : pk ? 1 : 2 })
+      const mk = new Marker({ element: el, anchor: tiga ? "bottom" : "center" }).setLngLat(c).addTo(map)
+      items.push({ el, mk, c, prio: k.n === sel ? 0 : pk ? 1 : 2, id: f.id })
     }
     const susun = () => {
       const pakai: { x: number; y: number; w: number; h: number }[] = []
       for (const it of [...items].sort((a, b) => a.prio - b.prio)) {
         const p = map.project(it.c)
+        if (tiga) {
+          // Label diletakkan di atas permukaan wilayah yang terangkat.
+          const dy = angkatPx(map, it.c, (tinggiKini.current.get(it.id) ?? 0) * arusK.current) + 4
+          it.mk.setOffset([0, -dy])
+          p.y -= dy + it.el.offsetHeight / 2
+        }
         const w = it.el.offsetWidth
         const h = it.el.offsetHeight
         const r = { x: p.x - w / 2, y: p.y - h / 2, w, h }
@@ -477,13 +677,25 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
       }
     }
     susun()
-    map.on("moveend", susun)
+    // Mode 3D: tinggi label mengikuti kemiringan kamera dan animasi naik, jadi disusun ulang tiap bingkai (paling banyak sekali per frame).
+    let raf = 0
+    const susunNanti = () => {
+      if (!raf) raf = requestAnimationFrame(() => {
+        raf = 0
+        susun()
+      })
+    }
+    const ev = tiga ? "move" : "moveend"
+    map.on(ev, tiga ? susunNanti : susun)
+    if (tiga) geserLabel.current = susunNanti
     return () => {
-      map.off("moveend", susun)
+      map.off(ev, tiga ? susunNanti : susun)
+      cancelAnimationFrame(raf)
+      if (geserLabel.current === susunNanti) geserLabel.current = null
       for (const it of items) it.mk.remove()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, spec, spec?.key, peta.labelNilai, kab, dataKey, W, sel])
+  }, [ready, spec, spec?.key, peta.labelNilai, kab, dataKey, W, sel, tiga])
 
   // Garis arus beras: lengkung dari asal ke tujuan, tebal = volume, dasbor bergerak ke arah tujuan.
   useEffect(() => {
@@ -795,7 +1007,7 @@ export function PetaInteraktif({ spec, layer = "harga", getValue, valueLabel, em
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, citraMode, ck?.folder])
 
-  const reset = () => mapRef.current?.fitBounds(JATIM_BOUNDS, { padding: embedded ? 12 : { top: 80, bottom: 150, left: 20, right: 360 }, bearing: 0, pitch: tiga ? 58 : 0, duration: 700 })
+  const reset = () => mapRef.current?.fitBounds(JATIM_BOUNDS, { padding: embedded ? 12 : { top: 80, bottom: 150, left: 20, right: 360 }, bearing: 0, pitch: tiga ? PITCH_3D : 0, duration: 700 })
   const ovNow = overlays.find((o) => o.id === ov)
 
   return (
