@@ -21,13 +21,13 @@ const TAUTAN: Tautan[] = [
   {
     judul: "Video demo",
     ket: "Tur singkat fitur aplikasi",
-    url: "https://drive.google.com/file/d/16Wcmo174IUPqHJguI1RW2l_BRhTZQ8dK/view?usp=sharing",
+    url: "https://youtu.be/DjkQXHyWnmc",
     ikon: PlayCircle,
   },
   {
     judul: "Buku pedoman",
     ket: "Panduan dasbor, bot WhatsApp, dan admin",
-    url: "https://docs.google.com/document/d/1uyyS6JO_55ftF5DeOwf4P5gOYRV-hM_iOg0LY2ltELg/edit?tab=t.0",
+    url: "https://drive.google.com/file/d/1Wi76aIo3FJt4JjIf_fVvjRmAU4XYwDoQ/view?usp=sharing",
     ikon: BookOpen,
   },
   {
