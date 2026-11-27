@@ -32,13 +32,13 @@ function gaya(): StyleSpecification {
     sources: {
       osm: {
         type: "raster",
-        tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+        tiles: ["a", "b", "c", "d"].map((h) => `https://${h}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}@2x.png`),
         tileSize: 256,
-        maxzoom: 19,
-        attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+        maxzoom: 18,
+        attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
       },
     },
-    layers: [{ id: "osm", type: "raster", source: "osm", paint: { "raster-saturation": -0.35, "raster-opacity": 0.95 } }],
+    layers: [{ id: "osm", type: "raster", source: "osm", paint: { "raster-opacity": 1 } }],
   }
 }
 
@@ -138,7 +138,7 @@ export function PetaSphp({ flows, akhir, wil }: Props) {
         paint: { "circle-radius": ["get", "r"], "circle-color": aksen, "circle-opacity": 0.28, "circle-stroke-color": aksen, "circle-stroke-width": 2.2 },
       })
       map.addSource("rute", { type: "geojson", data: koleksi([]) })
-      map.addLayer({ id: "rute-tepi", type: "line", source: "rute", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#ffffff", "line-width": ["+", ["get", "w"], 3], "line-opacity": 0.95 } })
+      map.addLayer({ id: "rute-tepi", type: "line", source: "rute", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#ffffff", "line-width": ["+", ["get", "w"], 4], "line-opacity": 1 } })
       map.addLayer({ id: "rute", type: "line", source: "rute", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": aksen, "line-width": ["get", "w"] } })
       map.addSource("panah", { type: "geojson", data: koleksi([]) })
       map.addLayer({
@@ -188,7 +188,7 @@ export function PetaSphp({ flows, akhir, wil }: Props) {
     const isi = kab.features.map((f) => {
       const k = WILAYAH.find((w) => w.n === f.properties.n)
       const ok = k && lolos.has(k.n)
-      return { ...f, properties: { n: f.properties.n, fill: k ? cssVar(binColor("stokK2", covBulan(k, akhir))) : "#bbbbbb", op: ok ? 0.48 : 0.15 } }
+      return { ...f, properties: { n: f.properties.n, fill: k ? cssVar(binColor("stokK2", covBulan(k, akhir))) : "#bbbbbb", op: ok ? 0.82 : 0.25 } }
     })
     ;(map.getSource("kab") as GeoJSONSource).setData({ type: "FeatureCollection", features: isi } as never)
 
@@ -203,10 +203,10 @@ export function PetaSphp({ flows, akhir, wil }: Props) {
       const B = pusat.get(r.to.n)
       if (!A || !B) continue
       const { koord, ujung, arah } = lengkung(A, B)
-      const w = 2 + (r.ton / maks) * 5
+      const w = 3 + (r.ton / maks) * 6
       const html = `<b>${r.from.n} → ${r.to.n}</b><br>${nf(r.ton)} ton · ${nf(r.km)} km`
       garis.push({ type: "Feature", properties: { w, html }, geometry: { type: "LineString", coordinates: koord } })
-      panah.push({ type: "Feature", properties: { arah, s: 0.55 + w * 0.07 }, geometry: { type: "Point", coordinates: ujung } })
+      panah.push({ type: "Feature", properties: { arah, s: 0.75 + w * 0.08 }, geometry: { type: "Point", coordinates: ujung } })
     }
     const cincin: Fitur[] = []
     for (const [n, ton] of lokal) {
