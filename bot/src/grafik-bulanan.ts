@@ -2,6 +2,7 @@
  * Grafik bulanan stok (K2, app.estimasi_stok) dan produksi beras (K1, app.prediksi_produksi) untuk WhatsApp.
  * Semua titik dan angka diambil dari run model SELESAI terbaru, sama seperti dasbor (tanpa LLM).
  */
+import { akses, bulanKini } from "./hak.ts"
 import { q } from "./db.ts"
 import { nf } from "./format.ts"
 import { esc, langkahRapi, WARNA } from "./grafik.ts"
@@ -29,6 +30,13 @@ export type GrafikBulanan = {
 export const bulanDariHari = (hari: number | null) => Math.min(Math.max(Math.round((hari ?? 180) / 30), 3), 24)
 
 const KINI = `(extract(year from now() at time zone 'Asia/Jakarta') * 12 + extract(month from now() at time zone 'Asia/Jakarta'))::int`
+
+/** Tanpa hak estimasi (Tamu): hanya bulan yang sudah lewat, tanpa proyeksi. */
+function sudahTerjadi<T extends { tahun: number; bulan: number }>(titik: T[]): T[] {
+  if (akses().estimasi) return titik
+  const batas = bulanKini() - 1
+  return titik.filter((t) => t.tahun * 12 + t.bulan <= batas)
+}
 
 function indeksKini(titik: { tahun: number; bulan: number }[]): number {
   const d = new Date(Date.now() + 7 * 3600_000)
@@ -72,7 +80,7 @@ export async function dataStok(w: Wilayah | null, bulanLalu: number): Promise<Gr
     [w?.id ?? null, bulanLalu],
   )
   const konsumsi = rows[0]?.konsumsi ?? null
-  const titik = rows.filter((r) => r.tengah != null).map((r) => ({
+  const titik = sudahTerjadi(rows.filter((r) => r.tengah != null)).map((r) => ({
     tahun: r.tahun, bulan: r.bulan, nilai: r.tengah!, bawah: r.rendah, atas: r.tinggi,
     cakupan: r.cak ?? (konsumsi ? r.tengah! / konsumsi : null),
     defisit: w ? r.defisit : undefined,
@@ -95,7 +103,8 @@ export async function dataProduksi(w: Wilayah | null, bulanLalu: number): Promis
       group by 1, 2 order by 1, 2`,
     [w?.id ?? null, bulanLalu],
   )
-  return { topik: "produksi", judul: w ? labelWilayah(w) : "Jawa Timur (total 38 kab/kota)", wilayahId: w?.id ?? null, satuan: "ton", titik: rows, iKini: indeksKini(rows), bulanLalu }
+  const titik = sudahTerjadi(rows)
+  return { topik: "produksi", judul: w ? labelWilayah(w) : "Jawa Timur (total 38 kab/kota)", wilayahId: w?.id ?? null, satuan: "ton", titik, iKini: indeksKini(titik), bulanLalu }
 }
 
 const fmtNilai = (v: number, satuan: "bulan" | "ton") =>
@@ -222,7 +231,7 @@ export function teksBulanan(d: GrafikBulanan): string {
   if (kini) {
     const c = d.topik === "stok" ? kini.cakupan : null
     const ket = c == null ? "" : c < 0.05 ? " (stok habis)" : ` (cukup ${nf(c)} bulan konsumsi)`
-    baris.push(`Bulan ini (${namaBulan(kini.tahun, kini.bulan)}): *${fmtNilai(kini.nilai, d.satuan)}*${ket}`)
+    baris.push(`${akses().estimasi ? "Bulan ini" : "Bulan terakhir"} (${namaBulan(kini.tahun, kini.bulan)}): *${fmtNilai(kini.nilai, d.satuan)}*${ket}`)
   }
   const maks = d.titik.reduce((a, b) => (b.nilai > a.nilai ? b : a)), min = d.titik.reduce((a, b) => (b.nilai < a.nilai ? b : a))
   const fmtT = (v: number) => (d.topik === "stok" && v < 0.5 ? "habis (0 ton)" : fmtNilai(v, d.satuan))
@@ -230,7 +239,9 @@ export function teksBulanan(d: GrafikBulanan): string {
   if (d.topik === "stok") {
     const def = d.titik.slice(Math.max(d.iKini, 0)).find((t) => t.defisit)
     if (d.aman) baris.push(`Batas aman: ${fmtNilai(d.aman, "ton")} (1 bulan konsumsi)`)
-    if (d.wilayahId != null) baris.push(def ? `⚠️ Proyeksi defisit mulai ${namaBulan(def.tahun, def.bulan)}` : "Tidak ada proyeksi defisit di rentang ini")
+    if (!akses().estimasi) {
+      // tanpa hak estimasi: tanpa proyeksi defisit
+    } else if (d.wilayahId != null) baris.push(def ? `⚠️ Proyeksi defisit mulai ${namaBulan(def.tahun, def.bulan)}` : "Tidak ada proyeksi defisit di rentang ini")
     else if (d.aman) {
       const tipis = d.titik.slice(Math.max(d.iKini, 0)).find((t) => t.nilai < d.aman!)
       if (tipis) baris.push(`⚠️ Total Jatim diproyeksi di bawah batas aman mulai ${namaBulan(tipis.tahun, tipis.bulan)}`)

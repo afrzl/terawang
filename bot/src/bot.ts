@@ -1,14 +1,15 @@
 /** Otak bot: perintah baku dijawab langsung dari database (tanpa LLM); pesan bebas diteruskan ke llm.ts. */
 import { config } from "./config.ts"
 import { daftarPeringatan, infoBerasMurah, infoHarga, infoStok, peringkatWilayah, type UkuranPeringkat } from "./data.ts"
-import { BANTUAN, teksBerasMurah, teksHarga, teksPeringatan, teksPeringkat, teksPilihWilayah, teksStok, rp, nf } from "./format.ts"
+import { bantuan, teksBerasMurah, teksHarga, teksPeringatan, teksPeringkat, teksPilihWilayah, teksStok, rp, nf } from "./format.ts"
 import * as kontak from "./kontak.ts"
 import { q } from "./db.ts"
 import { jawabBebas, llmAktif, pilahNiat } from "./llm.ts"
 import * as pagar from "./pagar.ts"
 import * as lapor from "./lapor.ts"
 import { pantau } from "./pantau.ts"
-import { buangSalam, CONTOH, jawabBasaBasi, jawabIstilah, POLA_TERIMA_KASIH, TERIMA_KASIH } from "./istilah.ts"
+import { akses, muatHak, mintaPrakiraan, TOLAK_PRAKIRAAN, TOLAK_SPHP } from "./hak.ts"
+import { buangSalam, contoh, jawabBasaBasi, jawabIstilah, POLA_TERIMA_KASIH, TERIMA_KASIH } from "./istilah.ts"
 import { dataGrafik, jenisDisebut, pngGrafik, POLA_GRAFIK, POLA_GRAFIK_BELUM, rentangDisebut, svgGrafik, teksGrafik, topikDisebut, type Jenis, type TopikGrafik } from "./grafik.ts"
 import { bulanDariHari, dataProduksi, dataStok, svgBulanan, teksBulanan } from "./grafik-bulanan.ts"
 import { cariDiKalimat, cocokkan, labelWilayah, normal, semuaWilayah, type Wilayah } from "./wilayah.ts"
@@ -86,6 +87,10 @@ async function jawabPeringkat(ukuran: UkuranPeringkat, urutan: "terendah" | "ter
 
 async function jalankan(p: Perintah, w: Wilayah | null, k: kontak.Kontak, arg: string): Promise<Balasan> {
   const wid = w?.id ?? null
+  // hak bot = hak Tamu di admin: SPHP, peringatan dini, dan langganan peringatan hanya bila berhak
+  const hak = akses()
+  if (p === "sphp" && !hak.sphp) return { teks: TOLAK_SPHP, intent: "tolak_hak_sphp", wilayahId: wid }
+  if ((p === "peringatan" || p === "langganan") && !hak.estimasi) return { teks: TOLAK_PRAKIRAAN, intent: "tolak_hak_estimasi", wilayahId: wid }
   switch (p) {
     case "harga":
       return { teks: teksHarga(await infoHarga(w!)), intent: "harga", wilayahId: wid, topik: "harga" }
@@ -122,7 +127,7 @@ async function jalankan(p: Perintah, w: Wilayah | null, k: kontak.Kontak, arg: s
     case "grafik":
       return buatGrafik(w, arg, k)
     case "bantuan":
-      return { teks: BANTUAN, intent: "bantuan", wilayahId: null }
+      return { teks: bantuan(), intent: "bantuan", wilayahId: null }
   }
 }
 
@@ -423,7 +428,7 @@ async function pesanBebas(k: kontak.Kontak, teks: string, pilihan: Wilayah | nul
   }
   const istilah = jawabIstilah(teks)
   if (istilah) return { teks: istilah, intent: "istilah", wilayahId: null }
-  if (!llmAktif()) return { teks: `Maaf, aku belum paham pesannya.\n\n${BANTUAN}`, intent: "tidak_dikenal", wilayahId: null }
+  if (!llmAktif()) return { teks: `Maaf, aku belum paham pesannya.\n\n${bantuan()}`, intent: "tidak_dikenal", wilayahId: null }
 
   // guard rail sebelum OpenAI: panjang, injeksi prompt, topik
   const di = pilihan ? null : cariDiKalimat(teks, daftar)
@@ -442,7 +447,7 @@ async function pesanBebas(k: kontak.Kontak, teks: string, pilihan: Wilayah | nul
   let lolosPilah = false
   if (tolak?.alasan === "di_luar_topik") {
     // aturan tidak mengenali pesannya: tanya model termurah dulu sebelum menolak
-    const sapa = { teks: `Halo! 👋 Aku bot *TERAWANG*, bantu info beras di Jawa Timur.\n\n${CONTOH}`, intent: "tidak_jelas", wilayahId: null }
+    const sapa = { teks: `Halo! 👋 Aku bot *TERAWANG*, bantu info beras di Jawa Timur.\n\n${contoh()}`, intent: "tidak_jelas", wilayahId: null }
     if (!config.openai.modelPilah || pagar.cekBatas(k.id, await kontak.jumlahLlmHariIni(k.id))) {
       return normal(teks).split(" ").length <= 3 ? sapa : { teks: tolak.teks, intent: `tolak_${tolak.alasan}`, wilayahId: null }
     }
@@ -466,7 +471,7 @@ async function pesanBebas(k: kontak.Kontak, teks: string, pilihan: Wilayah | nul
   if (c) return { teks: c.jawaban, intent: "llm_cache", wilayahId: c.wilayahId ?? null, topik: lanjut?.topik }
 
   const batas = pagar.cekBatas(k.id, await kontak.jumlahLlmHariIni(k.id))
-  if (batas) return { teks: `${batas.teks}\n\n${BANTUAN}`, intent: `tolak_${batas.alasan}`, wilayahId: null }
+  if (batas) return { teks: `${batas.teks}\n\n${bantuan()}`, intent: `tolak_${batas.alasan}`, wilayahId: null }
 
   const idIngat = lanjut && !sebut ? lanjut.wilayahId : k.wilayah_id
   const ingat = pilihan ?? daftar.find((w) => w.id === idIngat) ?? null
@@ -482,10 +487,10 @@ async function pesanBebas(k: kontak.Kontak, teks: string, pilihan: Wilayah | nul
       return laporHarga(k, teks)
     }
     if (r.angkaAsing?.length) {
-      return { teks: `Maaf, aku belum bisa menjawab itu dengan data yang ada. Coba perintah baku:\n\n${BANTUAN}`, intent: "llm_angka_asing", wilayahId: null }
+      return { teks: `Maaf, aku belum bisa menjawab itu dengan data yang ada. Coba perintah baku:\n\n${bantuan()}`, intent: "llm_angka_asing", wilayahId: null }
     }
     if (!jawaban || pagar.angkaTanpaData(jawaban, r.pakaiAlat)) {
-      return { teks: `Maaf, aku belum bisa menjawab itu dengan data yang ada. Coba perintah baku:\n\n${BANTUAN}`, intent: "llm_ditolak", wilayahId: null }
+      return { teks: `Maaf, aku belum bisa menjawab itu dengan data yang ada. Coba perintah baku:\n\n${bantuan()}`, intent: "llm_ditolak", wilayahId: null }
     }
     if (r.wilayahId) await kontak.ingatWilayah(k.id, r.wilayahId)
     // hanya jawaban berbasis data yang disimpan; penolakan/jawaban tanpa data tidak ikut cache
@@ -495,7 +500,7 @@ async function pesanBebas(k: kontak.Kontak, teks: string, pilihan: Wilayah | nul
   } catch (e) {
     console.error("[llm] gagal:", e)
     pantau.llm = { ...pantau.llm, terakhir: Date.now(), terakhirGagal: Date.now(), ok: false, galat: String((e as Error).message).slice(0, 300) }
-    return { teks: `Maaf, layanan tanya-jawab sedang gangguan. Coba perintah baku dulu:\n\n${BANTUAN}`, intent: "llm_gagal", wilayahId: null }
+    return { teks: `Maaf, layanan tanya-jawab sedang gangguan. Coba perintah baku dulu:\n\n${bantuan()}`, intent: "llm_gagal", wilayahId: null }
   }
 }
 
@@ -506,6 +511,7 @@ export async function tanggapi(nomor: string, nama: string | undefined, teks: st
   await kontak.catat(k.id, "MASUK", bersih, null, null)
   let b: Balasan
   try {
+    await muatHak()
     b = await proses(nomor, k, bersih)
   } catch (e) {
     console.error("[bot] galat:", e)
@@ -522,7 +528,7 @@ async function proses(nomor: string, k: kontak.Kontak, teks: string): Promise<Ba
   teks = buangSalam(teks)
   // "sekarang harga beras paling murah dimana?" -> peringkat se-Jatim langsung dari data
   const pr = deteksiPeringkat(teks)
-  if (pr && !tunda.get(nomor)) {
+  if (pr && !tunda.get(nomor) && (akses().estimasi || !mintaPrakiraan(normal(teks)))) {
     const di = cariDiKalimat(teks.replace(/jawa timur|jatim/gi, ""), await semuaWilayah())
     if (di.jenis === "tidak_ada") return jawabPeringkat(pr.ukuran, pr.urutan)
   }
@@ -563,6 +569,16 @@ async function proses(nomor: string, k: kontak.Kontak, teks: string): Promise<Ba
   if (cmd?.perintah !== "lapor" && lapor.niatLapor(teks)) {
     tunda.delete(nomor)
     return laporHarga(k, teks)
+  }
+  // tanpa hak estimasi: pertanyaan prakiraan/prediksi ditolak sopan sebelum grafik/perintah/LLM
+  if (!akses().estimasi && cmd?.perintah !== "bantuan" && mintaPrakiraan(normal(teks))) {
+    return { teks: TOLAK_PRAKIRAAN, intent: "tolak_hak_estimasi", wilayahId: null }
+  }
+  if (!akses().estimasi && (cmd?.perintah === "peringatan" || cmd?.perintah === "langganan")) {
+    return { teks: TOLAK_PRAKIRAAN, intent: "tolak_hak_estimasi", wilayahId: null }
+  }
+  if (!akses().sphp && (cmd?.perintah === "sphp" || !cmd) && (cmd?.perintah === "sphp" || /\b(sphp|beras murah|operasi pasar|gerakan pangan murah|gpm)\b/.test(normal(teks))) && !/\b(apa itu|artinya|kepanjangan|singkatan|maksudnya)\b/.test(normal(teks))) {
+    return { teks: TOLAK_SPHP, intent: "tolak_hak_sphp", wilayahId: null }
   }
   const lanjutGrafik = !cmd && grafikAktif(k.id) && lanjutanGrafik(teks, cariDiKalimat(teks, await semuaWilayah()).jenis !== "tidak_ada")
   if (cmd?.perintah === "grafik" || (!cmd && POLA_GRAFIK.test(normal(teks))) || lanjutGrafik) {

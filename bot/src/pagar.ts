@@ -33,13 +33,13 @@ export function cekMasukan(teks: string, sebutWilayah: boolean): Tolak | null {
     return { alasan: "terlalu_panjang", teks: `Pesannya terlalu panjang. Tulis pertanyaan singkat (maks. ${config.openai.maksMasukan} karakter), misalnya _harga beras di Jember naik nggak?_` }
   }
   if (POLA_INJEKSI.some((p) => p.test(teks))) {
-    return { alasan: "injeksi", teks: "Maaf, aku hanya bisa membantu soal harga, stok, dan peringatan beras di Jawa Timur. Ketik *BANTUAN* untuk daftar perintah." }
+    return { alasan: "injeksi", teks: "Maaf, aku hanya bisa membantu soal harga, stok, dan produksi beras di Jawa Timur. Ketik *BANTUAN* untuk daftar perintah." }
   }
   const n = ` ${normal(teks)} `
   if (!sebutWilayah && !KATA_TOPIK.some((k) => n.includes(` ${k}`))) {
     return {
       alasan: "di_luar_topik",
-      teks: "Maaf, TERAWANG hanya menjawab seputar beras di Jawa Timur: harga, stok, beras murah/SPHP, dan peringatan. Ketik *BANTUAN* untuk contoh pertanyaan.",
+      teks: "Maaf, TERAWANG hanya menjawab seputar beras di Jawa Timur: harga, stok, produksi, dan laporan harga. Ketik *BANTUAN* untuk contoh pertanyaan.",
     }
   }
   return null
