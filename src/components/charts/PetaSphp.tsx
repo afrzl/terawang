@@ -32,10 +32,10 @@ function gaya(): StyleSpecification {
     sources: {
       osm: {
         type: "raster",
-        tiles: ["a", "b", "c", "d"].map((h) => `https://${h}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}@2x.png`),
+        tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"],
         tileSize: 256,
-        maxzoom: 18,
-        attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
+        maxzoom: 16,
+        attribution: 'Latar: Esri, HERE, Garmin, © OpenStreetMap contributors',
       },
     },
     layers: [{ id: "osm", type: "raster", source: "osm", paint: { "raster-opacity": 1 } }],
