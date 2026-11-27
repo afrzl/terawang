@@ -1,5 +1,6 @@
 import { Truck } from "lucide-react"
-import { MapLegend, PetaJatim } from "@/components/charts/PetaJatim"
+import { MapLegend } from "@/components/charts/PetaJatim"
+import { PetaSphp } from "@/components/charts/PetaSphp"
 import { DataTable, type Column } from "@/components/ui/DataTable"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
@@ -58,9 +59,7 @@ export default function Sphp() {
         tafsir={KET_SPHP}
         dataTafsir={dataSphp(flows, wil, akhir)}
       >
-          <div className="map">
-            <PetaJatim layer="stokK2" getValue={(k) => covBulan(k, akhir)} valueLabel="Cakupan stok" flows flowList={flows} muted labels={false} />
-          </div>
+          <PetaSphp flows={flows} akhir={akhir} wil={wil} />
           <MapLegend
             layer="stokK2"
             title={`Cakupan stok non-Bulog, akhir ${bulanLabel(akhir)}`}
