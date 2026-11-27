@@ -394,6 +394,23 @@ app.post("/api/tafsir", express.json({ limit: "64kb" }), async (req, res) => {
   }
 })
 app.get("/api/tafsir/status", (_req, res) => res.set("Cache-Control", "no-store").json(pemakaianTafsir()))
+// Nomor WhatsApp bot TERAWANG untuk tombol di dasbor: hanya nomor yang sedang login di GoWA (lewat bot), null bila tidak tersambung.
+const BOT_URL = (process.env.BOT_URL ?? "http://127.0.0.1:8091").replace(/\/$/, "")
+let cacheWa: { waktu: number; nomor: string | null } | null = null
+app.get("/api/kontak-wa", async (_req, res) => {
+  if (!cacheWa || Date.now() - cacheWa.waktu > 60_000) {
+    let nomor: string | null = null
+    try {
+      const r = await fetch(`${BOT_URL}/api/nomor`, { signal: AbortSignal.timeout(3000) })
+      const j = (await r.json()) as { nomor?: unknown }
+      nomor = typeof j.nomor === "string" && /^\d{9,15}$/.test(j.nomor) ? j.nomor : null
+    } catch {
+      nomor = null
+    }
+    cacheWa = { waktu: Date.now(), nomor }
+  }
+  res.set("Cache-Control", "public, max-age=60").json({ nomor: cacheWa.nomor })
+})
 app.use("/api", (_req, res) => res.status(404).json({ galat: "tidak ada" }))
 
 const HOST = process.env.API_HOST ?? "127.0.0.1"
