@@ -97,7 +97,7 @@ section.view{display:flex;flex-direction:column;gap:18px}
 .link .row span{color:var(--ink-2)}
 .link .row b{font-family:var(--f-mono);font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
 .link .row b.delta-dn{color:var(--crit)} .link .row b.delta-up{color:var(--ok)}
-.delta-dn{color:var(--crit)} .delta-up{color:var(--ok)}
+.delta-dn{color:var(--crit)} .delta-up{color:var(--ok)} .delta-nol{color:var(--ink-3)}
 
 /* panels */
 .panel{background:var(--panel);border:1px solid var(--rule);min-width:0}
