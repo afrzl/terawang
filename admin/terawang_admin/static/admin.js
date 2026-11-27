@@ -909,7 +909,15 @@ pemuat.laporan = async () => {
       const judulAI = "Disusun AI dari isi laporan yang menunggu dan laporan terakhir. Hanya saran; keputusan tetap di petugas.";
       // selama menunggu AI tampil placeholder; kalimat aturan hanya dipakai bila AI gagal atau tidak aktif
       const isiSaran = el("span", { class: "saran-isi" });
-      const tampil = (teks, judul) => { isiSaran.className = "saran-isi"; isiSaran.textContent = teks; rs.title = judul; rs.removeAttribute("aria-busy"); };
+      // saran AI boleh memuat <b>; selain itu dirender sebagai teks biasa (tanpa innerHTML)
+      const tampil = (teks, judul) => {
+        isiSaran.className = "saran-isi";
+        isiSaran.replaceChildren(...String(teks).split(/(<b>.*?<\/b>)/i).filter(Boolean).map((b) => {
+          const m = /^<b>(.*?)<\/b>$/i.exec(b);
+          return m ? el("b", {}, m[1].replace(/<[^>]*>/g, "")) : document.createTextNode(b.replace(/<\/?b>/gi, ""));
+        }));
+        rs.title = judul; rs.removeAttribute("aria-busy");
+      };
       const kunci = JSON.stringify(tunggu.map((l) => [l.id, l.peran, l.harga]));
       const simpan = pemuat.laporan.saranAI;
       if (simpan && simpan.kunci === kunci) tampil(simpan.teks, judulAI);
