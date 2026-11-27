@@ -12,27 +12,36 @@ export const POLA_GRAFIK = /\b(grafik|grafiknya|chart|charts|diagram|visualisasi
 
 export type Jenis = "medium" | "premium" | "keduanya"
 
-/** Rentang hari dari kalimat: "seminggu", "2 minggu", "sebulan ini", "3 bulan", "setahun", "30 hari". Bawaan 30. */
-export function uraiRentang(teks: string): number {
+/** Rentang hari yang disebut di kalimat ("seminggu", "2 minggu", "3 bulan", "setahun", "30 hari"), atau null. Salah ketik umum ikut dikenali. */
+export function rentangDisebut(teks: string): number | null {
   const n = normal(teks)
-  const m = n.match(/\b(\d{1,3})\s*(hari|hr|minggu|mgg|pekan|bulan|bln|tahun|thn)\b/)
+  const m = n.match(/\b(\d{1,3}) ?(hari|hr|minggu|mgg|mg|pekan|bulan|bln|bl|tahun|thn|th|taun)\b/)
   if (m) {
     const x = Number(m[1])
-    const kali = /^(hari|hr)$/.test(m[2]) ? 1 : /^(minggu|mgg|pekan)$/.test(m[2]) ? 7 : /^(bulan|bln)$/.test(m[2]) ? 30 : 365
+    const kali = /^(hari|hr)$/.test(m[2]) ? 1 : /^(minggu|mgg|mg|pekan)$/.test(m[2]) ? 7 : /^(bulan|bln|bl)$/.test(m[2]) ? 30 : 365
     return batasi(x * kali)
   }
-  if (/\b(seminggu|sepekan)\b/.test(n)) return 7
-  if (/\b(setahun|tahun ini|1 tahun)\b/.test(n)) return 365
-  if (/\b(sebulan|bulan ini|1 bulan)\b/.test(n)) return 30
-  return 30
+  if (/\b(seminggu|semingu|sminggu|smgg|sepekan|satu minggu|satu pekan|minggu ini|pekan ini)\b/.test(n)) return 7
+  if (/\b(setahun|setaun|stahun|staun|sthn|sathun|setahn|setahon|satu tahun|tahun ini|setahunan)\b/.test(n)) return 365
+  if (/\b(sebulan|sbln|sebln|sbulan|sebulanan|satu bulan|bulan ini)\b/.test(n)) return 30
+  return null
+}
+
+/** Rentang dari kalimat, bawaan 30 hari. */
+export function uraiRentang(teks: string): number {
+  return rentangDisebut(teks) ?? 30
 }
 
 const batasi = (h: number) => Math.min(Math.max(h, 7), 365)
 
-export function uraiJenis(teks: string): Jenis {
+export function jenisDisebut(teks: string): Jenis | null {
   const n = normal(teks)
   const md = /\bmedium\b/.test(n), pr = /\bpremium\b/.test(n)
-  return md && !pr ? "medium" : pr && !md ? "premium" : "keduanya"
+  return md && !pr ? "medium" : pr && !md ? "premium" : md && pr ? "keduanya" : null
+}
+
+export function uraiJenis(teks: string): Jenis {
+  return jenisDisebut(teks) ?? "keduanya"
 }
 
 export type Titik = { tanggal: string; medium: number | null; premium: number | null }

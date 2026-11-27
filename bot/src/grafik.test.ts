@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { POLA_GRAFIK, pngGrafik, svgGrafik, teksGrafik, uraiJenis, uraiRentang, type DataGrafik } from "./grafik.ts"
+import { POLA_GRAFIK, pngGrafik, rentangDisebut, svgGrafik, teksGrafik, uraiJenis, uraiRentang, type DataGrafik } from "./grafik.ts"
 import { normal } from "./wilayah.ts"
 
 test("rentang grafik dari kalimat", () => {
@@ -11,6 +11,10 @@ test("rentang grafik dari kalimat", () => {
   assert.equal(uraiRentang("grafik setahun"), 365)
   assert.equal(uraiRentang("grafik 2 tahun"), 365)
   assert.equal(uraiRentang("grafik jember"), 30)
+  assert.equal(rentangDisebut("klo buat sathun gimana"), 365)
+  assert.equal(rentangDisebut("kalau setaun?"), 365)
+  assert.equal(rentangDisebut("6 bln aja"), 180)
+  assert.equal(rentangDisebut("buatkan grafik hariannya"), null)
 })
 
 test("jenis beras dan pola grafik", () => {
@@ -44,4 +48,15 @@ test("grafik menjadi PNG", () => {
   const png = pngGrafik(svg)
   assert.deepEqual([...png.subarray(0, 4)], [0x89, 0x50, 0x4e, 0x47])
   assert.ok(png.length > 5000)
+})
+
+test("pesan lanjutan grafik", async () => {
+  const { lanjutanGrafik } = await import("./bot.ts")
+  assert.ok(lanjutanGrafik("klo buat sathun gimana", false))
+  assert.ok(lanjutanGrafik("premium aja", false))
+  assert.ok(lanjutanGrafik("kalau jember?", true))
+  assert.ok(!lanjutanGrafik("harga beras di jember berapa", true))
+  assert.ok(!lanjutanGrafik("makasih", false))
+  assert.ok(!lanjutanGrafik("kalo 2 bulan lagi?", false))
+  assert.ok(!lanjutanGrafik("bulan depan naik nggak 3 bulan lagi", false))
 })
