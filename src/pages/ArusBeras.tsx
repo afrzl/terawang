@@ -8,7 +8,7 @@ import { MatriksArus } from "@/components/charts/MatriksArus"
 import { SankeyArus } from "@/components/charts/SankeyArus"
 import { KpiStrip } from "@/components/ui/Kpi"
 import { Panel, ViewHeader } from "@/components/ui/Panel"
-import { ARUS_DARI_MODEL, KELUAR_PROV, KELUAR_PROV_2025, SURPLUS_KAB_2025, REGIONS, regionOf, regionStatsFor, tradeFor, matrixOf, type Trade } from "@/lib/arus"
+import { ARUS_DARI_MODEL, KELUAR_PROV, KELUAR_PROV_2025, REGIONS, regionOf, regionStatsFor, tradeFor, matrixOf, type Trade } from "@/lib/arus"
 import { byName, type Wilayah } from "@/lib/data"
 import { nf, scale, short } from "@/lib/format"
 import { bulanLabel, useFilter } from "@/lib/filter"
@@ -53,7 +53,7 @@ function Perdagangan() {
             ? { k: "Jarak minimum rata-rata", v: `${nf(kmAvg)} km`, t: "per ton, jarak jalan terpendek" }
             : { k: "Jarak rata-rata", v: `${nf(kmAvg)} km`, t: "per ton beras" },
           ...(KELUAR_PROV && KELUAR_PROV[akhir] !== null
-            ? [{ k: "Keluar Jawa Timur", v: `${nf((KELUAR_PROV[akhir] ?? 0) / 1000, 1)} rb ton`, t: bulanLabel(akhir) }]
+            ? [{ k: "Surplus Jawa Timur", v: `${nf((KELUAR_PROV[akhir] ?? 0) / 1000, 1)} rb ton`, t: bulanLabel(akhir) }]
             : []),
         ]}
       />
@@ -151,18 +151,16 @@ function KeluarJatimPanel({ akhir }: { akhir: number }) {
   const tahun26 = kp.slice(0, 12)
   const total26 = tahun26.every((v) => v !== null) ? tahun26.reduce<number>((a, v) => a + (v ?? 0), 0) : null
   const total25 = KELUAR_PROV_2025?.reduce((a, v) => a + v, 0) ?? null
-  const porsi25 = total25 !== null && SURPLUS_KAB_2025 ? total25 / SURPLUS_KAB_2025 : null
   return (
     <Panel
-      title="Beras keluar Jawa Timur"
-      note="ke provinsi lain, per bulan"
-      tafsir="beras keluar Jawa Timur ke provinsi lain per bulan, ribu ton; batang = 2026 sampai Jan 2027 (Des–Jan prakiraan), garis = 2025"
+      title="Surplus beras Jawa Timur"
+      note="per bulan"
+      tafsir="surplus beras Jawa Timur per bulan sesudah kebutuhan kab/kota defisit di Jatim terpenuhi, ribu ton; batang = 2026 sampai Jan 2027 (Des–Jan prakiraan), garis = 2025"
       dataTafsir={{
         bulanan_ton: kp.map((v, i) => ({ bulan: bulanLabel(i), ton: v })),
         pola_2025_ton: KELUAR_PROV_2025,
         total_2025_ton: total25,
         total_2026_ton: total26,
-        porsi_surplus_2025: porsi25 === null ? null : Math.round(porsi25 * 100) / 100,
       }}
     >
       <div className="pb chart">
@@ -171,7 +169,6 @@ function KeluarJatimPanel({ akhir }: { akhir: number }) {
           {total25 !== null && (
             <span>
               2025: <b>{nf(total25 / 1e6, 2)} juta ton</b>
-              {porsi25 !== null && <> ({nf(porsi25 * 100, 0)}% surplus kab/kota)</>}
             </span>
           )}
           {total26 !== null && (
