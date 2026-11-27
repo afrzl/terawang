@@ -9,6 +9,9 @@ kejadian baru melewati HET (hasil dicetak dan disimpan di parameter model_run).
 Beras medium, kab yang masih <= HET: WASPADA dari peringatan gabungan EW60 + regresi logistik + harga penggilingan Panel Harga
 Bapanas (scripts/k3/k3_peringatan_gabungan.py, kejadian "melewati HET kapan saja dalam h hari"; 26 Nov 2026). Bila data Bapanas
 tidak ada, kembali ke aturan peluang di atas.
+Angka peluang melewati HET (p_di_atas_het) untuk beras medium kab <= HET: regresi logistik tanpa bobot kelas + kalibrasi Platt dari
+modul yang sama (27 Nov 2026; Brier 8-21% lebih baik daripada EW60). Kab di atas HET dan beras premium tetap EW60.
+Peluang per kab disimpan di parameter model_run "peluang_het" {medium|premium: {horizon: {kab: p}}} untuk API/dasbor.
   Folder data: TERAWANG_HARGA_DIR (harga per pasar SISKAPERBAPO), TERAWANG_BAPANAS_DIR (Panel Harga Bapanas); kosong -> data/ di repo.
 
   python scripts/k3/k3_harga_operasional.py [--simpan]
@@ -131,7 +134,7 @@ def hitung(cetak=True):
         for h, v in kal.items():
             log(f"  {h:2d} hari: ambang {v['ambang']:.2f} | F1 {v['f1']:.2f} | terdeteksi {v['terdeteksi']}/{v['kejadian']}, alarm palsu {v['alarm_palsu']}")
         kal_all[nm] = kal
-        wsp = {}
+        wsp, plg = {}, {}
         if kom == 1:
             try:
                 import k3_peringatan_gabungan as pg
@@ -139,6 +142,7 @@ def hitung(cetak=True):
                 gab = {"kalibrasi": kal_gab, "folder_bapanas": FOLDER_BAPANAS,
                        "skor_kini": {int(h): {r.kab: round(float(r.skor), 3) for r in g.itertuples()} for h, g in S.groupby("horizon_hari")}}
                 wsp = {(r.kab, int(r.horizon_hari)): bool(r.waspada) for r in S.itertuples()}
+                plg = {(r.kab, int(r.horizon_hari)): float(r.p_het) for r in S.itertuples()}
                 kal_all[nm] = kal_gab  # dasbor menampilkan kalibrasi WASPADA beras medium
             except Exception as e:  # noqa: BLE001  data Bapanas/pasar tidak ada: aturan peluang saja
                 gab = {"galat": f"{type(e).__name__}: {e}"[:300]}
@@ -151,13 +155,16 @@ def hitung(cetak=True):
             q10, q50, q90 = kuantil(e, cw, (0.1, 0.5, 0.9))
             th_w = kal[h]["ambang"]
             for kab, p in p0.items():
-                pw = float(p_lebih(e, cw, np.log(H / p))[0])
+                pw = plg.get((kab, h), float(p_lebih(e, cw, np.log(H / p))[0]))  # medium kab <= HET: logistik terkalibrasi
                 ps = float(p_lebih(e, cw, np.log(siaga / p))[0])
                 waspada = wsp[(kab, h)] if (kab, h) in wsp else pw >= th_w  # kab <= HET (medium): peringatan gabungan
                 st = "SIAGA" if ps >= max(th_w, 0.5) else ("WASPADA" if waspada else "AMAN")
                 rows.append((kom, kab, str(tgl_acuan.date()), h, p * np.exp(q50), p * np.exp(q10), p * np.exp(q90), st, pw))
     R = pd.DataFrame(rows, columns=["komoditas", "kab", "tanggal_acuan", "horizon_hari", "harga", "p10", "p90", "status", "p_di_atas_het"])
     kal_all["_peluang"] = kal_peluang
+    nama = {1: "medium", 2: "premium"}
+    kal_all["_peluang_het"] = {nama[k]: {int(h): {r.kab: round(float(r.p_di_atas_het), 4) for r in g2.itertuples()} for h, g2 in g.groupby("horizon_hari")}
+                               for k, g in R.groupby("komoditas")}
     kal_all["_gabungan"] = gab
     return R, het, kal_all
 
@@ -170,7 +177,10 @@ def parameter_run(het, kal_all):
             "peringatan_medium": ("gabungan EW60 + logit + harga penggilingan Bapanas, kejadian melewati HET kapan saja dalam h hari"
                                   if "kalibrasi" in gab else "aturan peluang (data Bapanas tidak tersedia)"),
             "peringatan_gabungan": gab or None,
-            "uji": "backtest sejak 22 Agu 2025 (kab <= HET), ambang maks F1", "het": {int(k): int(v) for k, v in het.het.items()}}
+            "uji": "backtest sejak 22 Agu 2025 (kab <= HET), ambang maks F1", "het": {int(k): int(v) for k, v in het.het.items()},
+            "peluang_het": kal_all.get("_peluang_het"),
+            "sumber_peluang": "beras medium kab <= HET: regresi logistik terkalibrasi (Platt), kejadian melewati HET kapan saja dalam h hari; "
+                              "lainnya: EW60, harga di atas HET tepat pada t+h"}
 
 
 def main():

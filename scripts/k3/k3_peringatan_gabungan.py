@@ -7,6 +7,9 @@ Dasar uji: ai-notes/evaluasi-k3-peringatan.md (scripts/k3/uji_k3_peringatan_epis
          dilatih sejak Jun 2024 (HET Rp12.500), tanpa periode yang melintasi pergantian HET.
   Skor gabungan = rerata peringkat persentil EW60 dan LOGIT, diukur terhadap sebaran skor backtest. WASPADA bila skor >= ambang;
   ambang = F1 maksimum pada backtest walk-forward bulanan sejak 22 Agu 2025 (model dilatih ulang tiap bulan).
+  PELUANG (p_het): regresi logistik yang sama TANPA bobot kelas, lalu kalibrasi Platt (logistik 1-d atas logit peluang) pada hasil
+         backtest walk-forward yang targetnya sudah terjadi. Backtest sejak 22 Agu 2025: Brier 8-21% lebih baik daripada EW60
+         (scripts/k3/uji_peluang_het_logit.py, 27 Nov 2026). Hanya angka peluang; status WASPADA tetap dari skor gabungan.
 
 Masukan: P / P2 (harga medium / premium harian per kab, kolom = nama kab di ref.wilayah), harga pasar medium (CSV SISKAPERBAPO),
 folder Panel Harga Bapanas (kabkota_harian_<nama>.csv dari scripts/bapanas/ambil_panel_harga.py).
@@ -126,9 +129,9 @@ def fitur_bapanas(folder: str, P: pd.DataFrame, H: pd.Series) -> pd.DataFrame:
     return pd.concat({k: tumpuk(v) for k, v in F.items()}, axis=1)
 
 
-def _latih(tr: pd.DataFrame):
+def _latih(tr: pd.DataFrame, bobot_kelas: bool = True):
     X, y = np.nan_to_num(tr[KOLOM].to_numpy()), tr.y.to_numpy().astype(int)
-    w = np.where(y == 1, (len(y) - y.sum()) / max(y.sum(), 1), 1.0)  # bobot kelas seimbang
+    w = np.where(y == 1, (len(y) - y.sum()) / max(y.sum(), 1), 1.0) if bobot_kelas else np.ones(len(y))  # bobot kelas seimbang
     m = make_pipeline(StandardScaler(), LogisticRegression(C=0.3, max_iter=3000))
     m.fit(X, y, logisticregression__sample_weight=w)
     return m
@@ -144,6 +147,18 @@ def _p_ew(G: pd.DataFrame, t: pd.Timestamp, d: np.ndarray) -> np.ndarray:
     return 1 - np.where(k > 0, cw[np.maximum(k - 1, 0)], 0.0)
 
 
+def _logit(p: np.ndarray) -> np.ndarray:
+    p = np.clip(p, 1e-6, 1 - 1e-6)
+    return np.log(p / (1 - p))
+
+
+def _platt(z: np.ndarray, y: np.ndarray):
+    """Kalibrasi Platt: logistik 1-d y ~ logit(p). None bila kejadian terlalu sedikit."""
+    if y.sum() < 5 or y.sum() == len(y):
+        return None
+    return LogisticRegression(C=1e6, max_iter=1000).fit(z[:, None], y)
+
+
 def _pct(ref: np.ndarray, v: np.ndarray) -> np.ndarray:
     """Peringkat persentil v terhadap sebaran ref (sama dengan rank(pct=True) di dalam ref)."""
     r = np.sort(ref)
@@ -151,8 +166,9 @@ def _pct(ref: np.ndarray, v: np.ndarray) -> np.ndarray:
 
 
 def hitung(P: pd.DataFrame, het_kini: float, folder_harga: str, folder_bapanas: str, horizon=(7, 14, 21, 28), log=print) -> tuple[pd.DataFrame, dict]:
-    """Kembalikan (S, kal): S = kab, horizon_hari, p_ew, p_logit, skor, waspada (hanya kab <= HET pada tanggal acuan);
-    kal = per horizon {ambang, f1, presisi, recall, terdeteksi, alarm_palsu, kejadian, auc, pr_auc}."""
+    """Kembalikan (S, kal): S = kab, horizon_hari, p_ew, p_logit, skor, waspada, p_het (hanya kab <= HET pada tanggal acuan);
+    p_het = peluang terkalibrasi melewati HET kapan saja dalam h hari.
+    kal = per horizon {ambang, f1, presisi, recall, terdeteksi, alarm_palsu, kejadian, auc, pr_auc, brier_peluang, brier_ew60}."""
     P = P[P.index >= HET_RIWAYAT[0][0] - pd.Timedelta(days=30)]
     H = het_seri(P.index, het_kini)
     X = fitur_harga(P, H, pasar(folder_harga, H, P.columns)).join(fitur_bapanas(folder_bapanas, P, H))
@@ -174,18 +190,31 @@ def hitung(P: pd.DataFrame, het_kini: float, folder_harga: str, folder_bapanas: 
         G = pd.DataFrame({"max": tumpuk(maju_maks(L, h) - L)}).dropna()
         G["tgt"] = G.index.get_level_values("tgl") + pd.Timedelta(days=h)
         tg = D.index.get_level_values("tgl")
-        ew, lg = pd.Series(np.nan, index=D.index), pd.Series(np.nan, index=D.index)
+        ew, lg, lk = (pd.Series(np.nan, index=D.index) for _ in range(3))
         for bm in pd.date_range(MULAI_UJI.replace(day=1), t_acuan, freq="MS"):
             sel = (tg >= max(bm, MULAI_UJI)) & (tg < bm + pd.offsets.MonthBegin(1))
             if not sel.any():
                 continue
             te = D[sel]
-            lg[sel] = _latih(D[D.tgt < bm]).predict_proba(np.nan_to_num(te[KOLOM].to_numpy()))[:, 1]
+            tr = D[D.tgt < bm]
+            Xte = np.nan_to_num(te[KOLOM].to_numpy())
+            lg[sel] = _latih(tr).predict_proba(Xte)[:, 1]
+            lk[sel] = _latih(tr, bobot_kelas=False).predict_proba(Xte)[:, 1]
             for t in te.index.get_level_values("tgl").unique():
                 s = sel & (tg == t)
                 ew[s] = _p_ew(G, t, D.d[s].to_numpy())
         uji = ew.notna()
         ew_b, lg_b, yb = ew[uji].to_numpy(), lg[uji].to_numpy(), D.y[uji].to_numpy().astype(int)
+        # kalibrasi Platt berjalan atas logit tanpa bobot (untuk metrik backtest) + kalibrator kini (semua baris uji yang targetnya sudah terjadi)
+        zb, tg_b, tgt_b = _logit(lk[uji].to_numpy()), tg[uji], D.tgt[uji].to_numpy()
+        pk_b = lk[uji].to_numpy().copy()
+        for bm in pd.date_range(MULAI_UJI.replace(day=1), t_acuan, freq="MS"):
+            s_ = np.asarray((tg_b >= bm) & (tg_b < bm + pd.offsets.MonthBegin(1)))
+            hist = tgt_b < np.datetime64(bm)
+            c = _platt(zb[hist], yb[hist]) if s_.any() and hist.sum() >= 38 * 60 else None
+            if c is not None:
+                pk_b[s_] = c.predict_proba(zb[s_, None])[:, 1]
+        kal_kini = _platt(zb, yb)
         sk_b = (_pct(ew_b, ew_b) + _pct(lg_b, lg_b)) / 2
         best = (0.0, 1.0, 0, 0)
         for th in np.unique(np.quantile(sk_b, np.linspace(0.80, 0.999, 60))):
@@ -200,13 +229,19 @@ def hitung(P: pd.DataFrame, het_kini: float, folder_harga: str, folder_bapanas: 
         auc = float((r[yb == 1].sum() - pos * (pos + 1) / 2) / (pos * neg)) if pos and neg else None
         kal[h] = dict(ambang=round(th, 3), f1=round(f1, 3), presisi=round(tp / max(tp + fp, 1), 3), recall=round(tp / max(pos, 1), 3),
                       terdeteksi=tp, alarm_palsu=fp, kejadian=pos, auc=None if auc is None else round(auc, 3),
-                      pr_auc=round(float(average_precision_score(yb, sk_b)), 3) if pos else None, baris_uji=int(len(yb)))
+                      pr_auc=round(float(average_precision_score(yb, sk_b)), 3) if pos else None, baris_uji=int(len(yb)),
+                      brier_peluang=round(float(np.mean((pk_b - yb) ** 2)), 5), brier_ew60=round(float(np.mean((np.clip(ew_b, 0, 1) - yb) ** 2)), 5),
+                      rata_peluang=round(float(pk_b.mean()), 4), kejadian_pct=round(float(yb.mean()), 4))
         m = _latih(D)  # model kini: semua baris yang labelnya sudah diketahui
         p_ew = _p_ew(G, t_acuan, kini.d.to_numpy())
-        p_lg = m.predict_proba(np.nan_to_num(kini[KOLOM].to_numpy()))[:, 1]
+        Xk = np.nan_to_num(kini[KOLOM].to_numpy())
+        p_lg = m.predict_proba(Xk)[:, 1]
+        p_het = _latih(D, bobot_kelas=False).predict_proba(Xk)[:, 1]
+        if kal_kini is not None:
+            p_het = kal_kini.predict_proba(_logit(p_het)[:, None])[:, 1]
         sk = (_pct(ew_b, p_ew) + _pct(lg_b, p_lg)) / 2
         hasil.append(pd.DataFrame({"kab": kini.index.get_level_values("kab"), "horizon_hari": h, "p_ew": p_ew, "p_logit": p_lg,
-                                   "skor": sk, "waspada": sk >= th}))
+                                   "skor": sk, "waspada": sk >= th, "p_het": p_het}))
         log(f"  peringatan gabungan {h:2d} hari: ambang skor {th:.3f} | F1 {f1:.2f} | presisi {kal[h]['presisi']:.2f} recall {kal[h]['recall']:.2f} "
-            f"| PR-AUC {kal[h]['pr_auc']} | {int((sk >= th).sum())} kab WASPADA hari ini")
+            f"| PR-AUC {kal[h]['pr_auc']} | {int((sk >= th).sum())} kab WASPADA hari ini | Brier peluang {kal[h]['brier_peluang']} vs EW60 {kal[h]['brier_ew60']}")
     return pd.concat(hasil, ignore_index=True), kal
