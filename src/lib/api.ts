@@ -63,6 +63,8 @@ export interface K2Data {
     sudah_defisit: string[]
     /** Arus antar kab (LP jarak jalan) yang dipakai neraca K2, ton per bulan. Kosong pada run lama. */
     arus?: { dari: string; ke: string; ton_bulan: number }[]
+    /** Beras keluar Jatim per bulan (ton) dan pola 2025. Null pada run lama. */
+    keluar_provinsi?: { bulanan: { tahun: number; bulan: number; ton: number }[]; pola_2025: number[]; surplus_kab_2025: number } | null
   }
   wilayah: Record<string, K2Wilayah>
 }

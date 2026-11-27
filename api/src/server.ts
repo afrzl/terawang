@@ -194,6 +194,8 @@ async function stok(per?: string) {
       sudah_defisit: (m.sudah_defisit as string[]) ?? [],
       /** Arus antar kab (LP jarak jalan) yang dipakai neraca K2, ton per bulan. */
       arus: (m.arus_antar_kab as { dari: string; ke: string; ton_bulan: number }[]) ?? [],
+      /** Beras keluar Jatim per bulan (ton). Null pada run lama. */
+      keluar_provinsi: (m.keluar_provinsi as { bulanan: { tahun: number; bulan: number; ton: number }[]; pola_2025: number[]; surplus_kab_2025: number }) ?? null,
     },
     wilayah,
   }

@@ -1,7 +1,8 @@
 import { Warehouse } from "lucide-react"
+import { useState } from "react"
 import { BulogCabang } from "@/components/charts/BulogCabang"
 import { BulogStok } from "@/components/charts/BulogStok"
-import { TAHUN_STOK_BULOG } from "@/lib/bulog"
+import { TAHUN_STOK_BULOG, persediaanBulog } from "@/lib/bulog"
 import { DeficitCountdown } from "@/components/charts/DeficitCountdown"
 import { LineChart, type Series } from "@/components/charts/LineChart"
 import { DataTable, type Column } from "@/components/ui/DataTable"
@@ -216,6 +217,7 @@ function KalmanPanelWil() {
 
 function KalmanPanel({ wil }: { wil: Wilayah[] }) {
   const { bulanMaks, estimasi } = useFilter()
+  const [plusBulog, setPlusBulog] = useState(false)
   const n = bulanMaks + 1
   const dates = [...Array(n)].map((_, i) => akhirBulan(i))
   const cT = sum(wil, (k) => k.C)
@@ -230,7 +232,12 @@ function KalmanPanel({ wil }: { wil: Wilayah[] }) {
   }
   // Cakupan gabungan = rata-rata tertimbang konsumsi. Simpangan dirata-ratakan dengan bobot sama (galat jangkar dianggap searah, jadi tidak mengecil).
   const sds = wil.map((k) => ({ sd: simpangan(k), C: k.C }))
-  const center = dates.map((_, i) => sum(wil, (k) => covBulan(k, i) * k.C) / cT)
+  const nonBulog = dates.map((_, i) => sum(wil, (k) => covBulan(k, i) * k.C) / cT)
+  // Stok Bulog hanya ada di tingkat provinsi, jadi pilihan ini muncul bila seluruh wilayah dipilih.
+  const bulog = dates.map((_, i) => persediaanBulog(i))
+  const bisaBulog = wil.length === WILAYAH.length && bulog.every((b) => b !== null)
+  const pakaiBulog = bisaBulog && plusBulog
+  const center = nonBulog.map((v, i) => v + (pakaiBulog ? (bulog[i] ?? 0) / cT : 0))
   const sd = dates.map((_, i) => sds.reduce((a, x) => a + x.sd[i] * x.C, 0) / cT)
   const top = Math.max(1.6, Math.max(...center) * 1.25)
   // Label ujung garis digeser vertikal supaya tidak menimpa label "batas aman" dan "defisit" (posisi dihitung dalam piksel).
@@ -249,8 +256,21 @@ function KalmanPanel({ wil }: { wil: Wilayah[] }) {
 
   return (
     <Panel
-      title={estimasi ? "Estimasi stok non-Bulog" : "Stok non-Bulog"}
-      tafsir={`Cakupan stok dalam bulan konsumsi, rata-rata tertimbang konsumsi wilayah terpilih;${estimasi ? " kolom Des–Jan = prakiraan;" : ""} pita = selang ketidakpastian; batas aman 1 bulan, defisit di bawah 0,75 bulan`}
+      title={pakaiBulog ? (estimasi ? "Estimasi stok beras termasuk Bulog" : "Stok beras termasuk Bulog") : estimasi ? "Estimasi stok non-Bulog" : "Stok non-Bulog"}
+      tafsir={`Cakupan stok dalam bulan konsumsi, rata-rata tertimbang konsumsi wilayah terpilih;${pakaiBulog ? " garis utama = stok non-Bulog + persediaan Bulog Jatim, garis abu-abu = non-Bulog;" : ""}${estimasi ? " kolom Des–Jan = prakiraan;" : ""} pita = selang ketidakpastian; batas aman 1 bulan, defisit di bawah 0,75 bulan`}
+      dataTafsir={pakaiBulog ? { bulan: dates.map((_, i) => ({ bulan: bulanLabel(i), cakupan_total: Math.round(center[i] * 100) / 100, cakupan_non_bulog: Math.round(nonBulog[i] * 100) / 100, bulog_ribu_ton: bulog[i] })) } : undefined}
+      actions={
+        bisaBulog ? (
+          <div className="seg seg-s" role="group" aria-label="Cakupan stok">
+            <button type="button" aria-pressed={!plusBulog} onClick={() => setPlusBulog(false)}>
+              Non-Bulog
+            </button>
+            <button type="button" aria-pressed={plusBulog} onClick={() => setPlusBulog(true)}>
+              + Bulog
+            </button>
+          </div>
+        ) : undefined
+      }
     >
       <div className="pb chart">
         <LineChart
@@ -266,20 +286,29 @@ function KalmanPanel({ wil }: { wil: Wilayah[] }) {
             { v: 1, label: "batas aman", color: "var(--warn)", dy: -3 },
             { v: 0.75, label: "defisit", color: "var(--crit)", dy: 9 },
           ]}
-          series={
-            estimasi
+          series={[
+            ...(pakaiBulog ? [{ vals: nonBulog, color: "var(--ink-3)", w: 1.4, dash: "3 3", nama: "non-Bulog" }] : []),
+            ...(estimasi
               ? [
                   { vals: center.slice(0, BULAN_KINI + 1), color: "var(--accent)", w: 2.2, nama: "cakupan stok" },
                   { vals: center.slice(BULAN_KINI), off: BULAN_KINI, color: "var(--accent)", dash: "5 4", w: 2, label: nf(akhirC, 2) + " bln", ly: lyAkhir, nama: "cakupan stok" },
                 ]
-              : [{ vals: center, color: "var(--accent)", w: 2.2, label: nf(akhirC, 2) + " bln", ly: lyAkhir, nama: "cakupan stok" }]
-          }
+              : [{ vals: center, color: "var(--accent)", w: 2.2, label: nf(akhirC, 2) + " bln", ly: lyAkhir, nama: "cakupan stok" }]),
+          ]}
           tip={(i) => (
             <>
               <b>{bulanLabel(i)}</b>
               <br />
               Cakupan <span className="m">{nf(center[i], 2)} bln</span>
               <br />
+              {pakaiBulog && (
+                <>
+                  Non-Bulog <span className="m">{nf(nonBulog[i], 2)} bln</span>
+                  <br />
+                  Bulog <span className="m">{nf(bulog[i] ?? 0, 0)} rb ton</span>
+                  <br />
+                </>
+              )}
               Selang 95%{" "}
               <span className="m">
                 {nf(Math.max(0, center[i] - 1.96 * sd[i]), 2)}–{nf(center[i] + 1.96 * sd[i], 2)}
@@ -290,8 +319,16 @@ function KalmanPanel({ wil }: { wil: Wilayah[] }) {
         <div className="legend" style={{ padding: "6px 0 0" }}>
           <span>
             <span className="sw" style={{ background: "var(--accent)" }} />
-            {estimasi ? "estimasi stok" : "cakupan stok"}
+            {pakaiBulog ? "non-Bulog + Bulog" : estimasi ? "estimasi stok" : "cakupan stok"}
           </span>
+          {pakaiBulog && (
+            <span>
+              <svg width="18" height="10" aria-hidden="true" style={{ marginRight: 6, verticalAlign: "middle" }}>
+                <line x1="0" x2="18" y1="5" y2="5" stroke="var(--ink-3)" strokeWidth="2" strokeDasharray="3 3" />
+              </svg>
+              non-Bulog
+            </span>
+          )}
         </div>
         <CatatanGabungan n={wil.length} total={WILAYAH.length} />
       </div>
