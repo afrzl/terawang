@@ -15,6 +15,13 @@ export function BulogStok() {
   useDataTafsir("bulog", {
     satuan: "ribu ton beras, tingkat provinsi Jawa Timur",
     tahun: TAHUN_STOK_BULOG,
+    // Total setahun dihitung di sini: ringkasan server hanya memberi awal/akhir untuk deret waktu, sehingga model sempat
+    // membandingkan pengeluaran Des dengan Jan ("pengeluaran meningkat 104 ribu ton") seolah itu neraca setahun.
+    persediaan_awal_tahun: bul(d[0]?.awal ?? 0, 1),
+    persediaan_akhir_tahun: bul(d[d.length - 1]?.akhir ?? 0, 1),
+    total_pemasukan_setahun: bul(d.reduce((s, r) => s + r.masuk, 0), 1),
+    total_pengeluaran_setahun: bul(d.reduce((s, r) => s + r.keluar, 0), 1),
+    catatan: "pemasukan dan pengeluaran adalah arus per bulan; persediaan naik bila pemasukan lebih besar dari pengeluaran",
     bulan: d.map((r) => ({ bulan: `${BULAN_NAMA[r.bulan - 1]} ${TAHUN_STOK_BULOG}`, persediaan_akhir: bul(r.akhir, 1), pemasukan: bul(r.masuk, 1), pengeluaran: bul(r.keluar, 1) })),
   })
   const ymax = Math.max(...d.map((r) => Math.max(r.akhir, r.masuk, r.keluar))) * 1.1
