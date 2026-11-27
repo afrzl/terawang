@@ -2,28 +2,28 @@
   "folder": "kota-probolinggo",
   "lokasi": "Kota Probolinggo",
   "pusat": [
-    113.16654,
-    -7.75976
+    113.18997,
+    -7.79513
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    113.150221,
-    -7.769256,
-    113.182859,
-    -7.750264
+    113.17365,
+    -7.804626,
+    113.20629,
+    -7.785634
   ],
   "tanggal_sebelum": "2026-08-17",
-  "tanggal_sesudah": "2026-11-15",
+  "tanggal_sesudah": "2026-11-17",
   "jendela_hari": 6,
   "mode_label": "aturan",
   "jumlah_citra": {
     "s1_sebelum": 3,
-    "s1_sesudah": 4,
+    "s1_sesudah": 3,
     "s2_sebelum": 3,
-    "s2_sesudah": 4
+    "s2_sesudah": 3
   },
   "tanggal_citra": {
     "s2_sebelum": [
@@ -32,18 +32,17 @@
       "2026-08-22"
     ],
     "s2_sesudah": [
-      "2026-11-10",
       "2026-11-15",
       "2026-11-17",
       "2026-11-20"
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 40.62758051197358,
+    "belum_hijau_sebelum_pct": 13.134851138353765,
     "genang_sebelum_pct": 0,
-    "jumlah_petak": 1211,
-    "luas_sawah_ha": 414.70063943849846,
-    "tertanam_sesudah_pct": 70.43765483071842,
+    "jumlah_petak": 571,
+    "luas_sawah_ha": 194.17516165617886,
+    "tertanam_sesudah_pct": 42.73204903677758,
     "tertinggal_pct": 0
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"

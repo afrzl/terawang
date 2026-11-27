@@ -2,47 +2,46 @@
   "folder": "tuban",
   "lokasi": "Tuban",
   "pusat": [
-    112.14516,
-    -7.08243
+    112.16402,
+    -7.04291
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    112.128866,
-    -7.091926,
-    112.161454,
-    -7.072934
+    112.147727,
+    -7.052406,
+    112.180313,
+    -7.033414
   ],
-  "tanggal_sebelum": "2026-10-04",
+  "tanggal_sebelum": "2026-10-01",
   "tanggal_sesudah": "2026-11-23",
   "jendela_hari": 6,
   "mode_label": "aturan",
   "jumlah_citra": {
     "s1_sebelum": 2,
     "s1_sesudah": 3,
-    "s2_sebelum": 4,
+    "s2_sebelum": 3,
     "s2_sesudah": 1
   },
   "tanggal_citra": {
     "s2_sebelum": [
       "2026-09-29",
       "2026-10-01",
-      "2026-10-04",
-      "2026-10-09"
+      "2026-10-04"
     ],
     "s2_sesudah": [
       "2026-11-23"
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 39.282051282051285,
-    "genang_sebelum_pct": 0.6666666666666667,
-    "jumlah_petak": 1950,
-    "luas_sawah_ha": 671.1438944260398,
-    "tertanam_sesudah_pct": 32.256410256410255,
-    "tertinggal_pct": 0
+    "belum_hijau_sebelum_pct": 84.27172582619339,
+    "genang_sebelum_pct": 1.8359853121175032,
+    "jumlah_petak": 1634,
+    "luas_sawah_ha": 565.1837919494658,
+    "tertanam_sesudah_pct": 56.91554467564259,
+    "tertinggal_pct": 0.06119951040391676
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }

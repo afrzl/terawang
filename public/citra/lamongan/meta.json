@@ -2,48 +2,49 @@
   "folder": "lamongan",
   "lokasi": "Lamongan",
   "pusat": [
-    112.18917,
-    -7.15609
+    112.42461,
+    -7.09983
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    112.172873,
-    -7.165586,
-    112.205467,
-    -7.146594
+    112.408315,
+    -7.109326,
+    112.440905,
+    -7.090334
   ],
-  "tanggal_sebelum": "2026-07-26",
-  "tanggal_sesudah": "2026-11-13",
+  "tanggal_sebelum": "2026-09-09",
+  "tanggal_sesudah": "2026-11-08",
   "jendela_hari": 6,
   "mode_label": "aturan",
   "jumlah_citra": {
-    "s1_sebelum": 4,
+    "s1_sebelum": 3,
     "s1_sesudah": 3,
-    "s2_sebelum": 3,
-    "s2_sesudah": 3
+    "s2_sebelum": 4,
+    "s2_sesudah": 4
   },
   "tanggal_citra": {
     "s2_sebelum": [
-      "2026-07-21",
-      "2026-07-26",
-      "2026-07-31"
+      "2026-09-04",
+      "2026-09-09",
+      "2026-09-11",
+      "2026-09-14"
     ],
     "s2_sesudah": [
+      "2026-11-03",
       "2026-11-08",
-      "2026-11-10",
       "2026-11-13"
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 75.04798464491363,
-    "genang_sebelum_pct": 0.6238003838771593,
-    "jumlah_petak": 2084,
-    "luas_sawah_ha": 721.0820927107916,
-    "tertanam_sesudah_pct": 23.17658349328215,
-    "tertinggal_pct": 0.3838771593090211
+    "belum_hijau_sebelum_pct": 96.88273132112816,
+    "genang_sebelum_pct": 0.14844136566056407,
+    "jumlah_petak": 2021,
+    "luas_sawah_ha": 703.4823614034158,
+    "tertanam_sesudah_pct": 6.828302820385948,
+    "tertinggal_pct": 0.14844136566056407
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }

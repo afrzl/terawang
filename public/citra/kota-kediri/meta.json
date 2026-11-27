@@ -2,46 +2,47 @@
   "folder": "kota-kediri",
   "lokasi": "Kota Kediri",
   "pusat": [
-    112.05083,
-    -7.86037
+    112.05181,
+    -7.83735
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    112.034507,
-    -7.869866,
-    112.067153,
-    -7.850874
+    112.035488,
+    -7.846846,
+    112.068132,
+    -7.827854
   ],
-  "tanggal_sebelum": "2026-10-09",
-  "tanggal_sesudah": "2026-11-23",
+  "tanggal_sebelum": "2026-09-11",
+  "tanggal_sesudah": "2026-11-13",
   "jendela_hari": 6,
   "mode_label": "aturan",
   "jumlah_citra": {
     "s1_sebelum": 3,
     "s1_sesudah": 3,
     "s2_sebelum": 3,
-    "s2_sesudah": 1
+    "s2_sesudah": 3
   },
   "tanggal_citra": {
     "s2_sebelum": [
-      "2026-10-04",
-      "2026-10-09",
-      "2026-10-14"
+      "2026-09-11",
+      "2026-09-14"
     ],
     "s2_sesudah": [
-      "2026-11-23"
+      "2026-11-08",
+      "2026-11-10",
+      "2026-11-13"
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 38.881401617250674,
-    "genang_sebelum_pct": 0,
-    "jumlah_petak": 1484,
-    "luas_sawah_ha": 518.8716589125254,
-    "tertanam_sesudah_pct": 49.39353099730458,
-    "tertinggal_pct": 0
+    "belum_hijau_sebelum_pct": 26.252723311546838,
+    "genang_sebelum_pct": 0.10893246187363835,
+    "jumlah_petak": 918,
+    "luas_sawah_ha": 310.83719540633217,
+    "tertanam_sesudah_pct": 25.381263616557735,
+    "tertinggal_pct": 0.10893246187363835
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }

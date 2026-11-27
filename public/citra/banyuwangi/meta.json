@@ -2,48 +2,46 @@
   "folder": "banyuwangi",
   "lokasi": "Banyuwangi",
   "pusat": [
-    114.36579,
-    -8.00231
+    114.33615,
+    -8.58801
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    114.349461,
-    -8.011806,
-    114.382119,
-    -7.992814
+    114.319797,
+    -8.597506,
+    114.352503,
+    -8.578514
   ],
-  "tanggal_sebelum": "2026-10-06",
-  "tanggal_sesudah": "2026-11-20",
+  "tanggal_sebelum": "2026-09-26",
+  "tanggal_sesudah": "2026-11-10",
   "jendela_hari": 6,
   "mode_label": "aturan",
   "jumlah_citra": {
     "s1_sebelum": 1,
     "s1_sesudah": 2,
-    "s2_sebelum": 8,
-    "s2_sesudah": 8
+    "s2_sebelum": 6,
+    "s2_sesudah": 6
   },
   "tanggal_citra": {
     "s2_sebelum": [
-      "2026-10-01",
-      "2026-10-06",
-      "2026-10-08",
-      "2026-10-11"
+      "2026-09-21",
+      "2026-09-26"
     ],
     "s2_sesudah": [
-      "2026-11-15",
-      "2026-11-17",
-      "2026-11-20"
+      "2026-11-05",
+      "2026-11-10",
+      "2026-11-15"
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 99.25287356321839,
+    "belum_hijau_sebelum_pct": 55.846774193548384,
     "genang_sebelum_pct": 0,
-    "jumlah_petak": 1740,
-    "luas_sawah_ha": 599.6472630188307,
-    "tertanam_sesudah_pct": 0.11494252873563218,
+    "jumlah_petak": 496,
+    "luas_sawah_ha": 173.44387591595193,
+    "tertanam_sesudah_pct": 1.8145161290322582,
     "tertinggal_pct": 0
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"

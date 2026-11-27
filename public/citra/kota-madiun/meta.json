@@ -2,18 +2,18 @@
   "folder": "kota-madiun",
   "lokasi": "Kota Madiun",
   "pusat": [
-    111.50017,
-    -7.60974
+    111.51821,
+    -7.60918
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    111.483857,
-    -7.619236,
-    111.516483,
-    -7.600244
+    111.501897,
+    -7.618676,
+    111.534523,
+    -7.599684
   ],
   "tanggal_sebelum": "2026-08-20",
   "tanggal_sesudah": "2026-11-13",
@@ -38,12 +38,12 @@
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 55.53047404063205,
-    "genang_sebelum_pct": 5.342362678705794,
-    "jumlah_petak": 1329,
-    "luas_sawah_ha": 466.7841600004193,
-    "tertanam_sesudah_pct": 46.50112866817156,
-    "tertinggal_pct": 1.0534236267870578
+    "belum_hijau_sebelum_pct": 69.54248366013071,
+    "genang_sebelum_pct": 8.235294117647058,
+    "jumlah_petak": 765,
+    "luas_sawah_ha": 262.9124402620859,
+    "tertanam_sesudah_pct": 72.2875816993464,
+    "tertinggal_pct": 0.7843137254901961
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }

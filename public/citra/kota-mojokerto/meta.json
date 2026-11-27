@@ -2,18 +2,18 @@
   "folder": "kota-mojokerto",
   "lokasi": "Kota Mojokerto",
   "pusat": [
-    112.45687,
-    -7.48218
+    112.45425,
+    -7.46904
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    112.440562,
-    -7.491676,
-    112.473178,
-    -7.472684
+    112.437942,
+    -7.478536,
+    112.470558,
+    -7.459544
   ],
   "tanggal_sebelum": "2026-09-11",
   "tanggal_sesudah": "2026-11-13",
@@ -38,12 +38,12 @@
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 29.005524861878452,
-    "genang_sebelum_pct": 1.7495395948434622,
-    "jumlah_petak": 1086,
-    "luas_sawah_ha": 376.57694130957924,
-    "tertanam_sesudah_pct": 21.823204419889503,
-    "tertinggal_pct": 0.09208103130755065
+    "belum_hijau_sebelum_pct": 36.19047619047619,
+    "genang_sebelum_pct": 3.2380952380952377,
+    "jumlah_petak": 525,
+    "luas_sawah_ha": 173.49388957334625,
+    "tertanam_sesudah_pct": 18.857142857142858,
+    "tertinggal_pct": 1.1428571428571428
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }

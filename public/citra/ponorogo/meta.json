@@ -2,7 +2,7 @@
   "folder": "ponorogo",
   "lokasi": "Ponorogo",
   "pusat": [
-    111.46603,
+    111.44447,
     -7.94122
   ],
   "kotak_km": [
@@ -10,9 +10,9 @@
     2.1
   ],
   "bbox": [
-    111.449704,
+    111.428144,
     -7.950716,
-    111.482356,
+    111.460796,
     -7.931724
   ],
   "tanggal_sebelum": "2026-07-26",
@@ -38,12 +38,12 @@
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 70.84468664850137,
-    "genang_sebelum_pct": 27.247956403269757,
-    "jumlah_petak": 1835,
-    "luas_sawah_ha": 638.2975683458545,
-    "tertanam_sesudah_pct": 10.681198910081743,
-    "tertinggal_pct": 23.869209809264305
+    "belum_hijau_sebelum_pct": 67.79548472775564,
+    "genang_sebelum_pct": 5.577689243027888,
+    "jumlah_petak": 1506,
+    "luas_sawah_ha": 516.6183462813622,
+    "tertanam_sesudah_pct": 20.0531208499336,
+    "tertinggal_pct": 5.245683930942895
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }

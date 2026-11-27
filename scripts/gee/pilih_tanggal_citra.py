@@ -82,6 +82,7 @@ def main():
     ap.add_argument("--min-jarak", type=int, default=45)
     ap.add_argument("--maks-jarak", type=int, default=110)
     ap.add_argument("--paralel", type=int, default=6)
+    ap.add_argument("--hanya", help="daftar nama dipisah koma; hasil digabung ke berkas --keluar yang sudah ada")
     a = ap.parse_args()
     ee.Initialize(project=a.project)
 
@@ -89,6 +90,8 @@ def main():
     mulai = (hari_ini - timedelta(days=a.maks_jarak + 45)).isoformat()
     akhir = (hari_ini + timedelta(days=1)).isoformat()
     wilayah = [w for w in json.loads(pathlib.Path(a.data).read_text())["wilayah"] if w.get("pusat")]
+    if a.hanya:
+        wilayah = [w for w in wilayah if w["n"] in a.hanya.split(",")]
 
     def jalan(w):
         try:
@@ -97,7 +100,7 @@ def main():
         except Exception as e:  # noqa: BLE001
             return w, [], None, str(e)[:200]
 
-    hasil = {}
+    hasil = json.loads(pathlib.Path(a.keluar).read_text()) if a.hanya and pathlib.Path(a.keluar).exists() else {}
     with cf.ThreadPoolExecutor(a.paralel) as ex:
         for w, rows, p, err in ex.map(jalan, wilayah):
             folder = w["n"].lower().replace(" ", "-")

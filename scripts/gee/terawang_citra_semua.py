@@ -22,6 +22,7 @@ def main():
     ap.add_argument("--out", default="public/citra")
     ap.add_argument("--paralel", type=int, default=4)
     ap.add_argument("--ulang", action="store_true")
+    ap.add_argument("--hanya", help="daftar nama dipisah koma (mis. wilayah yang titiknya digeser)")
     ap.add_argument("--tanggal", help="JSON hasil pilih_tanggal_citra.py (tanggal awal/terbaru per folder)")
     ap.add_argument("--jendela", type=int, default=12, help="komposit ± hari di sekitar tiap tanggal")
     a = ap.parse_args()
@@ -30,6 +31,8 @@ def main():
     tanggal = json.loads(pathlib.Path(a.tanggal).read_text()) if a.tanggal else {}
     tugas = []
     for w in wilayah:
+        if a.hanya and w["n"] not in a.hanya.split(","):
+            continue
         folder = w["n"].lower().replace(" ", "-")
         if not a.ulang and (pathlib.Path(a.out) / folder / "meta.json").exists():
             print(f"- lewati {w['n']} (sudah ada)")

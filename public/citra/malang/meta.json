@@ -2,51 +2,50 @@
   "folder": "malang",
   "lokasi": "Malang",
   "pusat": [
-    112.55928,
-    -8.15951
+    112.52791,
+    -8.15536
   ],
   "kotak_km": [
     3.6,
     2.1
   ],
   "bbox": [
-    112.542945,
-    -8.169006,
-    112.575615,
-    -8.150014
+    112.511575,
+    -8.164856,
+    112.544245,
+    -8.145864
   ],
-  "tanggal_sebelum": "2026-08-10",
+  "tanggal_sebelum": "2026-09-29",
   "tanggal_sesudah": "2026-11-15",
   "jendela_hari": 6,
   "mode_label": "aturan",
   "jumlah_citra": {
-    "s1_sebelum": 4,
+    "s1_sebelum": 3,
     "s1_sesudah": 4,
     "s2_sebelum": 12,
     "s2_sesudah": 12
   },
   "tanggal_citra": {
     "s2_sebelum": [
-      "2026-08-05",
-      "2026-08-07",
-      "2026-08-09",
-      "2026-08-10",
-      "2026-08-12",
-      "2026-08-15"
+      "2026-09-24",
+      "2026-09-26",
+      "2026-09-29",
+      "2026-10-01",
+      "2026-10-04"
     ],
     "s2_sesudah": [
       "2026-11-10",
       "2026-11-15",
-      "2026-11-20"
+      "2026-11-17"
     ]
   },
   "stat": {
-    "belum_hijau_sebelum_pct": 44.565217391304344,
-    "genang_sebelum_pct": 2.4247491638795986,
-    "jumlah_petak": 1196,
-    "luas_sawah_ha": 419.10879640170594,
-    "tertanam_sesudah_pct": 58.52842809364549,
-    "tertinggal_pct": 0.08361204013377926
+    "belum_hijau_sebelum_pct": 36.16118769883351,
+    "genang_sebelum_pct": 0.9544008483563097,
+    "jumlah_petak": 943,
+    "luas_sawah_ha": 327.53901590336864,
+    "tertanam_sesudah_pct": 32.0254506892895,
+    "tertinggal_pct": 0.10604453870625664
   },
   "sumber": "Copernicus Sentinel-2 SR & Sentinel-1 GRD via Google Earth Engine; petak = segmen SNIC; label aturan ambang (belum divalidasi)"
 }
