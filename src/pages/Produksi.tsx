@@ -367,7 +367,7 @@ function LuasBars() {
               <rect x={ml} y={y - 5} width={Math.max(0, xs(k.ha) - ml)} height={10} fill={isSel ? "var(--accent)" : "var(--s4)"} />
               <circle cx={xs(k.prev)} cy={y} r={3.6} fill="var(--panel)" stroke="var(--ink-2)" strokeWidth={1.6} />
               <text x={xs(Math.max(k.ha, k.prev)) + 8} y={y + 4}>
-                {nf(k.prod, 1)}
+                {nf(k.ha, 1)}
               </text>
             </g>
           )
@@ -383,7 +383,7 @@ function LuasBars() {
           <span className="sw" style={{ background: "var(--panel)", border: "1.6px solid var(--ink-2)", borderRadius: "50%" }} />
           periode sama 2025
         </span>
-        <span>angka kanan = ton {sat.lab}/ha</span>
+        <span>angka kanan = luas panen (ribu ha)</span>
       </div>
       {tombol}
     </>
