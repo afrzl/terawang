@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import {
   ArrowUpRight,
   BookOpen,
+  MessageCircle,
   Monitor,
   PlayCircle,
   Workflow,
@@ -18,6 +19,7 @@ const TAUTAN: Tautan[] = [
     url: "https://terawang.tech",
     ikon: Monitor,
   },
+  { judul: "Bot WhatsApp", ket: "Chat 0858-0559-6762", url: "https://wa.me/6285805596762", ikon: MessageCircle },
   {
     judul: "Video demo",
     ket: "Tur singkat fitur aplikasi",
